@@ -11,6 +11,10 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 """
 
 import os
+import django
+from django.utils.encoding import smart_str
+django.utils.encoding.smart_text = smart_str
+
 # import firebase_admin #Kevin
 # from firebase_admin import credentials #Kevin
 
@@ -141,14 +145,11 @@ AUTHENTICATION_BACKENDS = {
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'tomesoft1$tome-db',
-        'USER': 'tomesoft1',
+        'NAME': 'tomesoft1$tome_db',
+        'USER': 'root',
         'PASSWORD': 'Software1',
-        'HOST': 'tomesoft1.mysql.pythonanywhere-services.com',
-        'PORT': '3306',
-        'TEST': {
-            'NAME': '<tomesoft1>$test_<tomesoft1$Tome-soft-db-1>',
-        }
+        'HOST': '127.0.0.1',
+        'PORT': '3306'
     }
 }
 
