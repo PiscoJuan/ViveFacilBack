@@ -34,7 +34,8 @@ SECRET_KEY = 'i@!=q4ky)pxe0sg&uz%qk&u!2rf2hga6qwh6^3!iopf4nldezq'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['tomesoft1.pythonanywhere.com', '127.0.0.1', 'http://localhost:3000/','ccapi-stg.paymentez.com','*']
+ALLOWED_HOSTS = ['tomesoft1.pythonanywhere.com', '127.0.0.1',
+                 'http://localhost:3000/', 'ccapi-stg.paymentez.com', '*']
 
 
 # Application definition
@@ -65,31 +66,31 @@ INSTALLED_APPS = [
 INSTALLED_APPS += ('naomi',)
 
 
-REST_FRAMEWORK ={
-    'DEFAULT_AUTHENTICATION_CLASSES':[
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
-        ],
+    ],
     'DEFAULT_PAGINATION_CLASS':
         'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 3
-    }
+}
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
 
 FCM_DJANGO_SETTINGS = {
-         # default: _('FCM Django')
-        "APP_VERBOSE_NAME": "ToMe",
-         # Your firebase API KEY
-        "FCM_SERVER_KEY": "AAAANlvtPYk:APA91bHePBAcH81qKtDdJDaajXqbq6bQ2nsnalFr06fuLe9X7s9v3QMy1JEm7bEUChMS0ADF54Z8wH3drHLe6jbDNbAV9jVnqSDCHL41e50HhROqL-pWL2VztQ08TRpw6oaFBwxnbMsS",
-         # true if you want to have only one active device per registered user at a time
-         # default: False
-        "ONE_DEVICE_PER_USER": True,
-         # devices to which notifications cannot be sent,
-         # are deleted upon receiving error response from FCM
-         # default: False
-        "DELETE_INACTIVE_DEVICES": False,
+    # default: _('FCM Django')
+    "APP_VERBOSE_NAME": "ToMe",
+    # Your firebase API KEY
+    "FCM_SERVER_KEY": "AAAANlvtPYk:APA91bHePBAcH81qKtDdJDaajXqbq6bQ2nsnalFr06fuLe9X7s9v3QMy1JEm7bEUChMS0ADF54Z8wH3drHLe6jbDNbAV9jVnqSDCHL41e50HhROqL-pWL2VztQ08TRpw6oaFBwxnbMsS",
+    # true if you want to have only one active device per registered user at a time
+    # default: False
+    "ONE_DEVICE_PER_USER": True,
+    # devices to which notifications cannot be sent,
+    # are deleted upon receiving error response from FCM
+    # default: False
+    "DELETE_INACTIVE_DEVICES": False,
 }
 
 MIDDLEWARE = [
@@ -111,7 +112,6 @@ ROOT_URLCONF = 'TomeSoft_1.urls'
 CORS_ORIGIN_ALLOW_ALL = True
 
 
-
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -129,14 +129,13 @@ TEMPLATES = [
 ]
 
 
-
 WSGI_APPLICATION = 'TomeSoft_1.wsgi.application'
 
 AUTHENTICATION_BACKENDS = {
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend'
 
-    }
+}
 
 
 # Database
@@ -174,26 +173,26 @@ AUTH_PASSWORD_VALIDATORS = [
 
 SOCIALACCOUNT_PROVIDERS = \
     {'facebook':
-       {'METHOD': 'oauth2',
-        'SCOPE': ['email','public_profile', 'user_friends'],
-        'AUTH_PARAMS': {'auth_type': 'reauthenticate'},
-        'FIELDS': [
-            'id',
-            'email',
-            'name',
-            'first_name',
-            'last_name',
-            'verified',
-            'locale',
-            'timezone',
-            'link',
-            'gender',
-            'updated_time'],
-        'EXCHANGE_TOKEN': True,
-        'LOCALE_FUNC': lambda request: 'kr_KR',
-        'VERIFIED_EMAIL': False,
-        'VERSION': 'v2.4'}
-        }
+     {'METHOD': 'oauth2',
+      'SCOPE': ['email', 'public_profile', 'user_friends'],
+      'AUTH_PARAMS': {'auth_type': 'reauthenticate'},
+      'FIELDS': [
+          'id',
+          'email',
+          'name',
+          'first_name',
+          'last_name',
+          'verified',
+          'locale',
+          'timezone',
+          'link',
+          'gender',
+          'updated_time'],
+      'EXCHANGE_TOKEN': True,
+      'LOCALE_FUNC': lambda request: 'kr_KR',
+      'VERIFIED_EMAIL': False,
+      'VERSION': 'v2.4'}
+     }
 
 
 # Internationalization
@@ -216,11 +215,11 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST= 'smtp.gmail.com'
+EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_USE_TLS = True
-EMAIL_PORT= 587
-EMAIL_HOST_USER= 'vivefacil2022@gmail.com'
-EMAIL_HOST_PASSWORD= 'eggtkwfyeqmvjtre'
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'vivefacil2022@gmail.com'
+EMAIL_HOST_PASSWORD = 'eggtkwfyeqmvjtre'
 # EMAIL_HOST_PASSWORD= 'Academico96.'
 # EMAIL_USE_SSL=False
 # EMAIL_HOST_USER= 'tometestemail@gmail.com'
@@ -228,26 +227,25 @@ EMAIL_HOST_PASSWORD= 'eggtkwfyeqmvjtre'
 
 # default static files settings for PythonAnywhere.
 # see https://help.pythonanywhere.com/pages/DjangoStaticFiles for more info
-MEDIA_ROOT = os.path.join(BASE_DIR,'media')
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'static') # Ruta absoluta donde se recopilarán los archivos estáticos
+# Ruta absoluta donde se recopilarán los archivos estáticos
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 # STATICFILES_DIRS = [
 #     os.path.join(BASE_DIR, "static"),
 # ]
-ACCOUNT_EMAIL_VERIFICATION='none'
-ACCOUNT_EMAIL_REQUIRED=True
-ACCOUNT_AUTHENTICATION_METHOD='username'
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_AUTHENTICATION_METHOD = 'username'
 
-SERVER_APP_CODE= 'INNOVA-EC-SERVER'
-SERVER_APP_KEY= 'Y5FnbpWYtULtj1Muvw3cl8LJ7FVQfM'
+SERVER_APP_CODE = 'INNOVA-EC-SERVER'
+SERVER_APP_KEY = 'Y5FnbpWYtULtj1Muvw3cl8LJ7FVQfM'
 
-CLIENT_APP_CODE=  'INNOVA-EC-CLIENT'
-CLIENT_APP_KEY= 'ZjgaQCbgAzNF7k8Fb1Qf4yYLHUsePk'
+CLIENT_APP_CODE = 'INNOVA-EC-CLIENT'
+CLIENT_APP_KEY = 'ZjgaQCbgAzNF7k8Fb1Qf4yYLHUsePk'
 
-PAYMENTEZ_HOST= 'https://ccapi-stg.paymentez.com/'
+PAYMENTEZ_HOST = 'https://ccapi-stg.paymentez.com/'
 
-if DEBUG and False:  #si estas en modo desarrollo elimina la condicion 'and False'
+if DEBUG and False:  # si estas en modo desarrollo elimina la condicion 'and False'
     EMAIL_BACKEND = "naomi.mail.backends.naomi.NaomiBackend"
     EMAIL_FILE_PATH = "/home/tomesoft1/TomeSoft_1/tmp"
-
-
