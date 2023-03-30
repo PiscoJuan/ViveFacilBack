@@ -2663,6 +2663,17 @@ class Proveedores_Interesados(APIView):
         return Response(serializer.data)
 
 
+class Proveedores_InteresadosFecha(APIView):
+    def post(self, request, id_proveedor_user_datos, format=None):
+        envio_interesado = Envio_Interesados.objects.all().filter(
+            proveedor__user_datos_id=id_proveedor_user_datos, fecha_creacion__gte=request.data.get('dateInicio'), fecha_creacion__lte=request.data.get('dateFinal'), interesado=True).order_by('-fecha_creacion')
+
+        serializer = Envio_InteresadosSerializer(envio_interesado, many=True)
+        return Response(serializer.data)
+
+# Paginados
+
+
 class Proveedores_Interesados_Pag(APIView, MyPaginationMixin):
     queryset = Envio_Interesados.objects.all()
     serializer_class = Envio_InteresadosSerializer

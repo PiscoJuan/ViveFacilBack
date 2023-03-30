@@ -125,6 +125,9 @@ urlpatterns += [
     # ! Quitar, ya no se va a usar
     path('proveedores_interesados/<str:id_proveedor_user_datos>',
          Proveedores_Interesados.as_view()),
+    path('proveedores_interesadosFecha/<str:id_proveedor_user_datos>',
+         Proveedores_InteresadosFecha.as_view()),
+    
     # Paginado
     path('proveedores_interesadosPag/<str:id_proveedor_user_datos>',
          Proveedores_Interesados_Pag.as_view()),
