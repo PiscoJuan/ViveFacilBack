@@ -138,7 +138,7 @@ class Insignias(APIView):
     def post(self, request, format=None):
         data = {}
         name = request.POST.get('nombre')
-        #picture = request.POST.get('imagen')
+        # picture = request.POST.get('imagen')
         picture = request.FILES.get('imagen')
         service = request.POST.get('servicio')
         order = request.POST.get('pedidos')
@@ -203,8 +203,8 @@ class InsigniaSolicitantes(APIView):
 
 
 class DeviceNotification(APIView):
-    #permission_classes = (IsAuthenticated,)
-    #authentication_class = (TokenAuthentication)
+    # permission_classes = (IsAuthenticated,)
+    # authentication_class = (TokenAuthentication)
     def get(self, request, format=None):
         data = {}
         correo = request.data.get('correo')
@@ -226,7 +226,7 @@ class DeviceNotification(APIView):
     def post(self, request, format=None):
         data = {}
         token = request.data.get('token')
-        #device = FCMDevice.objects.filter(registration_id=token, active=True)
+        # device = FCMDevice.objects.filter(registration_id=token, active=True)
         device = FCMDevice.objects.filter(registration_id=token)
         if len(device) > 0:
             data['message'] = 'Token existente.'
@@ -303,7 +303,7 @@ class Email(APIView):
             pass_user = request.data.get('password')
             asunto = 'Bienvenido a Vive Fácil'
             try:
-                if(request.data.get('tipo') == "Administrador"):
+                if (request.data.get('tipo') == "Administrador"):
                     thread = threading.Thread(target=formatEmail.send_email(emails, asunto, 'emails/welcomeAdmin.html', {
                                               "username": user.nombres + ' ' + user.apellidos, "user": email_user, "password": pass_user}))
                     thread.start()
@@ -349,7 +349,7 @@ class EmailFactura(APIView):
             pago_desc = request.data.get('pago_descripcion')
             transaccion = request.data.get('transaccion')
             proveedor = request.data.get('proveedor')
-            #emails = request.data.get('emails')
+            # emails = request.data.get('emails')
             try:
                 asunto = 'Factura Pago de Servicios Vive Fácil'
                 thread = threading.Thread(target=formatEmail.send_email(emails, asunto, 'emails/factura.html', {"fecha_today": fecha, "fecha_emision": fecha, "solicitante_name": user.nombres + ' ' + user.apellidos, "solicitud_descripcion": descripcion,
@@ -370,12 +370,12 @@ class EmailFactura(APIView):
 class RecuperarPassword(APIView):
     def get(selt, request, user_email, format=None):
         data = {'success': False}
-        #dato= Dato.objects.all().filter(id=id)
+        # dato= Dato.objects.all().filter(id=id)
         usuario = User.objects.filter(email=user_email)
         if usuario.count() > 0:
             # se envia correo con codigo y se retorna true para dar pase a la pantalla donde se ingresa codigo
             user_dato = Datos.objects.get(user=usuario.first())
-            if(user_dato is not None):
+            if (user_dato is not None):
                 codigo = get_random_string(length=6).upper()
                 codigo_creada = Codigos.objects.create(
                     user_datos=user_dato, codigo=codigo, estado=True)
@@ -391,12 +391,12 @@ class RecuperarPassword(APIView):
 class EnviarAlerta(APIView):
     def get(selt, request, user_email, asunto, texto, format=None):
         data = {'success': False}
-        #dato= Dato.objects.all().filter(id=id)
+        # dato= Dato.objects.all().filter(id=id)
         usuario = User.objects.filter(email=user_email)
         if usuario.count() > 0:
             # se envia correo con codigo y se retorna true para dar pase a la pantalla donde se ingresa codigo
             user_dato = Datos.objects.get(user=usuario.first())
-            if(user_dato is not None):
+            if (user_dato is not None):
                 formatEmail = FormatEmail()
                 thread = threading.Thread(target=formatEmail.send_email(
                     [user_email], asunto, 'emails/enviarAlerta.html', {"username": user_dato.nombres, "contenido": texto}))
@@ -411,10 +411,10 @@ class ValidarCodigo(APIView):
         usuario = User.objects.filter(email=email)
         if usuario.count() > 0:
             user_dato = Datos.objects.get(user=usuario.first())
-            if(user_dato is not None):
+            if (user_dato is not None):
                 codigos = Codigos.objects.filter(
                     user_datos=user_dato, codigo=codigo, estado=True)
-                if(codigos.count() > 0):
+                if (codigos.count() > 0):
                     data['success'] = True
         return Response(data)
 
@@ -425,10 +425,10 @@ class CambioPasswordCodigo(APIView):
         usuario = User.objects.filter(email=email)
         if usuario.count() > 0:
             user_dato = Datos.objects.get(user=usuario.first())
-            if(user_dato is not None):
+            if (user_dato is not None):
                 codigos = Codigos.objects.filter(
                     user_datos=user_dato, codigo=codigo, estado=True)
-                if(codigos.count() > 0):
+                if (codigos.count() > 0):
                     codigoFirst = codigos.first()
                     codigoFirst.estado = False
                     codigoFirst.save()
@@ -457,7 +457,7 @@ class CambioContrasenia(APIView):
             data['message'] = "La tabla User Datos no fue enocontrada en la base de datos " + \
                 str(e)
 
-        if(user_dato is not None):
+        if (user_dato is not None):
             usuario.set_password(password)
             usuario.save()
             data['success'] = True
@@ -558,7 +558,7 @@ class Categorias(APIView):
 
 class Servicios(APIView):
     # permission_classes = (IsAuthenticated,)
-    #authentication_class = (TokenAuthentication)
+    # authentication_class = (TokenAuthentication)
     def get(self, request, format=None):
         servicios = Servicio.objects.all().filter()
         serializer = ServicioSerializer(servicios, many=True)
@@ -592,7 +592,7 @@ class Servicios(APIView):
         data = {}
         nombre = request.POST.get('nombre')
         servicio = Servicio.objects.filter(nombre=nombre)
-        if(len(servicio) > 0):
+        if (len(servicio) > 0):
             data['error'] = "Ya existe el servicio con el mismo nombre"
             return Response(data)
 
@@ -622,7 +622,7 @@ class Servicios(APIView):
 
 
 class Logout(APIView):
-    #authentication_class = (TokenAuthentication)
+    # authentication_class = (TokenAuthentication)
     def get(self, request, *args, **kwargs):
         token = Token.objects.get(key=self.kwargs["token"])
         token.delete()
@@ -648,7 +648,7 @@ class RegistroFromRedes(APIView):
                 dato, creado = Datos.objects.get_or_create(user=usuario, tipo=models.Group.objects.get(
                     name='Solicitante'), nombres=nombre_user, apellidos=apellido_user, telefono=telefono_user, foto=foto_user, ciudad=ciudad_user, cedula=cedula_user)
                 if creado:
-                    #thread = threading.Thread(target =email.send_email(user,'Bienvenido a TOME','emails/welcome.html',{"username":nombre_user}))
+                    # thread = threading.Thread(target =email.send_email(user,'Bienvenido a TOME','emails/welcome.html',{"username":nombre_user}))
                     # thread.start()
                     Solicitante.objects.create(
                         user_datos=dato, bool_registro_completo=True)
@@ -668,12 +668,12 @@ class Registro(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         user_email = request.POST.get('email')
         user_password = request.POST.get('password')
-        usuario = User.objects.filter(username=user_email).count()
+        users = User.objects.filter(username=user_email).count()
         data = {}
         email = FormatEmail()
-        if not (usuario):
-            usuario = User.objects.create_user(
-                email=user_email, username=user_email, password=user_password)
+        if (users == 0):
+            usuario = User.objects.create_user(email=request.POST.get(
+                'email'), username=request.POST.get('nombres'), password=user_password)
             tipo_user = request.POST.get('tipo')
             nombre_user = request.POST.get('nombres')
             apellido_user = request.POST.get('apellidos')
@@ -683,11 +683,11 @@ class Registro(viewsets.ModelViewSet):
             cedula_user = request.POST.get('cedula')
             foto_user = request.FILES.get('foto')
             try:
-                dato, creado = Datos.objects.get_or_create(user=User.objects.get(email=user_email), tipo=models.Group.objects.get(
+                dato, creado = Datos.objects.get_or_create(user=usuario, tipo=models.Group.objects.get(
                     name=tipo_user), nombres=nombre_user, apellidos=apellido_user, telefono=telefono_user, genero=genero_user, ciudad=ciudad_user, cedula=cedula_user, foto=foto_user)
                 # data['error1']=dato.user.email
                 if creado:
-                    #thread = threading.Thread(target =email.send_email(user_email,'Bienvenido a TOME','emails/welcome.html',{"username":nombre_user}))
+                    # thread = threading.Thread(target =email.send_email(user_email,'Bienvenido a TOME','emails/welcome.html',{"username":nombre_user}))
                     # thread.start()
                     # data['error2']=dato.user.email
                     if tipo_user == 'Solicitante':
@@ -697,8 +697,43 @@ class Registro(viewsets.ModelViewSet):
                             name='Solicitante')
                         grupoSolicitante.user_set.add(usuario)
                     elif tipo_user == 'Proveedor':
-                        Proveedor.objects.create(
-                            user_datos=dato, bool_registro_completo=True)
+                        # Proveedor.objects.create(user_datos= dato, bool_registro_completo= True)
+                        try:
+                            proveedor_user, created = Proveedor.objects.get_or_create(
+                                user_datos=dato, ano_profesion=0)
+                            # pendiente, created_p = Proveedor_Pendiente.get_or_create(proveedor=proveedor_user, email = request.data.get('email'))
+                            print("Proveedor " +
+                                  proveedor_user.user_datos.user.email)
+                        except:
+                            print("No se pudo crear el perfil de proveedor")
+                            data['error'] = "No se pudo crear el perfil de proveedor"
+                            data['success'] = False
+                            return Response(data)
+                        else:
+                            try:
+                                # crear cuenta
+                                banco_user = Banco.objects.get_or_create(
+                                    nombre=request.POST.get('banco'))
+                                tipo_cuenta_user = Tipo_Cuenta.objects.get_or_create(
+                                    nombre=request.POST.get('tipo_cuenta'))
+                                numero_account = request.POST.get(
+                                    'numero_cuenta')
+                                cuenta = Cuenta.objects.get_or_create(
+                                    banco=banco_user[0], tipo_cuenta=tipo_cuenta_user[0], proveedor=proveedor_user, numero_cuenta=numero_account)
+                                proveedor_user.banco = banco_user[0]
+                                proveedor_user.numero_cuenta = "0999990999999"
+                                proveedor_user.profesion = "si"
+                                # serializer_cuenta = CuentaSerializer(cuenta)
+                                # serializer_pendiente = Proveedor_PendienteSerializer(pendiente)
+
+                                # data['cuenta']= serializer_cuenta.data
+                                # data['pendiente']= serializer_pendiente.data
+                                data['success'] = True
+                                return Response(data)
+                            except:
+                                data['error'] = "No se pudo guardar la cuenta del usuario"
+                                data['success'] = False
+                                return Response(data)
                     data['email'] = dato.user.email
                     data['username'] = dato.user.username
                     token = Token.objects.get(user=dato.user).key
@@ -725,7 +760,7 @@ class GoogleLogin(SocialLoginView):
 
 class Register_Proveedor(APIView):
     # permission_classes = (IsAuthenticated,)
-    #authentication_class = (TokenAuthentication)
+    # authentication_class = (TokenAuthentication)
     def post(self, request, format=None):
         data = {}
 
@@ -758,7 +793,7 @@ class Register_Proveedor(APIView):
                 name='Proveedor'), nombres=nombre_user, apellidos=apellido_user, telefono=telefono_user, genero=genero_user, foto=foto_user)
             # data['error1']=dato.user.email
             if creado:
-                #thread = threading.Thread(target =email.send_email(user_email,'Bienvenido a TOME','emails/welcome.html',{"username":nombre_user}))
+                # thread = threading.Thread(target =email.send_email(user_email,'Bienvenido a TOME','emails/welcome.html',{"username":nombre_user}))
                 # thread.start()
                 # data['error2']=dato.user.email
                 if tipo_user == 'Proveedor':
@@ -782,7 +817,7 @@ class Register_Proveedor(APIView):
 
 class Update_Proveedor_Pendiente(APIView):
     # permission_classes = (IsAuthenticated,)
-    #authentication_class = (TokenAuthentication)
+    # authentication_class = (TokenAuthentication)
     def post(self, request, format=None):
         data = {}
 
@@ -858,10 +893,10 @@ class Cupones_Aplicados(APIView):
         try:
             cupon_apl = Cupon_Aplicado.objects.filter(
                 user=user_dat, cupon__id=cup_id)
-            if not(cupon_apl):
+            if not (cupon_apl):
                 cupon_1 = Cupon.objects.get(id='1')
 
-                if(cupon_1):
+                if (cupon_1):
                     data['cr'] = True
 
                 cup_create, creado = Cupon_Aplicado.objects.get_or_create(
@@ -904,7 +939,7 @@ class Get_Cupon_Aplicado(APIView):
 
 class Data_Proveedor_Pendiente(APIView):
     # permission_classes = (IsAuthenticated,)
-    #authentication_class = (TokenAuthentication)
+    # authentication_class = (TokenAuthentication)
     def post(self, request, format=None):
         data = {}
         if request.data.get('tipo') != 'Proveedor_Pendiente':
@@ -967,6 +1002,78 @@ class Data_Proveedor_Pendiente(APIView):
                         data['success'] = False
                         return Response(data)
 
+                    except:
+                        data['error'] = "No se pudo guardar la cuenta del usuario"
+                        data['success'] = False
+                        return Response(data)
+        else:
+            data['error'] = "El usuario ya existe"
+            data['success'] = False
+            return Response(data)
+
+    def delete(self, request, format=None):
+        print("In process")
+
+
+class Data_Proveedor_Proveedor(APIView):
+    # permission_classes = (IsAuthenticated,)
+    # authentication_class = (TokenAuthentication)
+    def post(self, request, format=None):
+        data = {}
+        '''if request.data.get('tipo')!='Proveedor_Pendiente':
+            data['error']="El tipo de usuario no es un Proveedor Pendiente"
+            return Response(data)'''
+        usuario = User.objects.filter(
+            username=request.data.get('email')).count()
+        if not (usuario):
+            tipo_user = request.data.get('tipo')
+            nombre_user = request.data.get('nombres')
+            apellido_user = request.data.get('apellidos')
+            telefono_user = request.data.get('telefono')
+            genero_user = request.data.get('genero')
+            foto_user = request.data.get('foto')
+            ciudad_user = request.data.get('ciudad')
+            cedula_user = request.data.get('cedula')
+            # usuarioNovo =
+            try:
+                dato, creado = Datos.objects.get_or_create(tipo=models.Group.objects.get(name="Proveedor"), nombres=nombre_user, apellidos=apellido_user,
+                                                           telefono=telefono_user, genero=genero_user, foto=foto_user, ciudad=ciudad_user, cedula=cedula_user)  # , user = usuarioNovo'''
+            except:
+                data['error'] = "No se pudo guardar los datos"
+                data['success'] = False
+                return Response(data)
+            else:
+                # Crear la cuenta y el proveedor
+                descripcion_user = request.data.get('descripcion')
+                # docs = request.data.get('documentos') #Array, aun no incluido
+                try:
+                    proveedor_user, created = Proveedor.objects.get_or_create(
+                        user_datos=dato, descripcion=descripcion_user, ano_profesion=0)
+                    # pendiente, created_p = Proveedor_Pendiente.get_or_create(proveedor=proveedor_user, email = request.data.get('email'))
+                except:
+                    data['error'] = "No se pudo crear el perfil de proveedor"
+                    data['success'] = False
+                    return Response(data)
+                else:
+                    try:
+                        # crear cuenta
+                        banco_user = Banco.objects.get_or_create(
+                            nombre=request.data.get('banco'))
+                        tipo_cuenta_user = Tipo_Cuenta.objects.get_or_create(
+                            nombre=request.data.get('tipo_cuenta'))
+                        numero_account = request.data.get('numero_cuenta')
+                        cuenta = Cuenta.objects.get_or_create(
+                            banco=banco_user[0], tipo_cuenta=tipo_cuenta_user[0], proveedor=proveedor_user, numero_cuenta=numero_account)
+                        proveedor_user.banco = banco_user[0]
+                        proveedor_user.numero_cuenta = "0999990999999"
+                        proveedor_user.profesion = "si"
+                        # serializer_cuenta = CuentaSerializer(cuenta)
+                        # serializer_pendiente = Proveedor_PendienteSerializer(pendiente)
+
+                        # data['cuenta']= serializer_cuenta.data
+                        # data['pendiente']= serializer_pendiente.data
+                        data['success'] = True
+                        return Response(data)
                     except:
                         data['error'] = "No se pudo guardar la cuenta del usuario"
                         data['success'] = False
@@ -1060,14 +1167,12 @@ class Proveedores_Pendientes_Details(APIView):
         return Response(serializer.data)
 
     def put(self, request, pk, format=None):
-
         pendiente = Proveedor_Pendiente.objects.get(id=pk)
         copiaCedula = request.data.get('copiaCedula')
         copiaLicencia = request.data.get('copiaLicencia')
         documents = request.FILES.getlist('filesDocuments')
 
         if not copiaCedula == None:
-
             pendiente.copiaCedula.delete()
 
         if not copiaLicencia == None:
@@ -1354,8 +1459,8 @@ class SolicitudesNoPaid(APIView):
 
 
 class Solicituds(APIView):
-    #permission_classes = (IsAuthenticated,)
-    #authentication_class = (TokenAuthentication)
+    # permission_classes = (IsAuthenticated,)
+    # authentication_class = (TokenAuthentication)
     def get(self, request, format=None):
         solicitud = Solicitud.objects.all().filter()
         serializer = SolicitudSerializer(solicitud, many=True)
@@ -1489,7 +1594,7 @@ class AddSolicitud(APIView):
         # Notificacion a los usuarios
         titles = 'Solicitud Recibida del servicio '+solicitud.servicio.nombre
         bodys = '¡Dale un vistazo!'
-        #devices = FCMDevice.objects.filter(active=True,user__groups__name='Proveedor')
+        # devices = FCMDevice.objects.filter(active=True,user__groups__name='Proveedor')
         # devices = FCMDevice.objects.filter(user__groups__name='Proveedor')
         # devices.send_message(
         #     data = {"ruta": "Carrito", "descripcion": "Se ha recibido una solicitud del siguiente servicio: " +solicitud.servicio.nombre},
@@ -1545,7 +1650,7 @@ class AddSolicitud(APIView):
 
 class Solicitudes(APIView):
    # permission_classes = (IsAuthenticated,)
-   #authentication_class = (TokenAuthentication)
+   # authentication_class = (TokenAuthentication)
     def get(self, request, user, format=None):
         solicitud = Solicitud.objects.all().filter(
             solicitante__user_datos__user__email=user)
@@ -1556,7 +1661,7 @@ class Solicitudes(APIView):
 
 class Profesiones(APIView):
    # permission_classes = (IsAuthenticated,)
-   #authentication_class = (TokenAuthentication)
+   # authentication_class = (TokenAuthentication)
     def get(self, request, format=None):
         profesion = Profesion.objects.all().filter()
         serializer = ProfesionSerializer(profesion, many=True)
@@ -1651,7 +1756,7 @@ class ValorTotalSolicitantes(APIView):
 
 class Proveedores(APIView, MyPaginationMixin):
    # permission_classes = (IsAuthenticated,)
-   #authentication_class = (TokenAuthentication)
+   # authentication_class = (TokenAuthentication)
     queryset = Proveedor.objects.all().exclude(user_datos__tipo=4).order_by('-id')
     serializer_class = ProveedorSerializer
     pagination_class = MyCustomPagination
@@ -1837,7 +1942,7 @@ class CorreoSolicitud(APIView):
             asunto = "Respuesta Solicitud"
             emails.append(correo)
             try:
-                if(request.data.get("estado")):
+                if (request.data.get("estado")):
                     thread = threading.Thread(target=formatEmail.send_email(emails, asunto, 'emails/solicitudRechazada.html', {
                                               "username": user.nombres + ' ' + user.apellidos, "user": correo, "profesion": profesion}))
                     thread.start()
@@ -1989,7 +2094,7 @@ class ProveedoresDocumentsView(APIView):
 
 class Proveedores_Pendientes_exitente(APIView):
     # permission_classes = (IsAuthenticated,)
-    #authentication_class = (TokenAuthentication)
+    # authentication_class = (TokenAuthentication)
     def get(self, request, username, name_profesion, format=None):
         data = {}
         try:
@@ -2005,7 +2110,7 @@ class Proveedores_Pendientes_exitente(APIView):
 
 class Proveedores_Pendientes(APIView, MyPaginationMixin):
     # permission_classes = (IsAuthenticated,)
-    #authentication_class = (TokenAuthentication)
+    # authentication_class = (TokenAuthentication)
     # def get(self, request, format=None):
     #     proveedor_pendiente = Proveedor_Pendiente.objects.all().filter()
     #     serializer = Proveedor_PendienteSerializer(proveedor_pendiente,many= True)
@@ -2023,7 +2128,94 @@ class Proveedores_Pendientes(APIView, MyPaginationMixin):
     def delete(self, request, username, desc, format=None):
         proveedor_pendiente = Proveedor_Pendiente.objects.get(
             proveedor__user_datos__user__username=username)
-        #descripcion = request.data.get('descripcion')
+        # descripcion = request.data.get('descripcion')
+        descripcion = desc.split("|")
+        documento = Document.objects.get(descripcion=descripcion[0])
+        if descripcion[1] == "true":
+            data = {"estado": True}
+            serializer = DocumentSerializer(documento, data=data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                proveedor_pendiente.delete()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            documento.delete()
+            proveedor_pendiente.delete()
+            return Response(status=status.HTTP_200_OK)
+
+    def put(self, request, format=None):
+        data = {}
+        desc = request.data.get('descripcion')
+        profesion = request.data.get('profesion')
+        documento = Document.objects.get(descripcion=desc, estado=False)
+        documento.descripcion = profesion
+        documento.save()
+        data1 = {"descripcion": profesion}
+        serializer = DocumentSerializer(documento, data=data1, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            data['success'] = True
+            return Response(data)
+        data['success'] = False
+        return Response(data)
+
+        data = {}
+        cuenta = Cuenta.objects.get(
+            proveedor__user_datos__user__username=username)
+        anio = request.POST.get('anio')
+        estado = request.POST.get('estado')
+        profesion = request.POST.get('profesion')
+        banco = cuenta.banco
+        n_cuenta = cuenta.numero_cuenta
+        tipo = cuenta.tipo_cuenta
+        descripcion = request.POST.get('descripcion')
+        documento = request.FILES.get('documento')
+        documento_creado = Document.objects.create(
+            descripcion=descripcion, documento=documento)
+        serializer = DocumentSerializer(documento_creado)
+        data['Document'] = serializer.data
+        if documento_creado:
+
+            proveedor = Proveedor.objects.get(
+                user_datos__user__username=username)
+            proveedor.document.add(documento_creado)
+            profesion_creada = Proveedor_Pendiente.objects.create(
+                proveedor=proveedor, email=username, estado=estado, profesion=profesion, ano_experiencia=anio, banco=banco, numero_cuenta=n_cuenta, tipo_cuenta=tipo)
+            serializer = Proveedor_PendienteSerializer(profesion_creada)
+
+            data['proveedor_pendiente'] = serializer.data
+            if profesion_creada:
+                return Response(data)
+            else:
+                data['error'] = "Error al crear!."
+                return Response(data)
+        else:
+            data['error'] = "Error al crear el documento!."
+            return Response(data)
+
+
+class Proveedores_Proveedores(APIView, MyPaginationMixin):
+    # permission_classes = (IsAuthenticated,)
+    # authentication_class = (TokenAuthentication)
+    # def get(self, request, format=None):
+    #     proveedor_pendiente = Proveedor_Pendiente.objects.all().filter()
+    #     serializer = Proveedor_PendienteSerializer(proveedor_pendiente,many= True)
+    #     return Response(serializer.data)
+    queryset = Proveedor.objects.all().order_by('-id')
+    serializer_class = ProveedorSerializer
+    pagination_class = MyCustomPagination
+
+    def get(self, request, format=None):
+        page = self.paginate_queryset(self.queryset)
+        if page is not None:
+            serializer = self.serializer_class(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+    def delete(self, request, username, desc, format=None):
+        proveedor_pendiente = Proveedor_Pendiente.objects.get(
+            proveedor__user_datos__user__username=username)
+        # descripcion = request.data.get('descripcion')
         descripcion = desc.split("|")
         documento = Document.objects.get(descripcion=descripcion[0])
         if descripcion[1] == "true":
@@ -2092,7 +2284,7 @@ class Proveedores_Pendientes(APIView, MyPaginationMixin):
 
 class CuentaProveedor(APIView):
     # permission_classes = (IsAuthenticated,)
-    #authentication_class = (TokenAuthentication)
+    # authentication_class = (TokenAuthentication)
     def get(selt, request, proveedorID, format=None):
         cuentas = Cuenta.objects.all().filter(proveedor=proveedorID)
         serializer = CuentaSerializer(cuentas, many=True)
@@ -2143,7 +2335,7 @@ class Usuarios(APIView):  # Created By KevinChevez
 
 class Dato(APIView):
    # permission_classes = (IsAuthenticated,)
-   #authentication_class = (TokenAuthentication)
+   # authentication_class = (TokenAuthentication)
     def get(self, request, user, format=None):
         data = {}
         proveedor = Datos.objects.all().filter(
@@ -2182,7 +2374,7 @@ class Dato(APIView):
 
 class SolicitanteUser(APIView):
     # permission_classes = (IsAuthenticated,)
-    #authentication_class = (TokenAuthentication)
+    # authentication_class = (TokenAuthentication)
     def get(self, request, user, format=None):
         solicitante = Solicitante.objects.filter(user_datos__user__email=user)
         serializer = SolicitanteSerializer(solicitante, many=True)
@@ -2191,7 +2383,7 @@ class SolicitanteUser(APIView):
 
 class SolicitanteByUserDatos(APIView):  # Kevin Endopint Add
     # permission_classes = (IsAuthenticated,)
-    #authentication_class = (TokenAuthentication)
+    # authentication_class = (TokenAuthentication)
     def get(self, request, UserDatosId, format=None):
         solicitante = Solicitante.objects.filter(user_datos__id=UserDatosId)
         serializer = SolicitanteSerializer(solicitante, many=True)
@@ -2199,8 +2391,8 @@ class SolicitanteByUserDatos(APIView):  # Kevin Endopint Add
 
 
 class Solicitantes(APIView, MyPaginationMixin):
-    #permission_classes = (IsAuthenticated,)
-    #authentication_class = (TokenAuthentication)
+    # permission_classes = (IsAuthenticated,)
+    # authentication_class = (TokenAuthentication)
     queryset = Solicitante.objects.all().order_by('-id')
     serializer_class = SolicitanteSerializer
     pagination_class = MyCustomPagination
@@ -2276,7 +2468,7 @@ class FiltroNombres(APIView, MyPaginationMixin):
 
 class Administradores(APIView, MyPaginationMixin):
     # permission_classes = (IsAuthenticated,)
-    #authentication_class = (TokenAuthentication)
+    # authentication_class = (TokenAuthentication)
     queryset = Administrador.objects.all().order_by('-id')
     serializer_class = AdministradorSerializer
     pagination_class = MyCustomPagination
@@ -2369,7 +2561,7 @@ class Admin_Details(APIView):
             if User.objects.filter(email=request.data.get('emailNuevo')).exists():
                 userExistente = User.objects.get(
                     email=request.data.get('emailNuevo'))
-                if(user.id != userExistente.id):
+                if (user.id != userExistente.id):
                     data['error'] = 'Email ya registrado'
                     return Response(data)
                 else:
@@ -2442,7 +2634,7 @@ class AdministradoresUser(APIView, MyPaginationMixin):
 
 class Proveedor_Profesiones(APIView):
    # permission_classes = (IsAuthenticated,)
-   #authentication_class = (TokenAuthentication)
+   # authentication_class = (TokenAuthentication)
     def get(self, request, user, format=None):
         proveedor_profesiones = Profesion_Proveedor.objects.filter(
             proveedor__user_datos__user__username=user) | Profesion_Proveedor.objects.filter(proveedor__user_datos__user__email=user)
@@ -2471,7 +2663,7 @@ class Proveedor_Profesiones(APIView):
 
         proveedorProfesion = Profesion_Proveedor.objects.filter(
             profesion__id=profesionObj.id, proveedor__id=proveedor.id).first()
-        if(proveedorProfesion):
+        if (proveedorProfesion):
             data['success'] = False
             data['message'] = 'Ya existe la tabla Profesion_Proveedor con el mismo proveedor y la misma profesión registrado en la base de datos.'
             return Response(data)
@@ -2543,7 +2735,7 @@ class Proveedor_Profesiones(APIView):
 
 class Solicitud_Servicio_User(APIView):
  # permission_classes = (IsAuthenticated,)
-   #authentication_class = (TokenAuthentication)
+   # authentication_class = (TokenAuthentication)
     def get(self, request, ID_servicio, user, format=None):
         solicitud_servicio = Envio_Interesados.objects.filter(
             solicitud__servicio=ID_servicio, solicitud__estado=True, proveedor__user_datos__user__username=user, interesado=False).order_by('-fecha_creacion')
@@ -2557,7 +2749,7 @@ class Solicitud_Servicio_User(APIView):
 
 class Service(APIView):
     # permission_classes = (IsAuthenticated,)
-    #authentication_class = (TokenAuthentication)
+    # authentication_class = (TokenAuthentication)
 
     def get(self, request, category_ID,  format=None):
         servicios = Servicio.objects.all().filter(categoria=category_ID)
@@ -2568,7 +2760,7 @@ class Service(APIView):
 
 class Envio(APIView):
     # permission_classes = (IsAuthenticated,)
-    #authentication_class = (TokenAuthentication)
+    # authentication_class = (TokenAuthentication)
     def get(self, request, solicitud_ID, format=None):
         envio_interesado = Envio_Interesados.objects.all().filter(
             solicitud=solicitud_ID, interesado=False)
@@ -2655,7 +2847,7 @@ class Notificacion_General(APIView):
 
 class Proveedores_Interesados(APIView):
     # permission_classes = (IsAuthenticated,)
-    #authentication_class = (TokenAuthentication)
+    # authentication_class = (TokenAuthentication)
     def get(self, request, id_proveedor_user_datos, format=None):
         envio_interesado = Envio_Interesados.objects.all().filter(
             proveedor__user_datos_id=id_proveedor_user_datos, interesado=True).order_by('-fecha_creacion')
@@ -2744,7 +2936,7 @@ class SolicitudesPagadas(APIView):
 
 class Envio_Interesado(APIView):
     # permission_classes = (IsAuthenticated,)
-    #authentication_class = (TokenAuthentication)
+    # authentication_class = (TokenAuthentication)
     def get(self, request, solicitud_ID, format=None):
         datos = []
         envio_interesado = Envio_Interesados.objects.all().filter(
@@ -2815,18 +3007,18 @@ class Login(APIView):
                 do_login(request, user)
                 usuario = Datos.objects.get(user=user)
                 tipo = usuario.tipo.name
-                if(tipo == res_tipo and usuario.estado == True):
+                if (tipo == res_tipo and usuario.estado == True):
                     token, _ = Token.objects.get_or_create(user=user)
-                    if(tipo == 'Proveedor'):
+                    if (tipo == 'Proveedor'):
                         proveedor = Proveedor.objects.get(user_datos=usuario)
-                        if(proveedor.estado):
-                            #data['token']=token = Token.objects.get(user=user).key
+                        if (proveedor.estado):
+                            # data['token']=token = Token.objects.get(user=user).key
                             data['token'] = token.key
                             data['active'] = True
                             return Response(data)
                         else:
                             data['clave'] = usuario.security_access
-                            #data['token']=token = Token.objects.get(user=user).key
+                            # data['token']=token = Token.objects.get(user=user).key
                             data['token'] = token.key
                             data['active'] = True
                             return Response(data)
@@ -2835,7 +3027,7 @@ class Login(APIView):
                         data['token'] = token = Token.objects.get(
                             user=user).key
                         return Response(data)
-                elif(tipo == res_tipo and usuario.estado == False):
+                elif (tipo == res_tipo and usuario.estado == False):
                     data['active'] = False
                     return Response(data)
                 else:
@@ -3039,8 +3231,8 @@ class Complete_Data_User(APIView):
 
 
 class Notificaciones(APIView, MyPaginationMixin):
-    #permission_classes = (IsAuthenticated,)
-    #authentication_class = (TokenAuthentication)
+    # permission_classes = (IsAuthenticated,)
+    # authentication_class = (TokenAuthentication)
     # def get(self, request, format=None):
     #     notificacion = Notificacion.objects.all().filter()
     #     serializer = NotificacionSerializer(notificacion, many=True)
@@ -3160,7 +3352,7 @@ class Promociones(APIView):
         descuent = request.data.get('porcentaje')
         cant = request.data.get('cantidad')
         partic = request.data.get('participantes')
-        #photo = request.data.get('foto') #
+        # photo = request.data.get('foto') #
         if request.data.get('foto') is not None:
             photo = request.data.get('foto')
 
@@ -3179,7 +3371,7 @@ class Promociones(APIView):
             promocion.cantidad = cant
             promocion.fecha_iniciacion = ini
             promocion.fecha_expiracion = exp
-            #promocion.foto = photo
+            # promocion.foto = photo
             if request.data.get('foto') is not None:
                 promocion.foto = photo
 
@@ -3312,7 +3504,7 @@ class Cupones(APIView):
         descuent = request.data.get('porcentaje')
         cant = request.data.get('cantidad')
         puntos = request.data.get('puntos')
-        #photo = request.data.get('foto') #
+        # photo = request.data.get('foto') #
         if request.data.get('foto') is not None:
             photo = request.data.get('foto')
         type_category = request.data.get('tipo_categoria')
@@ -3894,10 +4086,10 @@ class AdminUserPass(APIView):
                 do_login(request, user)
                 usuario = Datos.objects.get(user=user)
 
-                if(usuario.estado == True):
+                if (usuario.estado == True):
                     token, _ = Token.objects.get_or_create(user=user)
                     admin = Administrador.objects.get(user_datos=usuario)
-                    #data['token']=token = Token.objects.get(user=user).key
+                    # data['token']=token = Token.objects.get(user=user).key
                     serializer = AdministradorSerializer(admin)
                     data['token'] = token.key
                     data['active'] = True
@@ -3905,7 +4097,7 @@ class AdminUserPass(APIView):
 
                     return Response(data)
 
-                elif(usuario.estado == False):
+                elif (usuario.estado == False):
                     data['active'] = False
                     return Response(data)
                 else:
@@ -4127,7 +4319,7 @@ class ProveedorEdicion(APIView):
             if User.objects.filter(email=request.data.get('emailNuevo')).exists():
                 userExistente = User.objects.get(
                     email=request.data.get('emailNuevo'))
-                if(user.id != userExistente.id):
+                if (user.id != userExistente.id):
                     data['errorEmail'] = 'Email ya registrado'
                     return Response(data)
                 else:
@@ -4348,8 +4540,8 @@ class Cargo_Details(APIView):
         return Response(serializer.data)
 
     # def put(self, request):
-        #ident = request.GET.get('id')
-        #insig = Insignia.objects.get(id = ident)
-        #insig.estado = request.data.get('estado')
+        # ident = request.GET.get('id')
+        # insig = Insignia.objects.get(id = ident)
+        # insig.estado = request.data.get('estado')
         # insig.save()
         # return Response(status=status.HTTP_200_OK)
