@@ -673,7 +673,7 @@ class Registro(viewsets.ModelViewSet):
         email = FormatEmail()
         if (users == 0):
             usuario = User.objects.create_user(email=request.POST.get(
-                'email'), username=request.POST.get('nombres'), password=user_password)
+                'email'), username=request.POST.get('email'), password=user_password)
             tipo_user = request.POST.get('tipo')
             nombre_user = request.POST.get('nombres')
             apellido_user = request.POST.get('apellidos')
@@ -3015,28 +3015,34 @@ class Login(APIView):
                             # data['token']=token = Token.objects.get(user=user).key
                             data['token'] = token.key
                             data['active'] = True
+                            data['form'] = request.data
                             return Response(data)
                         else:
                             data['clave'] = usuario.security_access
                             # data['token']=token = Token.objects.get(user=user).key
                             data['token'] = token.key
                             data['active'] = True
+                            data['form'] = request.data
                             return Response(data)
                     elif (tipo == 'Solicitante'):
                         data['active'] = True
                         data['token'] = token = Token.objects.get(
                             user=user).key
+                        data['form'] = request.data
                         return Response(data)
                 elif (tipo == res_tipo and usuario.estado == False):
                     data['active'] = False
+                    data['form'] = request.data
                     return Response(data)
                 else:
                     data['error'] = 'Usuario no permitido'
                     data['active'] = True
+                    data['form'] = request.data
                     return Response(data, status=status.HTTP_400_BAD_REQUEST)
         else:
             data['error'] = 'Error de formulario'
             data['active'] = True
+            data['form'] = request.data
             form = AuthenticationForm()
             return Response(data, status=status.HTTP_400_BAD_REQUEST)
 
