@@ -211,6 +211,7 @@ class Proveedor_Pendiente(models.Model): #tabla que guarda la info de las person
     numero_cuenta= models.CharField(max_length=25, default='')
     tipo_cuenta=models.CharField(max_length=50,default='')
     documentsPendientes = models.ManyToManyField(PendienteDocuments, null=False)
+    foto = models.ImageField(upload_to='foto_perfil', null=True, blank=True)
 
     def __str__(self):
         return self.email + " | " + self.nombres + " | "  + self.apellidos + " | " + self.profesion + " | " + str(self.ano_experiencia)
