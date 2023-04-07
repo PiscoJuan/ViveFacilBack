@@ -1168,6 +1168,7 @@ class Proveedores_Pendientes_Details(APIView):
 
     def put(self, request, pk, format=None):
         pendiente = Proveedor_Pendiente.objects.get(id=pk)
+        print("AAAAAAAAAAAAAAAAAAAAAA")
         copiaCedula = request.data.get('copiaCedula')
         copiaLicencia = request.data.get('copiaLicencia')
         documents = request.FILES.getlist('filesDocuments')
@@ -1192,16 +1193,17 @@ class Proveedores_Pendientes_Details(APIView):
     def delete(self, request, pk, format=None):
 
         pendiente = Proveedor_Pendiente.objects.get(id=pk)
-        documentos = pendiente.documentsPendientes.all()
-        if not pendiente.copiaCedula == None:
-            pendiente.copiaCedula.delete()
-        if not pendiente.copiaLicencia == None:
-            pendiente.copiaLicencia.delete()
-        for doc in documentos:
-            document = PendienteDocuments.objects.get(id=doc.id)
-            document.delete()
+        # documentos = pendiente.documentsPendientes.all()
+        # if not pendiente.copiaCedula == None:
+        #     pendiente.copiaCedula.delete()
+        # if not pendiente.copiaLicencia == None:
+        #     pendiente.copiaLicencia.delete()
+        # for doc in documentos:
+        #     document = PendienteDocuments.objects.get(id=doc.id)
+        #     document.delete()
+        pendiente.estado=1
 
-        pendiente.delete()
+        pendiente.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -2115,7 +2117,7 @@ class Proveedores_Pendientes(APIView, MyPaginationMixin):
     #     proveedor_pendiente = Proveedor_Pendiente.objects.all().filter()
     #     serializer = Proveedor_PendienteSerializer(proveedor_pendiente,many= True)
     #     return Response(serializer.data)
-    queryset = Proveedor_Pendiente.objects.all().order_by('-id')
+    queryset = Proveedor_Pendiente.objects.all().order_by('-id').filter(estado = 0)
     serializer_class = Proveedor_PendienteSerializer
     pagination_class = MyCustomPagination
 
