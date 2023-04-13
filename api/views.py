@@ -1168,6 +1168,65 @@ class Proveedores_Pendientes_Details(APIView):
 
     def put(self, request, pk, format=None):
         pendiente = Proveedor_Pendiente.objects.get(id=pk)
+        copiaCedula = request.data.get('copiaCedula')
+        copiaLicencia = request.data.get('copiaLicencia')
+        foto = request.data.get('foto')
+        documents = request.FILES.getlist('filesDocuments')
+
+        if not copiaCedula == None:
+            pendiente.copiaCedula.delete()
+
+        if not copiaLicencia == None:
+            pendiente.copiaLicencia.delete()
+            
+        if not foto == None:
+            pendiente.foto.delete()
+
+        for doc in documents:
+            documento_creado = PendienteDocuments.objects.create(document=doc)
+            pendiente.documentsPendientes.add(documento_creado)
+
+        serializer = Proveedor_PendienteSerializer(pendiente, data=request.data, partial=True)
+        if 'foto' in request.FILES:
+            foto_user = request.FILES.get('foto')
+            serializer.foto = foto_user
+        if 'copiaCedula' in request.FILES:
+            copiaCedula = request.FILES.get('copiaCedula')
+            serializer.copiaCedula = copiaCedula
+        if 'copiaLicencia' in request.FILES:
+            copiaLicencia = request.FILES.get('copiaLicencia')
+            serializer.copiaLicencia = copiaLicencia
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk, format=None):
+
+        pendiente = Proveedor_Pendiente.objects.get(id=pk)
+        # documentos = pendiente.documentsPendientes.all()
+        # if not pendiente.copiaCedula == None:
+        #     pendiente.copiaCedula.delete()
+        # if not pendiente.copiaLicencia == None:
+        #     pendiente.copiaLicencia.delete()
+        # for doc in documentos:
+        #     document = PendienteDocuments.objects.get(id=doc.id)
+        #     document.delete()
+        pendiente.estado=1
+
+        pendiente.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class Proveedores_Rechazados_Details(APIView):
+
+    def get(self, request, pk, format=None):
+
+        administrador = Proveedor_Pendiente.objects.get(id=pk)
+        serializer = Proveedor_PendienteSerializer(administrador)
+        return Response(serializer.data)
+
+    def put(self, request, pk, format=None):
+        pendiente = Proveedor_Pendiente.objects.get(id=pk)
         print("AAAAAAAAAAAAAAAAAAAAAA")
         copiaCedula = request.data.get('copiaCedula')
         copiaLicencia = request.data.get('copiaLicencia')
@@ -1201,11 +1260,10 @@ class Proveedores_Pendientes_Details(APIView):
         # for doc in documentos:
         #     document = PendienteDocuments.objects.get(id=doc.id)
         #     document.delete()
-        pendiente.estado=1
+        pendiente.estado=0
 
         pendiente.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
 
 class Pendientes_Search_Name(APIView, MyPaginationMixin):
 
@@ -2196,6 +2254,91 @@ class Proveedores_Pendientes(APIView, MyPaginationMixin):
             data['error'] = "Error al crear el documento!."
             return Response(data)
 
+class Proveedores_Rechazados(APIView, MyPaginationMixin):
+    # permission_classes = (IsAuthenticated,)
+    # authentication_class = (TokenAuthentication)
+    # def get(self, request, format=None):
+    #     proveedor_pendiente = Proveedor_Pendiente.objects.all().filter()
+    #     serializer = Proveedor_PendienteSerializer(proveedor_pendiente,many= True)
+    #     return Response(serializer.data)
+    queryset = Proveedor_Pendiente.objects.all().order_by('-id').filter(estado = 1)
+    serializer_class = Proveedor_PendienteSerializer
+    pagination_class = MyCustomPagination
+
+    def get(self, request, format=None):
+        page = self.paginate_queryset(self.queryset)
+        if page is not None:
+            serializer = self.serializer_class(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+    def delete(self, request, username, desc, format=None):
+        proveedor_pendiente = Proveedor_Pendiente.objects.get(
+            proveedor__user_datos__user__username=username)
+        # descripcion = request.data.get('descripcion')
+        descripcion = desc.split("|")
+        documento = Document.objects.get(descripcion=descripcion[0])
+        if descripcion[1] == "true":
+            data = {"estado": True}
+            serializer = DocumentSerializer(documento, data=data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                proveedor_pendiente.delete()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            documento.delete()
+            proveedor_pendiente.delete()
+            return Response(status=status.HTTP_200_OK)
+
+    def put(self, request, format=None):
+        data = {}
+        desc = request.data.get('descripcion')
+        profesion = request.data.get('profesion')
+        documento = Document.objects.get(descripcion=desc, estado=False)
+        documento.descripcion = profesion
+        documento.save()
+        data1 = {"descripcion": profesion}
+        serializer = DocumentSerializer(documento, data=data1, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            data['success'] = True
+            return Response(data)
+        data['success'] = False
+        return Response(data)
+
+        data = {}
+        cuenta = Cuenta.objects.get(
+            proveedor__user_datos__user__username=username)
+        anio = request.POST.get('anio')
+        estado = request.POST.get('estado')
+        profesion = request.POST.get('profesion')
+        banco = cuenta.banco
+        n_cuenta = cuenta.numero_cuenta
+        tipo = cuenta.tipo_cuenta
+        descripcion = request.POST.get('descripcion')
+        documento = request.FILES.get('documento')
+        documento_creado = Document.objects.create(
+            descripcion=descripcion, documento=documento)
+        serializer = DocumentSerializer(documento_creado)
+        data['Document'] = serializer.data
+        if documento_creado:
+
+            proveedor = Proveedor.objects.get(
+                user_datos__user__username=username)
+            proveedor.document.add(documento_creado)
+            profesion_creada = Proveedor_Pendiente.objects.create(
+                proveedor=proveedor, email=username, estado=estado, profesion=profesion, ano_experiencia=anio, banco=banco, numero_cuenta=n_cuenta, tipo_cuenta=tipo)
+            serializer = Proveedor_PendienteSerializer(profesion_creada)
+
+            data['proveedor_pendiente'] = serializer.data
+            if profesion_creada:
+                return Response(data)
+            else:
+                data['error'] = "Error al crear!."
+                return Response(data)
+        else:
+            data['error'] = "Error al crear el documento!."
+            return Response(data)
 
 class Proveedores_Proveedores(APIView, MyPaginationMixin):
     # permission_classes = (IsAuthenticated,)

@@ -57,7 +57,7 @@ class CuponCategoriaSerializer(serializers.ModelSerializer):
 class ServicioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Servicio
-        fields = ['id', 'nombre', 'descripcion', 'categoria', 'estado']
+        fields = ['id', 'nombre', 'descripcion', 'categoria', 'estado', 'foto']
 
 
 class ProfesionSerializer(serializers.ModelSerializer):
@@ -179,8 +179,8 @@ class Proveedor_PendienteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Proveedor_Pendiente
-        fields = ['id', 'nombres', 'apellidos', 'ciudad', 'direccion', 'genero', 'fecha_registro', 'licencia', 'copiaLicencia', 'email', 'telefono',
-                  'cedula', 'copiaCedula', 'descripcion', 'estado', 'profesion', 'ano_experiencia', 'banco', 'numero_cuenta', 'tipo_cuenta', 'documentsPendientes']
+        fields = ['id', 'nombres', 'apellidos', 'ciudad', 'direccion', 'genero', 'fecha_registro', 'licencia', 'copiaLicencia', 'email', 'telefono', 'cedula',
+                  'copiaCedula', 'descripcion', 'estado', 'profesion', 'ano_experiencia', 'banco', 'numero_cuenta', 'tipo_cuenta', 'documentsPendientes', 'foto']
 
 
 class BancoSerializer(serializers.ModelSerializer):
