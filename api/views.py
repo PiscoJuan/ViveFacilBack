@@ -63,7 +63,6 @@ class CardsAuth(APIView):
         resp = {}
         if request.method == 'GET':
             valor = request.GET.get("token")
-            print(valor)
             if valor != None:
                 cards = Cardauth.objects.get(token=valor)
                 return JsonResponse(cards.auth, safe=False)
@@ -82,7 +81,6 @@ class CardsAuth(APIView):
     def post(self, request, format=None):
         if request.method == 'POST':
             response = json.loads(request.body)
-            print(response)
             ntoken = response["token"]
             nauth = response["cvc"]
             try:
@@ -1185,7 +1183,6 @@ class Proveedores_Pendientes_Details(APIView):
         for doc in documents:
             documento_creado = PendienteDocuments.objects.create(document=doc)
             pendiente.documentsPendientes.add(documento_creado)
-
         serializer = Proveedor_PendienteSerializer(pendiente, data=request.data, partial=True)
         if 'foto' in request.FILES:
             foto_user = request.FILES.get('foto')
@@ -1227,7 +1224,6 @@ class Proveedores_Rechazados_Details(APIView):
 
     def put(self, request, pk, format=None):
         pendiente = Proveedor_Pendiente.objects.get(id=pk)
-        print("AAAAAAAAAAAAAAAAAAAAAA")
         copiaCedula = request.data.get('copiaCedula')
         copiaLicencia = request.data.get('copiaLicencia')
         documents = request.FILES.getlist('filesDocuments')
@@ -2899,7 +2895,6 @@ class Service(APIView):
     def get(self, request, category_ID,  format=None):
         servicios = Servicio.objects.all().filter(categoria=category_ID)
         serializer = ServicioSerializer(servicios, many=True)
-        # print(JSONRenderer().render(serializer.data))
         return Response(serializer.data)
 
 
