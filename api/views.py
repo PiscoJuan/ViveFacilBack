@@ -664,14 +664,14 @@ class Registro(viewsets.ModelViewSet):
     queryset = Datos.objects.all()
 
     def create(self, request, *args, **kwargs):
+        print("Hora de crear un nuevo usuario")
         user_email = request.POST.get('email')
         user_password = request.POST.get('password')
         users = User.objects.filter(username=user_email).count()
         data = {}
         email = FormatEmail()
         if (users == 0):
-            usuario = User.objects.create_user(email=request.POST.get(
-                'email'), username=request.POST.get('email'), password=user_password)
+            usuario = User.objects.create_user(email=request.POST.get('email'), username=request.POST.get('email'), password=user_password)
             tipo_user = request.POST.get('tipo')
             nombre_user = request.POST.get('nombres')
             apellido_user = request.POST.get('apellidos')
@@ -680,6 +680,8 @@ class Registro(viewsets.ModelViewSet):
             ciudad_user = request.POST.get('ciudad')
             cedula_user = request.POST.get('cedula')
             foto_user = request.FILES.get('foto')
+            print(foto_user)
+            print("nombre_user: " + nombre_user)
             try:
                 dato, creado = Datos.objects.get_or_create(user=usuario, tipo=models.Group.objects.get(
                     name=tipo_user), nombres=nombre_user, apellidos=apellido_user, telefono=telefono_user, genero=genero_user, ciudad=ciudad_user, cedula=cedula_user, foto=foto_user)
@@ -697,11 +699,9 @@ class Registro(viewsets.ModelViewSet):
                     elif tipo_user == 'Proveedor':
                         # Proveedor.objects.create(user_datos= dato, bool_registro_completo= True)
                         try:
-                            proveedor_user, created = Proveedor.objects.get_or_create(
-                                user_datos=dato, ano_profesion=0)
+                            proveedor_user, created = Proveedor.objects.get_or_create(user_datos=dato, ano_profesion=0)
                             # pendiente, created_p = Proveedor_Pendiente.get_or_create(proveedor=proveedor_user, email = request.data.get('email'))
-                            print("Proveedor " +
-                                  proveedor_user.user_datos.user.email)
+                            print("Proveedor email: " + proveedor_user.user_datos.user.email)
                         except:
                             print("No se pudo crear el perfil de proveedor")
                             data['error'] = "No se pudo crear el perfil de proveedor"
@@ -709,15 +709,16 @@ class Registro(viewsets.ModelViewSet):
                             return Response(data)
                         else:
                             try:
+                                #trabajo
+                                print("trabalho?")
+                                profesion_obnj = Profesion.objects.get(nombre=request.POST.get('profesion'))
+                                profesion_proveedor = Profesion_Proveedor.objects.create(proveedor=proveedor_user, profesion=profesion_obnj,ano_experiencia=request.POST.get('ano_experiencia'))
+                                print("trabalho!!!!!!")
                                 # crear cuenta
-                                banco_user = Banco.objects.get_or_create(
-                                    nombre=request.POST.get('banco'))
-                                tipo_cuenta_user = Tipo_Cuenta.objects.get_or_create(
-                                    nombre=request.POST.get('tipo_cuenta'))
-                                numero_account = request.POST.get(
-                                    'numero_cuenta')
-                                cuenta = Cuenta.objects.get_or_create(
-                                    banco=banco_user[0], tipo_cuenta=tipo_cuenta_user[0], proveedor=proveedor_user, numero_cuenta=numero_account)
+                                banco_user = Banco.objects.get_or_create(nombre=request.POST.get('banco'))
+                                tipo_cuenta_user = Tipo_Cuenta.objects.get_or_create(nombre=request.POST.get('tipo_cuenta'))
+                                numero_account = request.POST.get('numero_cuenta')
+                                cuenta = Cuenta.objects.get_or_create(banco=banco_user[0], tipo_cuenta=tipo_cuenta_user[0], proveedor=proveedor_user, numero_cuenta=numero_account)
                                 proveedor_user.banco = banco_user[0]
                                 proveedor_user.numero_cuenta = "0999990999999"
                                 proveedor_user.profesion = "si"
@@ -1171,20 +1172,23 @@ class Proveedores_Pendientes_Details(APIView):
         foto = request.data.get('foto')
         documents = request.FILES.getlist('filesDocuments')
 
+        print("Pendiente original")
+        print(pendiente)
+        print("Datos ingresados")
+        print(request.data)
         if not copiaCedula == None:
             pendiente.copiaCedula.delete()
 
         if not copiaLicencia == None:
             pendiente.copiaLicencia.delete()
-
+            
         if not foto == None:
             pendiente.foto.delete()
 
         for doc in documents:
             documento_creado = PendienteDocuments.objects.create(document=doc)
             pendiente.documentsPendientes.add(documento_creado)
-        serializer = Proveedor_PendienteSerializer(
-            pendiente, data=request.data, partial=True)
+        serializer = Proveedor_PendienteSerializer(pendiente, data=request.data, partial=True)
         if 'foto' in request.FILES:
             foto_user = request.FILES.get('foto')
             serializer.foto = foto_user
