@@ -1176,14 +1176,15 @@ class Proveedores_Pendientes_Details(APIView):
 
         if not copiaLicencia == None:
             pendiente.copiaLicencia.delete()
-            
+
         if not foto == None:
             pendiente.foto.delete()
 
         for doc in documents:
             documento_creado = PendienteDocuments.objects.create(document=doc)
             pendiente.documentsPendientes.add(documento_creado)
-        serializer = Proveedor_PendienteSerializer(pendiente, data=request.data, partial=True)
+        serializer = Proveedor_PendienteSerializer(
+            pendiente, data=request.data, partial=True)
         if 'foto' in request.FILES:
             foto_user = request.FILES.get('foto')
             serializer.foto = foto_user
@@ -1209,10 +1210,11 @@ class Proveedores_Pendientes_Details(APIView):
         # for doc in documentos:
         #     document = PendienteDocuments.objects.get(id=doc.id)
         #     document.delete()
-        pendiente.estado=1
+        pendiente.estado = 1
 
         pendiente.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class Proveedores_Rechazados_Details(APIView):
 
@@ -1256,10 +1258,11 @@ class Proveedores_Rechazados_Details(APIView):
         # for doc in documentos:
         #     document = PendienteDocuments.objects.get(id=doc.id)
         #     document.delete()
-        pendiente.estado=0
+        pendiente.estado = 0
 
         pendiente.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class Pendientes_Search_Name(APIView, MyPaginationMixin):
 
@@ -2171,7 +2174,7 @@ class Proveedores_Pendientes(APIView, MyPaginationMixin):
     #     proveedor_pendiente = Proveedor_Pendiente.objects.all().filter()
     #     serializer = Proveedor_PendienteSerializer(proveedor_pendiente,many= True)
     #     return Response(serializer.data)
-    queryset = Proveedor_Pendiente.objects.all().order_by('-id').filter(estado = 0)
+    queryset = Proveedor_Pendiente.objects.all().order_by('-id').filter(estado=0)
     serializer_class = Proveedor_PendienteSerializer
     pagination_class = MyCustomPagination
 
@@ -2249,6 +2252,7 @@ class Proveedores_Pendientes(APIView, MyPaginationMixin):
         else:
             data['error'] = "Error al crear el documento!."
             return Response(data)
+
 
 class Proveedores_Rechazados(APIView, MyPaginationMixin):
     # permission_classes = (IsAuthenticated,)
@@ -2257,7 +2261,7 @@ class Proveedores_Rechazados(APIView, MyPaginationMixin):
     #     proveedor_pendiente = Proveedor_Pendiente.objects.all().filter()
     #     serializer = Proveedor_PendienteSerializer(proveedor_pendiente,many= True)
     #     return Response(serializer.data)
-    queryset = Proveedor_Pendiente.objects.all().order_by('-id').filter(estado = 1)
+    queryset = Proveedor_Pendiente.objects.all().order_by('-id').filter(estado=1)
     serializer_class = Proveedor_PendienteSerializer
     pagination_class = MyCustomPagination
 
@@ -2335,6 +2339,7 @@ class Proveedores_Rechazados(APIView, MyPaginationMixin):
         else:
             data['error'] = "Error al crear el documento!."
             return Response(data)
+
 
 class Proveedores_Proveedores(APIView, MyPaginationMixin):
     # permission_classes = (IsAuthenticated,)
@@ -2949,7 +2954,7 @@ class Envio(APIView):
 class Notificacion_Chat(APIView):
     def post(self, request, format=None):
         remitente = request.data.get("remitente")
-        title = 'Nuevo Mensaje de ' + remitente
+        title = 'Nuevo Mensaje de ' + str(remitente)
         isSolicitante = request.data.get("isSolicitante")
         body = request.data.get("message")
         user = request.data.get("user")
@@ -2959,7 +2964,7 @@ class Notificacion_Chat(APIView):
             ruta = "/main-tabs/chat"
         else:
             ruta = "/main/chat"
-        devices = FCMDevice.objects.filter(user__username=user)
+        devices = FCMDevice.objects.filter(user=user)
         devices.send_message(
             title=title,
             body=body,
@@ -2967,6 +2972,25 @@ class Notificacion_Chat(APIView):
                   "descripcion": "Tiene un Mensaje nuevo"}
         )
         return Response(user)
+
+
+class Notificacion_Chat_Proveedor(APIView):
+    def post(self, request, format=None):
+        remitente = request.data.get("remitente")
+        getUsuario = request.data.get("user")
+        # usuario = Datos.objects.get(user_#id=getUsuario)
+        solicitante = Solicitante.objects.get(user_datos__id=getUsuario)
+        titles = 'Nuevo Mensaje de ' + str(remitente)
+        bodys = request.data.get("message")
+        devices = FCMDevice.objects.filter(
+            active=True, user__username=solicitante.user_datos.user.email)
+        devices.send_message(
+            data={"ruta": "/main/chat",
+                  "descripcion": "Tiene un Mensaje nuevo"},
+            title=titles,
+            body=bodys,
+        )
+        return Response(getUsuario)
 
 
 class Notificacion_General(APIView):
