@@ -440,22 +440,28 @@ class CambioPasswordCodigo(APIView):
 
 class CambioContrasenia(APIView):
     def get(selt, request, email, password, format=None):
+        print("estoy dentro")
         data = {'success': False}
         try:
             usuario = User.objects.get(email=email)
+            print("usuario intentado")
         except Exception as e:
+            print("fallo1")
             data['success'] = False
             data['message'] = "El usuario con ese correo no fue encontrado en la base de datos: " + \
                 str(e)
 
         try:
             user_dato = Datos.objects.get(user=usuario)
+            print("usuario intentado")
         except Exception as e:
+            print("fallo2")
             data['success'] = False
             data['message'] = "La tabla User Datos no fue enocontrada en la base de datos " + \
                 str(e)
 
         if (user_dato is not None):
+            print("ACA LLEGO :0")
             usuario.set_password(password)
             usuario.save()
             data['success'] = True
@@ -563,10 +569,12 @@ class Servicios(APIView):
         return Response(serializer.data)
 
     def put(self, request, id, format=None):
+        print("hacce put")
         servicios = Servicio.objects.get(id=id)
         serializer = ServicioSerializer(
             servicios, data=request.data, partial=True)
         if serializer.is_valid():
+            print("valid")
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -587,30 +595,36 @@ class Servicios(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def post(self, request, format=None):
+        print("hacce post")
         data = {}
         nombre = request.POST.get('nombre')
         servicio = Servicio.objects.filter(nombre=nombre)
         if (len(servicio) > 0):
+            print("OH NO!!!")
             data['error'] = "Ya existe el servicio con el mismo nombre"
             return Response(data)
 
         descripcion = request.POST.get('descripcion')
-        categoria = Categoria.objects.get(id=request.POST.get('categoria'))
+        categoria = Categoria.objects.get(nombre=request.POST.get('categoria'))
+        foto = request.FILES.get('foto')
+        print("Llega aca")
         servicio_creado = Servicio.objects.create(
-            nombre=nombre, descripcion=descripcion, categoria=categoria)
+            nombre=nombre, descripcion=descripcion, categoria=categoria, foto=foto)
+        print("acca lo crea")
         serializer = ServicioSerializer(servicio_creado)
+        print('aca lo serializa')
         data['servicio'] = serializer.data
         if servicio_creado:
+            print('aca termina y todo bien')
             # Notificacion a los usuarios
-
-            devices = FCMDevice.objects.filter(
-                active=True, user__groups__name="Solicitante")
-            devices.send_message(
-                data={"ruta": "/main-tabs/home", "descripcion": "El servicio " +
-                      nombre + " se ha agregado a nuestro aplicativo"},
-                title="Nuevo Servicio: "+nombre,
-                body="¡Dale un vistazo!",
-            )
+            # devices = FCMDevice.objects.filter(
+            #     active=True, user__groups__name="Solicitante")
+            # devices.send_message(
+            #     data={"ruta": "/main-tabs/home", "descripcion": "El servicio " +
+            #           nombre + " se ha agregado a nuestro aplicativo"},
+            #     title="Nuevo Servicio: "+nombre,
+            #     body="¡Dale un vistazo!",
+            # )
 
             return Response(data)
 
@@ -1873,6 +1887,13 @@ class Get_ProveedorByUser(APIView):
         serializer = ProveedorSerializer(proveedor)
         return Response(serializer.data)
 
+class Get_AdminByUser(APIView):
+
+    def get(self, request, user, format=None):
+
+        proveedor = Proveedor.objects.get(user_datos__user__username=user)
+        serializer = ProveedorSerializer(proveedor)
+        return Response(serializer.data)
 
 class Proveedores_Details(APIView):
 
@@ -3164,12 +3185,16 @@ class ChangePassword(APIView):
 
 class Login(APIView):
     def post(self, request, format=None):
+        print("entra aca")
         res_tipo = request.data.get('tipo')
         data = {}
         form = AuthenticationForm(data=request.data)
+        print(form)
         if form.is_valid():
             username = form.cleaned_data['username']
             password = form.cleaned_data['password']
+            print(username)
+            print(password)
             user = authenticate(username=username, password=password)
             if user is not None:
                 do_login(request, user)
@@ -3214,6 +3239,63 @@ class Login(APIView):
             form = AuthenticationForm()
             return Response(data, status=status.HTTP_400_BAD_REQUEST)
 
+class LoginAdmin(APIView):
+    def post(self, request, format=None):
+        print("entra aca")
+        res_tipo = request.data.get('tipo')
+        data = {}
+        form = AuthenticationForm(data=request.data)
+        print(form)
+        
+        username = form.cleaned_data['username']
+        password = form.cleaned_data['password']
+        print(username)
+        print(password)
+        user = authenticate(username=username, password=password)
+        print(user)
+        print("autentico")
+        if user is not None:
+            print("No es none")
+            do_login(request, user)
+            print("login?")
+            usuario = Datos.objects.get(user=user)
+            print(usuario)
+            print(usuario.tipo)
+            print("le hace get")
+            tipo = usuario.tipo.name
+            print("tipo "+tipo)
+            print("res_tipo "+res_tipo)
+            if (tipo == res_tipo and usuario.estado == True):
+                print("logro entrar")
+                token, _ = Token.objects.get_or_create(user=user)
+                print(token)
+                if (tipo == 'Administrador'):
+                    print("tipo "+tipo)
+                    admin = Administrador.objects.get(user_datos=usuario)
+                    if (admin.estado):
+                        # data['token']=token = Token.objects.get(user=user).key
+                        data['token'] = token.key
+                        data['active'] = True
+                        data['form'] = request.data
+                        print("ACABA")
+                        return Response(data)
+                    else:
+                        data['clave'] = usuario.security_access
+                        # data['token']=token = Token.objects.get(user=user).key
+                        data['token'] = token.key
+                        data['active'] = True
+                        data['form'] = request.data
+                        return Response(data)
+            elif (tipo == res_tipo and usuario.estado == False):
+                data['active'] = False
+                data['form'] = request.data
+                return Response(data)
+            else:
+                data['error'] = 'Usuario no permitido'
+                data['active'] = True
+                data['form'] = request.data
+                return Response(data, status=status.HTTP_400_BAD_REQUEST)
+        return Response(data, status=status.HTTP_400_BAD_REQUEST)
 
 # PAYMENTEZ-------------------------
 class Paymentez:
