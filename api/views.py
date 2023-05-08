@@ -3706,10 +3706,10 @@ class Cupones(APIView):
         else:
 
             try:
-                for categoria in request.POST.getlist('categorias'):
-                    categ = Categoria.objects.all().filter(nombre=categoria)
-                    promcat = CuponCategoria.objects.create(
-                        categoria=categ[0], cupon=cupon)
+                categ = Categoria.objects.all().filter(nombre=type_category)
+                promcat = CuponCategoria.objects.create(
+                    categoria=categ[0], cupon=cupon)
+
             except:
                 cupon.delete()
                 data['error'] = "No se pudo asignar las categorias"
