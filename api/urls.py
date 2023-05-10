@@ -86,6 +86,7 @@ urlpatterns += [
     path('proveedores_pendientes/', Proveedores_Pendientes.as_view()),
     path('proveedores_rechazados/', Proveedores_Rechazados.as_view()),
     path('proveedores_proveedores/', Proveedores_Proveedores.as_view()),
+    path('proveedores_proveedores/<str:pk>', Proveedores_Proveedores_Details.as_view()),
     path('pendientes-search/<str:user>', Pendientes_Search_Name.as_view()),
     path('pendientes-filterDate/', Pendientes_FilterDate.as_view()),
     path('proveedor_pendientes/', Proveedores_Pendientes.as_view()),

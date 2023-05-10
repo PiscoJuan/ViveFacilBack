@@ -1236,7 +1236,76 @@ class Proveedores_Pendientes_Details(APIView):
         pendiente.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+class Proveedores_Proveedores_Details(APIView):
 
+    def get(self, request, pk, format=None):
+
+        administrador = Proveedor_Pendiente.objects.get(id=pk)
+        serializer = Proveedor_PendienteSerializer(administrador)
+        return Response(serializer.data)
+
+    def put(self, request, pk, format=None):
+        print("dime si entra")
+        pendiente = Proveedor.objects.get(id=pk)
+        copiaCedula = request.data.get('copiaCedula')
+        copiaLicencia = request.data.get('copiaLicencia')
+        filesDocuments = request.data.get('filesDocuments')
+        foto = request.data.get('foto')
+        documents = request.FILES.getlist('filesDocuments')
+
+        print("Pendiente original")
+        print(pendiente)
+        print("Datos ingresados")
+        print(request.data)
+        if not copiaCedula == None:
+            pendiente.copiaCedula.delete()
+
+        if not copiaLicencia == None:
+            pendiente.copiaLicencia.delete()
+
+        # if not foto == None:
+        #     pendiente.foto.delete()
+
+        for doc in documents:
+            documento_creado = PendienteDocuments.objects.create(document=doc)
+            pendiente.documentsPendientes.add(documento_creado)
+        serializer = ProveedorSerializer(pendiente, data=request.data, partial=True)
+        if 'foto' in request.FILES:
+            foto_user = request.FILES.get('foto')
+            serializer.foto = foto_user
+        if 'copiaCedula' in request.FILES:
+            copiaCedula = request.FILES.get('copiaCedula')
+            serializer.copiaCedula = copiaCedula
+        if 'copiaLicencia' in request.FILES:
+            copiaLicencia = request.FILES.get('copiaLicencia')
+            serializer.copiaLicencia = copiaLicencia
+        if 'filesDocuments' in request.FILES:
+            filesDocuments = request.FILES.get('filesDocuments')
+            arrayfilesDocuments=[filesDocuments]
+            serializer.documentsPendientes = arrayfilesDocuments
+        print(copiaCedula)
+        print(copiaLicencia)
+        print(filesDocuments)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk, format=None):
+
+        pendiente = Proveedor_Pendiente.objects.get(id=pk)
+        # documentos = pendiente.documentsPendientes.all()
+        # if not pendiente.copiaCedula == None:
+        #     pendiente.copiaCedula.delete()
+        # if not pendiente.copiaLicencia == None:
+        #     pendiente.copiaLicencia.delete()
+        # for doc in documentos:
+        #     document = PendienteDocuments.objects.get(id=doc.id)
+        #     document.delete()
+        pendiente.estado = 1
+
+        pendiente.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 class Proveedores_Rechazados_Details(APIView):
 
     def get(self, request, pk, format=None):
