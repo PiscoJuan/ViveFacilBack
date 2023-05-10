@@ -894,14 +894,22 @@ class Cupones_Aplicados(APIView):
             cupon_apl = Cupon_Aplicado.objects.filter(
                 user=user_dat, cupon__id=cup_id)
             if not (cupon_apl):
-                cupon_1 = Cupon.objects.get(id='1')
-
-                if (cupon_1):
-                    data['cr'] = True
-
-                cup_create, creado = Cupon_Aplicado.objects.get_or_create(
-                    cupon=Cupon.objects.get(id=cup_id), user=user_dat, estado=estado_dat)
-                data['creado'] = True
+                cupon_1 = Cupon.objects.get(id=cup_id)
+                data['cr'] = True
+                usuario = Datos.objects.get(user__email=user_dat)
+                usuario.puntos = usuario.puntos - cupon_1.puntos
+                cupon_1.cantidad = cupon_1.cantidad - 1
+                if usuario.puntos < 0:
+                    data['valid'] = "puntos"
+                    data['creado'] = False
+                elif cupon_1.cantidad+1 <=0:
+                    data['valid'] = "cantidad"
+                    data['creado'] = False
+                else:
+                    usuario.save()
+                    cupon_1.save()
+                    cup_create, creado = Cupon_Aplicado.objects.get_or_create(cupon=Cupon.objects.get(id=cup_id), user=user_dat, estado=estado_dat)
+                    data['creado'] = True
             else:
                 data['creado'] = False
 
