@@ -700,20 +700,24 @@ class Registro(viewsets.ModelViewSet):
                     elif tipo_user == 'Proveedor':
                         # Proveedor.objects.create(user_datos= dato, bool_registro_completo= True)
                         try:
-                            proveedor_user, created = Proveedor.objects.get_or_create(user_datos=dato, ano_profesion=0)
+                            proveedor_user, created = Proveedor.objects.get_or_create(user_datos=dato, ano_profesion=0, profesion = request.POST.get('profesion'))
                             # pendiente, created_p = Proveedor_Pendiente.get_or_create(proveedor=proveedor_user, email = request.data.get('email'))
                             print("Proveedor email: " + proveedor_user.user_datos.user.email)
+                            print("Proveedor trabalho: " + proveedor_user.profesion)                            
+                            
                         except:
-                            print("No se pudo crear el perfil de proveedor")
-                            data['error'] = "No se pudo crear el perfil de proveedor"
+                            print("No se pudo crear el perfil de proveedor 1")
+                            data['error'] = "No se pudo crear el perfil de proveedor 1"
                             data['success'] = False
                             return Response(data)
                         else:
                             try:
                                 #trabajo
                                 print("trabalho?")
-                                profesion_obnj = Profesion.objects.get(nombre=request.POST.get('profesion'))
-                                profesion_proveedor = Profesion_Proveedor.objects.create(proveedor=proveedor_user, profesion=profesion_obnj,ano_experiencia=request.POST.get('ano_experiencia'))
+                                profesiones_lista = request.POST.get('profesion').split(',')
+                                for profesion in profesiones_lista:
+                                    profesion_obnj = Profesion.objects.get(nombre=profesion)
+                                    profesion_proveedor = Profesion_Proveedor.objects.create(proveedor=proveedor_user, profesion=profesion_obnj,ano_experiencia=request.POST.get('ano_experiencia'))
                                 print("trabalho!!!!!!")
                                 # crear cuenta
                                 banco_user = Banco.objects.get_or_create(nombre=request.POST.get('banco'))
@@ -985,7 +989,7 @@ class Data_Proveedor_Pendiente(APIView):
                         proveedor=proveedor_user, email=request.data.get('email'))
 
                 except:
-                    data['error'] = "No se pudo crear el perfil de proveedor"
+                    data['error'] = "No se pudo crear el perfil de proveedor 2"
                     data['success'] = False
                     return Response(data)
 
@@ -1059,7 +1063,7 @@ class Data_Proveedor_Proveedor(APIView):
                         user_datos=dato, descripcion=descripcion_user, ano_profesion=0)
                     # pendiente, created_p = Proveedor_Pendiente.get_or_create(proveedor=proveedor_user, email = request.data.get('email'))
                 except:
-                    data['error'] = "No se pudo crear el perfil de proveedor"
+                    data['error'] = "No se pudo crear el perfil de proveedor 3"
                     data['success'] = False
                     return Response(data)
                 else:
@@ -1267,8 +1271,8 @@ class Proveedores_Proveedores_Details(APIView):
         #     pendiente.foto.delete()
 
         for doc in documents:
-            documento_creado = PendienteDocuments.objects.create(document=doc)
-            pendiente.documentsPendientes.add(documento_creado)
+            documento_creado = Document.objects.create(documento=doc)
+            pendiente.document.add(documento_creado)
         serializer = ProveedorSerializer(pendiente, data=request.data, partial=True)
         if 'foto' in request.FILES:
             foto_user = request.FILES.get('foto')
@@ -1282,10 +1286,21 @@ class Proveedores_Proveedores_Details(APIView):
         if 'filesDocuments' in request.FILES:
             filesDocuments = request.FILES.get('filesDocuments')
             arrayfilesDocuments=[filesDocuments]
-            serializer.documentsPendientes = arrayfilesDocuments
+            serializer.document = arrayfilesDocuments
         print(copiaCedula)
         print(copiaLicencia)
-        print(filesDocuments)
+        print(filesDocuments)        
+        profesiones_lista = request.POST.get('profesion').split(',')
+        print("trabalho?", profesiones_lista)
+        Profesion_Proveedor.objects.all().filter(proveedor = pendiente).delete()
+        for profesion in profesiones_lista:
+            profesion_obnj = Profesion.objects.get(nombre=profesion)
+            #Comentado porque ano_experiencia no se guarda por lo que qeda como null y sale error, al arreglar descomentar la linea y comentar la que esta abajo de esta
+            #profesion_proveedor = Profesion_Proveedor.objects.get_or_create(proveedor=pendiente, profesion=profesion_obnj,ano_experiencia=request.POST.get('ano_experiencia'))
+            profesion_proveedor = Profesion_Proveedor.objects.get_or_create(proveedor=pendiente, profesion=profesion_obnj)
+            
+        print("trabalho!!!!!!")
+        serializer.profesion = request.POST.get('profesion').split(',')
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
