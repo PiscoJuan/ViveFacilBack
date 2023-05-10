@@ -23,7 +23,7 @@ urlpatterns += [
     path('unread-suggestions/', UnreadSuggestions.as_view()),
     path('suggestion/<str:pk>', Suggestions_Details.as_view()),
     path('post-token/', DeviceNotification.as_view()),
-    path('dispositivos-notificacion/', DeviceNotification.as_view()),           #Created by Kevin
+    path('dispositivos-notificacion/', DeviceNotification.as_view()),          
     path('categoria_update/<str:id>', Categorias.as_view()),
     path('categoria_delete/<str:id>', Categorias.as_view()),
     path('servicios/', Servicios.as_view()),
@@ -38,23 +38,23 @@ urlpatterns += [
     path('solicitud/<str:solicitud_ID>', Solicituds.as_view()),
     path('solicitudID/<str:solicitud_ID>', SolicitudID.as_view()),
     path('solicitudes/<str:user>', Solicitudes.as_view()),
-    path('solicitudes_espera/<str:correo>', SolicitudesPending.as_view()),      #Created by Kevin para Solicitante
-    path('solicitudes_pasadas/<str:correo>', SolicitudesPast.as_view()),        #Created by Kevin para Solicitante
-    path('solicitudes_paid/<str:correo>', SolicitudesPaid.as_view()),           #Created by Kevin para Solicitante
-    path('solicitudes_no_paid/<str:correo>', SolicitudesNoPaid.as_view()),      #Created by Kevin para Solicitante
-    path('solicitudes_esperaPag/<str:correo>',SolicitudesPendingPag.as_view()), #Created by Kevin para Solicitante
-    path('solicitudes_pasadasPag/<str:correo>', SolicitudesPastPag.as_view()),  #Created by Kevin para Solicitante
-    path('solicitudes_paidPag/<str:correo>',SolicitudesPaidPag.as_view()),      #Created by Kevin para Solicitante
-    path('solicitudes_no_paidPag/<str:correo>', SolicitudesNoPaidPag.as_view()),#Created by Kevin para Solicitante
+    path('solicitudes_espera/<str:correo>', SolicitudesPending.as_view()),      # para Solicitante
+    path('solicitudes_pasadas/<str:correo>', SolicitudesPast.as_view()),        # para Solicitante
+    path('solicitudes_paid/<str:correo>', SolicitudesPaid.as_view()),           # para Solicitante
+    path('solicitudes_no_paid/<str:correo>', SolicitudesNoPaid.as_view()),      # para Solicitante
+    path('solicitudes_esperaPag/<str:correo>',SolicitudesPendingPag.as_view()), # para Solicitante
+    path('solicitudes_pasadasPag/<str:correo>', SolicitudesPastPag.as_view()),  # para Solicitante
+    path('solicitudes_paidPag/<str:correo>',SolicitudesPaidPag.as_view()),      # para Solicitante
+    path('solicitudes_no_paidPag/<str:correo>', SolicitudesNoPaidPag.as_view()),# para Solicitante
     path('proveedores/', Proveedores.as_view()),
-    # path('proveedor/<str:pk>', Proveedores_Details.as_view()),                #Commented by Kevin - este endpoint es una basura.
+    # path('proveedor/<str:pk>', Proveedores_Details.as_view()),                #este endpoint es una basura.
     path('providers-search/<str:user>', Proveedores_Search_Name.as_view()),
     path('dates-providers/', Proveedores_Filter_Date.as_view()),
     path('proveedor_estado/<str:id>', Proveedores.as_view()),
     path('proveedor_delete/<str:id>', Proveedores.as_view()),
     path('dato/<str:user>', Dato.as_view()),
-    path('datos/', DatosUsers.as_view()),                                       #Created By Kevin
-    path('usuarios/', Usuarios.as_view()),                                      #Created By Kevin
+    path('datos/', DatosUsers.as_view()),                                      
+    path('usuarios/', Usuarios.as_view()),                                     
     path('datoRedes/<str:user>', RegistroFromRedes.as_view()),
     path('profesiones/', Profesiones.as_view()),
     path('profesion/<str:pk>',ProfesionDetails.as_view()),
@@ -68,7 +68,7 @@ urlpatterns += [
     path('envio/<str:solicitud_ID>/<str:user>', Envio.as_view()),
     path('envio_interesados/<str:solicitud_ID>', Envio_Interesado.as_view()),
     path('solicitante/<str:user>', SolicitanteUser.as_view()),
-    path('solicitanteByUserDatosID/<str:UserDatosId>', SolicitanteByUserDatos.as_view()), #Kevin Endopint Add
+    path('solicitanteByUserDatosID/<str:UserDatosId>', SolicitanteByUserDatos.as_view()), #Endopint Add
     path('solicitantes/', Solicitantes.as_view()),
     path('fechas-filtro/', SolicitantesFilter.as_view()),
     path('filtro-usuario/<str:user>', FiltroNombres.as_view()),
@@ -187,7 +187,7 @@ urlpatterns += [
     path('proveedores_registro/', ProveedorRegistro.as_view()),
     path('edicion_proveedor/', ProveedorEdicion.as_view()),
     path('notificacion-anuncio/', SendNotificacion.as_view()),
-    path('notificacion-anuncio/<str:id>', SendNotificacion.as_view()), #Kevin
+    path('notificacion-anuncio/<str:id>', SendNotificacion.as_view()), 
     path('roles-permisos/', RolesPermisos.as_view()),
     path('roles-permisos/<str:id>', RolesPermisos.as_view()),
     path('obtener-proveedor/<str:pk>', Get_Proveedor.as_view()),
@@ -209,6 +209,7 @@ urlpatterns += [
     path('cargo_update/<str:id>', Cargos.as_view()),
     path('valor_total_provider/', ValorTotalProveedores.as_view()),
     path('profesion_proveedor/<str:proveedor_id>',ProfesionProveedor.as_view()),
+    path('puntos/<str:email>',Puntos.as_view()),
 
 
     # path('pagos/', Pagos.as_view()),

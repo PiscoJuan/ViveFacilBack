@@ -2043,7 +2043,7 @@ class ManejoSolicitud(APIView):
             solicitudes_profesion, many=True)
         return Response(serializer.data)
 
-    def post(self, request, format=None):  # Modified by Kevin
+    def post(self, request, format=None): 
         data = {}
         correo_proveedor = request.data.get("proveedor")
         nombre_profesion = request.data.get("profesion")
@@ -2534,7 +2534,7 @@ class CuentaProveedor(APIView):
         return Response(serializer.data)
 
 
-class DatosUsers(APIView):  # Created By KevinChevez
+class DatosUsers(APIView):
     def get(self, request, format=None):
         queryset = Datos.objects.all().order_by('-id')
         serializer = DatosSerializer(queryset, many=True)
@@ -2555,7 +2555,7 @@ class DatosUsers(APIView):  # Created By KevinChevez
             return Response(data)
 
 
-class Usuarios(APIView):  # Created By KevinChevez
+class Usuarios(APIView):
     def get(self, request, format=None):
         queryset = User.objects.all().order_by('-id')
         serializer = UserSerializer(queryset, many=True)
@@ -2624,7 +2624,7 @@ class SolicitanteUser(APIView):
         return Response(serializer.data)
 
 
-class SolicitanteByUserDatos(APIView):  # Kevin Endopint Add
+class SolicitanteByUserDatos(APIView):  #  Endopint Add
     # permission_classes = (IsAuthenticated,)
     # authentication_class = (TokenAuthentication)
     def get(self, request, UserDatosId, format=None):
@@ -3923,15 +3923,17 @@ class AllPromocionesCategoria(APIView):
 
 class CuponesCategoria(APIView):
     def get(self, request, cupCode, format=None):
-        # Cambio CuponesCategoria por CuponCategoria. Kevin
+        # Cambio CuponesCategoria por CuponCategoria
         cupones = CuponCategoria.objects.all().filter(cupon__codigo=cupCode)
         serializer = CuponCategoriaSerializer(cupones, many=True)
         return Response(serializer.data)
 
 
-class AllCuponesCategoria(APIView):  # Created By Kevin
+class AllCuponesCategoria(APIView): 
     def get(self, request, format=None):
         cupones = CuponCategoria.objects.all()
+        cupones = CuponCategoria.objects.all().filter(cupon__fecha_expiracion__gte = datetime.datetime.today())
+        cupones = cupones.filter(cupon__fecha_iniciacion__lte = datetime.datetime.today())
         serializer = CuponCategoriaSerializer(cupones, many=True)
         return Response(serializer.data)
 
@@ -4870,3 +4872,16 @@ class Cargo_Details(APIView):
         # insig.estado = request.data.get('estado')
         # insig.save()
         # return Response(status=status.HTTP_200_OK)
+
+class Puntos(APIView):
+    def get(self, request, email):
+        data = {}
+        try:
+            usuario = Datos.objects.get(user__email=email)
+            data['valid'] = "OK"
+            data['puntos'] = usuario.puntos
+            return Response(data)
+        except:
+            data['valid'] = "error"
+            data['puntos'] = 0
+            return Response(data)
