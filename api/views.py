@@ -1178,6 +1178,7 @@ class Proveedores_Pendientes_Details(APIView):
         pendiente = Proveedor_Pendiente.objects.get(id=pk)
         copiaCedula = request.data.get('copiaCedula')
         copiaLicencia = request.data.get('copiaLicencia')
+        filesDocuments = request.data.get('filesDocuments')
         foto = request.data.get('foto')
         documents = request.FILES.getlist('filesDocuments')
 
@@ -1207,6 +1208,13 @@ class Proveedores_Pendientes_Details(APIView):
         if 'copiaLicencia' in request.FILES:
             copiaLicencia = request.FILES.get('copiaLicencia')
             serializer.copiaLicencia = copiaLicencia
+        if 'filesDocuments' in request.FILES:
+            filesDocuments = request.FILES.get('filesDocuments')
+            arrayfilesDocuments=[filesDocuments]
+            serializer.documentsPendientes = arrayfilesDocuments
+        print(copiaCedula)
+        print(copiaLicencia)
+        print(filesDocuments)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
