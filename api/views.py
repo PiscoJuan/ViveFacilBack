@@ -724,9 +724,18 @@ class Registro(viewsets.ModelViewSet):
                                 tipo_cuenta_user = Tipo_Cuenta.objects.get_or_create(nombre=request.POST.get('tipo_cuenta'))
                                 numero_account = request.POST.get('numero_cuenta')
                                 cuenta = Cuenta.objects.get_or_create(banco=banco_user[0], tipo_cuenta=tipo_cuenta_user[0], proveedor=proveedor_user, numero_cuenta=numero_account)
-                                proveedor_user.banco = banco_user[0]
-                                proveedor_user.numero_cuenta = "0999990999999"
-                                proveedor_user.profesion = "si"
+                                proveedor_user.banco = request.POST.get('banco')
+                                proveedor_user.numero_cuenta = numero_account
+                                proveedor_user.tipo_cuenta = request.POST.get('tipo_cuenta')
+                                print(request.POST.get('descripcion'))
+                                print(request.POST.get('licencia'))
+                                print(request.POST.get('direccion'))
+                                # Descripcion llega como none, cuando este arreglado descomentar la linea de abajo
+                                #proveedor_user.descripcion = request.POST.get('descripcion')
+                                proveedor_user.licencia = request.POST.get('licencia')
+                                proveedor_user.direccion = request.POST.get('direccion')
+
+                                proveedor_user.save()
                                 # serializer_cuenta = CuentaSerializer(cuenta)
                                 # serializer_pendiente = Proveedor_PendienteSerializer(pendiente)
 
