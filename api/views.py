@@ -734,7 +734,32 @@ class Registro(viewsets.ModelViewSet):
                                 #proveedor_user.descripcion = request.POST.get('descripcion')
                                 proveedor_user.licencia = request.POST.get('licencia')
                                 proveedor_user.direccion = request.POST.get('direccion')
-
+                                
+                                #No llegan los documentos ni la foto
+                                
+                                documents = request.POST.getlist('filesDocuments')
+                                for doc in documents:
+                                    print("Document", doc)
+                                    documento_creado = Document.objects.create(documento=doc)
+                                    proveedor_user.document.add(documento_creado)
+                                if 'foto' in request.POST:
+                                    foto_user = request.POST.get('foto')
+                                    proveedor_user.foto = foto_user
+                                    print(foto_user, "foto") 
+                                if 'copiaCedula' in request.POST:
+                                    copiaCedula = request.POST.get('copiaCedula')
+                                    
+                                    proveedor_user.copiaCedula = copiaCedula
+                                    print(copiaCedula, "COPIA CEDULA")
+                                if 'copiaLicencia' in request.POST:
+                                    copiaLicencia = request.POST.get('copiaLicencia')
+                                    proveedor_user.copiaLicencia = copiaLicencia
+                                    print(copiaLicencia, "COPIA LICencia")
+                                if 'filesDocuments' in request.POST:
+                                    filesDocuments = request.POST.get('filesDocuments')
+                                    arrayfilesDocuments=[filesDocuments]
+                                    proveedor_user.document = arrayfilesDocuments
+                                    print(filesDocuments, "FILE DOCS")
                                 proveedor_user.save()
                                 # serializer_cuenta = CuentaSerializer(cuenta)
                                 # serializer_pendiente = Proveedor_PendienteSerializer(pendiente)
@@ -1280,25 +1305,30 @@ class Proveedores_Proveedores_Details(APIView):
         #     pendiente.foto.delete()
 
         for doc in documents:
+            print("Document", doc)
             documento_creado = Document.objects.create(documento=doc)
             pendiente.document.add(documento_creado)
         serializer = ProveedorSerializer(pendiente, data=request.data, partial=True)
         if 'foto' in request.FILES:
             foto_user = request.FILES.get('foto')
             serializer.foto = foto_user
+            print(foto_user, "foto") 
         if 'copiaCedula' in request.FILES:
             copiaCedula = request.FILES.get('copiaCedula')
             serializer.copiaCedula = copiaCedula
+            print(copiaCedula, "COPIA CEDULA")
         if 'copiaLicencia' in request.FILES:
             copiaLicencia = request.FILES.get('copiaLicencia')
             serializer.copiaLicencia = copiaLicencia
+            print(copiaLicencia, "COPIA LICencia")
         if 'filesDocuments' in request.FILES:
             filesDocuments = request.FILES.get('filesDocuments')
             arrayfilesDocuments=[filesDocuments]
             serializer.document = arrayfilesDocuments
-        print(copiaCedula)
-        print(copiaLicencia)
-        print(filesDocuments)        
+            print(filesDocuments, "FILE DOCS")
+        
+        
+               
         profesiones_lista = request.POST.get('profesion').split(',')
         print("trabalho?", profesiones_lista)
         Profesion_Proveedor.objects.all().filter(proveedor = pendiente).delete()
