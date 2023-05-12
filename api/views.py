@@ -728,44 +728,45 @@ class Registro(viewsets.ModelViewSet):
                                 proveedor_user.numero_cuenta = numero_account
                                 proveedor_user.tipo_cuenta = request.POST.get('tipo_cuenta')
                                 print(request.POST.get('descripcion'))
+                                print(request.POST.get('ano_experiencia'))
                                 print(request.POST.get('licencia'))
                                 print(request.POST.get('direccion'))
                                 # Descripcion llega como none, cuando este arreglado descomentar la linea de abajo
-                                #proveedor_user.descripcion = request.POST.get('descripcion')
+                                proveedor_user.descripcion = request.POST.get('descripcion')
+                                proveedor_user.ano_profesion = request.POST.get('ano_experiencia')
                                 proveedor_user.licencia = request.POST.get('licencia')
                                 proveedor_user.direccion = request.POST.get('direccion')
                                 
                                 #No llegan los documentos ni la foto
                                 
                                 documents = request.POST.getlist('filesDocuments')
-                                for doc in documents:
+                                print("He aqui los documentos")
+                                if 'filesDocuments' in request.POST:
+                                    doc = Document.objects.create(documento=request.POST.get('filesDocuments')[7:]) 
                                     print("Document", doc)
-                                    documento_creado = Document.objects.create(documento=doc)
-                                    proveedor_user.document.add(documento_creado)
+                                    print("Entra aqui")
+                                    filesDocuments = request.POST.get('filesDocuments')
+                                    print("Document", filesDocuments)
+                                    print("Aqui tambien")
+                                    arrayfilesDocuments=[doc]
+                                    print("memento sql")    
+                                    proveedor_user.document.set(arrayfilesDocuments)
+                                    print("Document", arrayfilesDocuments)
                                 if 'foto' in request.POST:
-                                    foto_user = request.POST.get('foto')
-                                    proveedor_user.foto = foto_user
+                                    foto_user = request.POST.get('foto')[7:]
+                                    proveedor_user.user_datos.foto = foto_user
                                     print(foto_user, "foto") 
+                                    print(proveedor_user.user_datos.foto, "proveedor_user.user_datos.foto") 
                                 if 'copiaCedula' in request.POST:
                                     copiaCedula = request.POST.get('copiaCedula')
-                                    
-                                    proveedor_user.copiaCedula = copiaCedula
+                                    proveedor_user.copiaCedula = copiaCedula[7:]
                                     print(copiaCedula, "COPIA CEDULA")
                                 if 'copiaLicencia' in request.POST:
                                     copiaLicencia = request.POST.get('copiaLicencia')
-                                    proveedor_user.copiaLicencia = copiaLicencia
+                                    proveedor_user.copiaLicencia = copiaLicencia[7:]
                                     print(copiaLicencia, "COPIA LICencia")
-                                if 'filesDocuments' in request.POST:
-                                    filesDocuments = request.POST.get('filesDocuments')
-                                    arrayfilesDocuments=[filesDocuments]
-                                    proveedor_user.document = arrayfilesDocuments
-                                    print(filesDocuments, "FILE DOCS")
                                 proveedor_user.save()
-                                # serializer_cuenta = CuentaSerializer(cuenta)
-                                # serializer_pendiente = Proveedor_PendienteSerializer(pendiente)
-
-                                # data['cuenta']= serializer_cuenta.data
-                                # data['pendiente']= serializer_pendiente.data
+                                proveedor_user.user_datos.save()
                                 data['success'] = True
                                 return Response(data)
                             except:
