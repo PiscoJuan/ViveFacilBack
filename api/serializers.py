@@ -246,7 +246,7 @@ class SolicitudSerializer(serializers.ModelSerializer):
     class Meta:
         model = Solicitud
         fields = ['id', 'descripcion', 'foto_descripcion', 'fecha_creacion', 'fecha_expiracion', 'solicitante', 'ubicacion',
-                  'servicio', 'tipo_pago', 'proveedor', 'adjudicar', 'pagada', 'estado', 'termino', 'rating', 'descripcion_rating']
+                  'servicio', 'tipo_pago', 'proveedor', 'adjudicar', 'pagada', 'estado', 'termino', 'rating', 'descripcion_rating','descuento']
 
 
 class Envio_InteresadosSerializer(serializers.ModelSerializer):

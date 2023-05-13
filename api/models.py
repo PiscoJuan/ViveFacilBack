@@ -338,6 +338,7 @@ class Solicitud(models.Model):
     adjudicar = models.BooleanField(default=False)
     pagada = models.BooleanField(default=False)
     estado = models.BooleanField(default=True)
+    descuento = models.FloatField(default=0.0)
     termino = models.CharField(max_length=50, null=True, blank=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True, null=True)
     descripcion_rating = models.CharField(
@@ -491,6 +492,7 @@ class PagoEfectivo(models.Model):
     promocion = models.ForeignKey(
         Promocion, on_delete=models.CASCADE, null=True,  blank=True)
     valor = models.FloatField(default=0.0)
+    oferta = models.FloatField(default=0.0)
     descripcion = models.CharField(max_length=255, null=True)
     concepto = models.CharField(max_length=255, null=True, default="Solicitud")
     referencia = models.CharField(max_length=255, null=True)

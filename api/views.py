@@ -703,8 +703,8 @@ class Registro(viewsets.ModelViewSet):
                             proveedor_user, created = Proveedor.objects.get_or_create(user_datos=dato, ano_profesion=0, profesion = request.POST.get('profesion'))
                             # pendiente, created_p = Proveedor_Pendiente.get_or_create(proveedor=proveedor_user, email = request.data.get('email'))
                             print("Proveedor email: " + proveedor_user.user_datos.user.email)
-                            print("Proveedor trabalho: " + proveedor_user.profesion)                            
-                            
+                            print("Proveedor trabalho: " + proveedor_user.profesion)
+
                         except:
                             print("No se pudo crear el perfil de proveedor 1")
                             data['error'] = "No se pudo crear el perfil de proveedor 1"
@@ -736,27 +736,27 @@ class Registro(viewsets.ModelViewSet):
                                 proveedor_user.ano_profesion = request.POST.get('ano_experiencia')
                                 proveedor_user.licencia = request.POST.get('licencia')
                                 proveedor_user.direccion = request.POST.get('direccion')
-                                
+
                                 #No llegan los documentos ni la foto
-                                
+
                                 documents = request.POST.getlist('filesDocuments')
                                 print("He aqui los documentos")
                                 if 'filesDocuments' in request.POST:
-                                    doc = Document.objects.create(documento=request.POST.get('filesDocuments')[7:]) 
+                                    doc = Document.objects.create(documento=request.POST.get('filesDocuments')[7:])
                                     print("Document", doc)
                                     print("Entra aqui")
                                     filesDocuments = request.POST.get('filesDocuments')
                                     print("Document", filesDocuments)
                                     print("Aqui tambien")
                                     arrayfilesDocuments=[doc]
-                                    print("memento sql")    
+                                    print("memento sql")
                                     proveedor_user.document.set(arrayfilesDocuments)
                                     print("Document", arrayfilesDocuments)
                                 if 'foto' in request.POST:
                                     foto_user = request.POST.get('foto')[7:]
                                     proveedor_user.user_datos.foto = foto_user
-                                    print(foto_user, "foto") 
-                                    print(proveedor_user.user_datos.foto, "proveedor_user.user_datos.foto") 
+                                    print(foto_user, "foto")
+                                    print(proveedor_user.user_datos.foto, "proveedor_user.user_datos.foto")
                                 if 'copiaCedula' in request.POST:
                                     copiaCedula = request.POST.get('copiaCedula')
                                     proveedor_user.copiaCedula = copiaCedula[7:]
@@ -1313,7 +1313,7 @@ class Proveedores_Proveedores_Details(APIView):
         if 'foto' in request.FILES:
             foto_user = request.FILES.get('foto')
             serializer.foto = foto_user
-            print(foto_user, "foto") 
+            print(foto_user, "foto")
         if 'copiaCedula' in request.FILES:
             copiaCedula = request.FILES.get('copiaCedula')
             serializer.copiaCedula = copiaCedula
@@ -1327,9 +1327,9 @@ class Proveedores_Proveedores_Details(APIView):
             arrayfilesDocuments=[filesDocuments]
             serializer.document = arrayfilesDocuments
             print(filesDocuments, "FILE DOCS")
-        
-        
-               
+
+
+
         profesiones_lista = request.POST.get('profesion').split(',')
         print("trabalho?", profesiones_lista)
         Profesion_Proveedor.objects.all().filter(proveedor = pendiente).delete()
@@ -1338,7 +1338,7 @@ class Proveedores_Proveedores_Details(APIView):
             #Comentado porque ano_experiencia no se guarda por lo que qeda como null y sale error, al arreglar descomentar la linea y comentar la que esta abajo de esta
             #profesion_proveedor = Profesion_Proveedor.objects.get_or_create(proveedor=pendiente, profesion=profesion_obnj,ano_experiencia=request.POST.get('ano_experiencia'))
             profesion_proveedor = Profesion_Proveedor.objects.get_or_create(proveedor=pendiente, profesion=profesion_obnj)
-            
+
         print("trabalho!!!!!!")
         serializer.profesion = request.POST.get('profesion').split(',')
         if serializer.is_valid():
@@ -2098,7 +2098,7 @@ class ManejoSolicitud(APIView):
             solicitudes_profesion, many=True)
         return Response(serializer.data)
 
-    def post(self, request, format=None): 
+    def post(self, request, format=None):
         data = {}
         correo_proveedor = request.data.get("proveedor")
         nombre_profesion = request.data.get("profesion")
@@ -3984,7 +3984,7 @@ class CuponesCategoria(APIView):
         return Response(serializer.data)
 
 
-class AllCuponesCategoria(APIView): 
+class AllCuponesCategoria(APIView):
     def get(self, request, format=None):
         cupones = CuponCategoria.objects.all()
         cupones = CuponCategoria.objects.all().filter(cupon__fecha_expiracion__gte = datetime.datetime.today())
@@ -4002,6 +4002,7 @@ class PagosTarjeta(APIView):
         promotion = request.data.get('promocion')  # codigo de la promocion
         amount = request.data.get('valor')
         desc = request.data.get('descripcion')
+        descuento = request.data.get('descuento')
         impuesto = request.data.get('impuesto')
         referencia = request.data.get('referencia')
         solicitud_ID = request.data.get('solicitud')  # id de la solicitud
@@ -4043,6 +4044,8 @@ class PagosTarjeta(APIView):
                 data['error'] = "No se pudo guardar el pago/sin embargo, si se realizo"
                 return Response(data)
             else:
+                solicitud.descuento=descuento
+                solicitud.save()
                 data['success'] = True
                 data['msg'] = "El pago se guardo exitosamente"
                 serializer = PagoTarjetaSerializer(pago_tarjeta_user)
@@ -4067,6 +4070,7 @@ class PagosEfectivo(APIView):
         user = request.data.get('username')
         promotion = request.data.get('promocion')  # codigo de la promocion
         amount = request.data.get('valor')
+        descuento = request.data.get('descuento')
         desc = request.data.get('descripcion')
         referencia = request.data.get('referencia')
         solicitud_ID = request.data.get('solicitud')  # id de la solicitud
@@ -4088,15 +4092,19 @@ class PagosEfectivo(APIView):
         else:
             try:
                 data['detail'] = "pago_efectivo"
-                pago_efectivo_user = PagoEfectivo.objects.create(user=usuario, promocion=promocion, valor=amount, descripcion=desc, referencia=referencia,
+                pago_efectivo_user = PagoEfectivo.objects.create(user=usuario, promocion=promocion, valor=amount, descripcion=desc, referencia=referencia, oferta=descuento,
                                                                  usuario=us, servicio=serv, proveedor=prov, prov_correo=prov_email, prov_telefono=prov_phone, user_telefono=us_phone)
                 data['detail'] = "pago_solicitud"
+                data['oferta'] = descuento
                 pago_solicitud = PagoSolicitud.objects.create(
                     pago_efectivo=pago_efectivo_user, solicitud=solicitud)
             except:
                 data['error'] = "No se pudo guardar el pago/sin embargo, si se realizo"
+                data['oferta'] = oferta
                 return Response(data)
             else:
+                solicitud.descuento=descuento
+                solicitud.save()
                 data['success'] = True
                 data['msg'] = "El pago se guardo exitosamente"
                 serializer = PagoEfectivoSerializer(pago_efectivo_user)
