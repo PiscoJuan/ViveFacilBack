@@ -126,6 +126,47 @@ class CardsAuth(APIView):
             return JsonResponse(resp)
 
 
+class InsigniasPersonales(APIView):
+
+    def get(self, request, format=None):
+        insignias = Insignia.objects.all().filter()
+        serializer = InsigniaSerializer(insignias, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, format=None):
+        data = {}
+        name = request.POST.get('nombre')
+        # picture = request.POST.get('imagen')
+        picture = request.FILES.get('imagen')
+        service = request.POST.get('servicio')
+        order = request.POST.get('pedidos')
+        description = request.POST.get('descripcion')
+        typ = request.POST.get('tipo')
+        tipoUsuario = request.POST.get('tipoUsuario')
+        insignia_creada = Insignia.objects.create(
+            nombre=name, imagen=picture, servicio=service, pedidos=order, descripcion=description, tipo=typ, tipo_usuario=tipoUsuario)
+        serializer = InsigniaSerializer(insignia_creada)
+        data['insignia'] = serializer.data
+        if insignia_creada:
+            return Response(data)
+        else:
+            data['error'] = "Error al crear una insignia!."
+            return Response(data)
+
+    def put(self, request, id, format=None):
+        insignia = Insignia.objects.get(id=id)
+        serializer = InsigniaSerializer(
+            insignia, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, id, format=None):
+        insignia = Insignia.objects.get(id=id)
+        insignia.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 class Insignias(APIView):
 
     def get(self, request, format=None):
@@ -1237,6 +1278,7 @@ class Proveedores_Pendientes_Details(APIView):
         for doc in documents:
             documento_creado = PendienteDocuments.objects.create(document=doc)
             pendiente.documentsPendientes.add(documento_creado)
+        pendiente.fecha_registro=timezone.now()
         serializer = Proveedor_PendienteSerializer(pendiente, data=request.data, partial=True)
         if 'foto' in request.FILES:
             foto_user = request.FILES.get('foto')
@@ -1275,6 +1317,18 @@ class Proveedores_Pendientes_Details(APIView):
         pendiente.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+class Proveedores_Pendientes_Details2(APIView):
+
+    def delete(self, request, pk, format=None):
+
+        pendiente = Proveedor_Pendiente.objects.get(id=pk)
+        razon = request.data.get('razon')
+        pendiente.estado = 1
+        pendiente.rechazo = razon
+
+        pendiente.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 class Proveedores_Proveedores_Details(APIView):
 
     def get(self, request, pk, format=None):
@@ -1309,6 +1363,7 @@ class Proveedores_Proveedores_Details(APIView):
             print("Document", doc)
             documento_creado = Document.objects.create(documento=doc)
             pendiente.document.add(documento_creado)
+        pendiente.user_datos.fecha_creacion=timezone.now()
         serializer = ProveedorSerializer(pendiente, data=request.data, partial=True)
         if 'foto' in request.FILES:
             foto_user = request.FILES.get('foto')
@@ -1330,17 +1385,25 @@ class Proveedores_Proveedores_Details(APIView):
 
 
 
+
+            
+
+
         profesiones_lista = request.POST.get('profesion').split(',')
         print("trabalho?", profesiones_lista)
-        Profesion_Proveedor.objects.all().filter(proveedor = pendiente).delete()
-        for profesion in profesiones_lista:
-            profesion_obnj = Profesion.objects.get(nombre=profesion)
-            #Comentado porque ano_experiencia no se guarda por lo que qeda como null y sale error, al arreglar descomentar la linea y comentar la que esta abajo de esta
-            #profesion_proveedor = Profesion_Proveedor.objects.get_or_create(proveedor=pendiente, profesion=profesion_obnj,ano_experiencia=request.POST.get('ano_experiencia'))
-            profesion_proveedor = Profesion_Proveedor.objects.get_or_create(proveedor=pendiente, profesion=profesion_obnj)
+        if(profesiones_lista):
+            Profesion_Proveedor.objects.all().filter(proveedor = pendiente).delete()
+            for profesion in profesiones_lista:
+                profesion_obnj_lista = Profesion.objects.filter(nombre=profesion)
+                if(profesion_obnj_lista):
+                    profesion_obnj = Profesion.objects.get(nombre=profesion)
+                    #Comentado porque ano_experiencia no se guarda por lo que qeda como null y sale error, al arreglar descomentar la linea y comentar la que esta abajo de esta
+                    #profesion_proveedor = Profesion_Proveedor.objects.get_or_create(proveedor=pendiente, profesion=profesion_obnj,ano_experiencia=request.POST.get('ano_experiencia'))
+                    profesion_proveedor = Profesion_Proveedor.objects.get_or_create(proveedor=pendiente, profesion=profesion_obnj)
 
-        print("trabalho!!!!!!")
-        serializer.profesion = request.POST.get('profesion').split(',')
+            print("trabalho!!!!!!")
+            serializer.profesion = request.POST.get('profesion').split(',')
+        pendiente.user_datos.save()
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -1366,7 +1429,7 @@ class Proveedores_Rechazados_Details(APIView):
     def get(self, request, pk, format=None):
 
         administrador = Proveedor_Pendiente.objects.get(id=pk)
-        serializer = Proveedor_PendienteSerializer(administrador)
+        serializer = Proveedor_PendienteSerializer2(administrador)
         return Response(serializer.data)
 
     def put(self, request, pk, format=None):
