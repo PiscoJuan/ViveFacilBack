@@ -54,6 +54,7 @@ from rest_framework.viewsets import ModelViewSet
 import os
 from django.core.files import File
 import codecs
+import pytz
 
 
 class CardsAuth(APIView):
@@ -128,7 +129,11 @@ class CardsAuth(APIView):
 
 class InsigniasPersonales(APIView):
 
-    def get(self, request, format=None):
+    def get(self, request, id,  format=None):
+        print("AAAAAAAAAAAAAAAAAAAAAA")
+        
+        print(id)
+        print("EEEEEEEEEEE")
         insignias = Insignia.objects.all().filter()
         serializer = InsigniaSerializer(insignias, many=True)
         return Response(serializer.data)
@@ -167,6 +172,75 @@ class InsigniasPersonales(APIView):
         insignia.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+class MedallasPersonales(APIView):
+
+    def get(self, request, id,  format=None):
+        utc=pytz.UTC
+        print("AAAAAAAAAAAAAAAAAAAAAA")
+        print(id)
+        print("EEEEEEEEEEE")
+        medallasTot = Medalla.objects.all().filter()
+        print(medallasTot)
+        dato = Datos.objects.get(id=id)
+        print(dato)
+        fechaDato=dato.fecha_creacion
+        correoDato=dato.user.email
+        
+        page = Solicitud.objects.filter(solicitante__user_datos__user__email=correoDato).order_by('-id')
+        list_of_ids = []
+        if page is not None:
+            solicitudesDato= page.count()
+            
+            for a in medallasTot:
+                nuevotiempo= datetime.datetime.today() - timedelta(days=a.tiempo)
+                print("solicitudesDato")
+                print(solicitudesDato)
+                print(a.cantidad)
+                if fechaDato<utc.localize(nuevotiempo) and solicitudesDato>=a.cantidad:
+                    list_of_ids.append(a.id)
+        else:
+            for a in medallasTot:
+                nuevotiempo= datetime.datetime.today() - timedelta(days=a.tiempo)
+                if fechaDato<utc.localize(nuevotiempo) and a.cantidad==0 :
+                    list_of_ids.append(a.id)
+        print("jeje")
+        medallasMostrar=Medalla.objects.filter(id__in=list_of_ids)
+        serializer = MedallaSerializer(medallasMostrar, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, format=None):
+        data = {}
+        name = request.POST.get('nombre')
+        # picture = request.POST.get('imagen')
+        picture = request.FILES.get('imagen')
+        service = request.POST.get('servicio')
+        order = request.POST.get('pedidos')
+        description = request.POST.get('descripcion')
+        typ = request.POST.get('tipo')
+        tipoUsuario = request.POST.get('tipoUsuario')
+        insignia_creada = Insignia.objects.create(
+            nombre=name, imagen=picture, servicio=service, pedidos=order, descripcion=description, tipo=typ, tipo_usuario=tipoUsuario)
+        serializer = InsigniaSerializer(insignia_creada)
+        data['insignia'] = serializer.data
+        if insignia_creada:
+            return Response(data)
+        else:
+            data['error'] = "Error al crear una insignia!."
+            return Response(data)
+
+    def put(self, request, id, format=None):
+        insignia = Insignia.objects.get(id=id)
+        serializer = InsigniaSerializer(
+            insignia, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, id, format=None):
+        insignia = Insignia.objects.get(id=id)
+        insignia.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 class Insignias(APIView):
 
     def get(self, request, format=None):
@@ -207,7 +281,47 @@ class Insignias(APIView):
         insignia = Insignia.objects.get(id=id)
         insignia.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+class Medallas(APIView):
+    def get(self, request, format=None):
+        medallas = Medalla.objects.filter(estado=True)
+        medallas
+        serializer = MedallaSerializer(medallas, many=True)
+        return Response(serializer.data)
 
+    def post(self, request, format=None):
+        data = {}
+        nombre = request.POST.get('nombre')
+        imagen = request.FILES.get('imagen')
+        descripcion = request.POST.get('descripcion')
+        tiempo = int(request.POST.get('tiempo'))
+        valor = int(request.POST.get('valor'))
+        cantidad = int(request.POST.get('cantidad'))
+        medalla_creada = Medalla.objects.create(
+            nombre=nombre, imagen=imagen, descripcion=descripcion, tiempo=tiempo, valor=valor, cantidad=cantidad)
+        serializer = MedallaSerializer(medalla_creada)
+        data['medalla'] = serializer.data
+        if medalla_creada:
+            return Response(data)
+        else:
+            data['error'] = "Error al crear una medalla!."
+            return Response(data)
+
+    def put(self, request, id, format=None):
+        print("AAAAAAAAAAAAAAAA")
+        medalla = Medalla.objects.get(id=id)
+        serializer = MedallaSerializer(
+            medalla, data=request.data, partial=True)
+        if serializer.is_valid():
+            print(serializer)
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, id, format=None):
+        insignia = Insignia.objects.get(id=id)
+        insignia.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class Insignia_Details(APIView):
 
@@ -222,6 +336,27 @@ class Insignia_Details(APIView):
         insig = Insignia.objects.get(id=ident)
         insig.estado = request.data.get('estado')
         insig.save()
+        return Response(status=status.HTTP_200_OK)
+    
+class Medalla_Details(APIView):
+
+    def get(self, request, pk, format=None):
+
+        insignia = Insignia.objects.get(id=pk)
+        serializer = InsigniaSerializer(insignia)
+        return Response(serializer.data)
+
+    def put(self, request):
+        ident = request.GET.get('id')
+        medalla = Medalla.objects.get(id=ident)
+        print( "medalla.estado")
+        print( medalla.estado)
+        if medalla.estado == True:
+            medalla.estado = False
+        else:
+            medalla.estado = True
+        print( medalla.estado)
+        medalla.save()
         return Response(status=status.HTTP_200_OK)
 
 
@@ -599,7 +734,7 @@ class Servicios(APIView):
     # permission_classes = (IsAuthenticated,)
     # authentication_class = (TokenAuthentication)
     def get(self, request, format=None):
-        servicios = Servicio.objects.all().filter()
+        servicios = Servicio.objects.all().filter(estado = True)
         serializer = ServicioSerializer(servicios, many=True)
         return Response(serializer.data)
 
@@ -1382,13 +1517,7 @@ class Proveedores_Proveedores_Details(APIView):
             arrayfilesDocuments=[filesDocuments]
             serializer.document = arrayfilesDocuments
             print(filesDocuments, "FILE DOCS")
-
-
-
-
             
-
-
         profesiones_lista = request.POST.get('profesion').split(',')
         print("trabalho?", profesiones_lista)
         if(profesiones_lista):

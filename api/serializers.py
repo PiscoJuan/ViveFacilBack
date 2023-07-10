@@ -17,6 +17,12 @@ class InsigniaSerializer(serializers.ModelSerializer):
         fields = ['id', 'nombre', 'imagen', 'servicio', 'tipo_usuario',
                   'estado', 'pedidos', 'fecha_creacion', 'descripcion', 'tipo']
 
+class MedallaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Medalla
+        fields = ['id', 'nombre', 'descripcion', 'imagen',
+                  'estado', 'tiempo', 'valor', 'cantidad', 'fecha_creacion']
+
 
 class CategoriaSerializer(serializers.ModelSerializer):
     class Meta:
@@ -182,6 +188,13 @@ class Proveedor_PendienteSerializer(serializers.ModelSerializer):
         fields = ['id', 'nombres', 'apellidos', 'ciudad', 'direccion', 'genero', 'fecha_registro', 'licencia', 'copiaLicencia', 'email', 'telefono', 'cedula',
                   'copiaCedula', 'descripcion', 'estado', 'profesion', 'ano_experiencia', 'banco', 'numero_cuenta', 'tipo_cuenta', 'documentsPendientes', 'foto']
 
+class Proveedor_PendienteSerializer2(serializers.ModelSerializer):
+    documentsPendientes = PendientesDocumentsSerializer(many=True)
+
+    class Meta:
+        model = Proveedor_Pendiente
+        fields = ['id', 'nombres', 'apellidos', 'ciudad', 'direccion', 'genero', 'fecha_registro', 'licencia', 'copiaLicencia', 'email', 'telefono', 'cedula',
+                  'copiaCedula', 'descripcion', 'estado', 'profesion', 'ano_experiencia', 'banco', 'numero_cuenta', 'tipo_cuenta', 'documentsPendientes', 'foto', 'rechazo']
 
 class BancoSerializer(serializers.ModelSerializer):
     class Meta:

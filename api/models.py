@@ -29,6 +29,19 @@ class Insignia(models.Model):
 
     def __str__(self):
         return self.nombre
+    
+class Medalla(models.Model):
+    nombre = models.CharField(max_length=25)
+    descripcion = models.CharField(max_length=255, null=True)
+    imagen = models.ImageField(upload_to='insignias', blank=True)
+    estado = models.BooleanField(default=True)
+    tiempo = models.PositiveIntegerField(default=0)
+    valor = models.PositiveIntegerField(default=0)
+    cantidad = models.PositiveIntegerField(default=0)
+    fecha_creacion = models.DateTimeField(auto_now_add=True, null=True)
+
+    def __str__(self):
+        return self.nombre
 
 
 class Categoria(models.Model):
@@ -131,6 +144,8 @@ class Datos(models.Model):
     fecha_creacion = models.DateTimeField(auto_now_add=True, null=True)
     puntos = models.PositiveIntegerField(default=0, null=True)
     codigo_invitacion = models.CharField(max_length=12, default="", null=True)
+    dinero_invertido = models.PositiveIntegerField(default=0, null=True)
+    tramites = models.PositiveIntegerField(default=0, null=True)
 
     def __str__(self):
         return str(self.nombres) + " | " + str(self.apellidos) + " | " + self.genero
