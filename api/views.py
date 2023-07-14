@@ -196,7 +196,7 @@ class MedallasPersonales(APIView):
                 print("solicitudesDato")
                 print(solicitudesDato)
                 print(a.cantidad)
-                if fechaDato<utc.localize(nuevotiempo) and solicitudesDato>=a.cantidad:
+                if fechaDato<utc.localize(nuevotiempo) and solicitudesDato>=a.cantidad and a.estado:
                     list_of_ids.append(a.id)
         else:
             for a in medallasTot:

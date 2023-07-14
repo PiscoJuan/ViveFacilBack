@@ -38,6 +38,7 @@ class Medalla(models.Model):
     tiempo = models.PositiveIntegerField(default=0)
     valor = models.PositiveIntegerField(default=0)
     cantidad = models.PositiveIntegerField(default=0)
+    puntos = models.PositiveIntegerField(default=0)
     fecha_creacion = models.DateTimeField(auto_now_add=True, null=True)
 
     def __str__(self):
@@ -585,3 +586,8 @@ class SolicitudProfesion(models.Model):
 
     def __str__(self):
         return self.proveedor.user_datos.nombres + "|" + self.profesion + "|" + self.anio_experiencia
+
+class clientexmedalla(models.Model):
+    user = models.ForeignKey('auth.User', on_delete=models.CASCADE, null=True)
+    medalla = models.ForeignKey('api.Medalla', on_delete=models.CASCADE, null=True)
+    tipoUsuario = models.BooleanField(default=True)
