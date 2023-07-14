@@ -201,7 +201,7 @@ class MedallasPersonales(APIView):
         else:
             for a in medallasTot:
                 nuevotiempo= datetime.datetime.today() - timedelta(days=a.tiempo)
-                if fechaDato<utc.localize(nuevotiempo) and a.cantidad==0 :
+                if fechaDato<utc.localize(nuevotiempo) and a.cantidad==0 and a.estado:
                     list_of_ids.append(a.id)
         print("jeje")
         medallasMostrar=Medalla.objects.filter(id__in=list_of_ids)
