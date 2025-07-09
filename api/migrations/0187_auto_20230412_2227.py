@@ -10,14 +10,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='servicio',
-            name='foto',
-            field=models.ImageField(null=True, upload_to='servicio'),
-        ),
-        migrations.AlterField(
-            model_name='proveedor_pendiente',
-            name='foto',
-            field=models.ImageField(blank=True, null=True, upload_to='foto_proveedor'),
-        ),
+
     ]

@@ -6039,7 +6039,6 @@ class AdminPage(APIView):
         return redirect(to="/static/index.html")
 
 class ActualizarCaducidad (APIView):
-    print("Cosa Ver Aca0")
     def put(self, request, pk):
         try:
             consola=request.data.get('id')
@@ -6068,7 +6067,6 @@ class ActualizarCaducidad (APIView):
             return Response("error: " + str(e))
 
 class RevisarCaducidad (APIView):
-    print("Cosa Ver Aca0")
     def put(self, request, pk):
         try:
             formatEmail = FormatEmail()

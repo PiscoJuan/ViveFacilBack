@@ -167,11 +167,7 @@ class ProveedorSerializer(serializers.ModelSerializer):
 
 class Profesion_ProveedorSerializer(serializers.ModelSerializer):
     profesion = ProfesionSerializer()
-    print("PROFESION")
-    print(profesion)
     proveedor = ProveedorSerializer()
-    print("PROVEEDOR")
-    print(proveedor)
 
     class Meta:
         model = Profesion_Proveedor
