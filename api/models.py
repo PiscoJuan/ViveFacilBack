@@ -29,7 +29,7 @@ class Insignia(models.Model):
 
     def __str__(self):
         return self.nombre
-    
+
 class Medalla(models.Model):
     nombre = models.CharField(max_length=25)
     descripcion = models.CharField(max_length=255, null=True)
@@ -38,7 +38,7 @@ class Medalla(models.Model):
     tiempo = models.PositiveIntegerField(default=0)
     valor = models.PositiveIntegerField(default=0)
     cantidad = models.PositiveIntegerField(default=0)
-    puntos = models.PositiveIntegerField(default=0)
+    puntos = models.PositiveIntegerField(default=10)
     fecha_creacion = models.DateTimeField(auto_now_add=True, null=True)
 
     def __str__(self):
@@ -73,7 +73,7 @@ class Servicio(models.Model):
 class Profesion(models.Model):
     nombre = models.CharField(max_length=255, unique=True)
     estado = models.BooleanField(default=True)
-    servicio = models.ManyToManyField(Servicio, null=False)
+    servicio = models.ManyToManyField(Servicio)
     foto = models.ImageField(upload_to='profesion', null=True)
     estado = models.BooleanField(default=True)
     descripcion = models.CharField(max_length=255, null=True)
@@ -92,6 +92,7 @@ class Cupon(models.Model):
     fecha_iniciacion = models.DateTimeField(null=False)
     fecha_expiracion = models.DateTimeField(null=False)
     porcentaje = models.IntegerField(null=False)
+    participantes = models.CharField(max_length=255, null=True)
     puntos = models.IntegerField(null=False)
     estado = models.BooleanField(default=True)
     foto = models.ImageField(upload_to='cupones', null=True, blank=True)
@@ -147,6 +148,7 @@ class Datos(models.Model):
     codigo_invitacion = models.CharField(max_length=12, default="", null=True)
     dinero_invertido = models.PositiveIntegerField(default=0, null=True)
     tramites = models.PositiveIntegerField(default=0, null=True)
+    descuento = models.PositiveIntegerField(default=0, null=True)
 
     def __str__(self):
         return str(self.nombres) + " | " + str(self.apellidos) + " | " + self.genero
@@ -179,7 +181,7 @@ class Proveedor(models.Model):
     rating = models.FloatField(default=4.0)
     servicios = models.PositiveIntegerField(default=0)
     descripcion = models.CharField(max_length=255)
-    document = models.ManyToManyField(Document, null=False)
+    document = models.ManyToManyField(Document)
     estado = models.BooleanField(default=True)
     profesion = models.CharField(max_length=400, default='')
 
@@ -194,6 +196,8 @@ class Proveedor(models.Model):
     banco = models.CharField(max_length=255, default='')
     numero_cuenta = models.CharField(max_length=25, default='')
     tipo_cuenta = models.CharField(max_length=50, default='')
+
+    fecha_caducidad = models.DateTimeField(auto_now_add=True, null=True)
     # planilla_servicios = models.FileField(upload_to='documents', null=True)
 
     def __str__(self):
@@ -255,9 +259,10 @@ class Proveedor_Pendiente(models.Model):
     ano_experiencia = models.PositiveIntegerField(default=0)
     banco = models.CharField(max_length=255, default='')
     numero_cuenta = models.CharField(max_length=25, default='')
+    rechazo = models.CharField(max_length=255, default='', null=True)
     tipo_cuenta = models.CharField(max_length=50, default='')
     documentsPendientes = models.ManyToManyField(
-        PendienteDocuments, null=False)
+        PendienteDocuments)
     foto = models.ImageField(upload_to='foto_proveedor', null=True, blank=True)
 
     def __str__(self):
@@ -273,7 +278,7 @@ class Tipo_Cuenta(models.Model):  # debito credito
 
 
 class Ciudad_Disponible(models.Model):
-    ciudad: models.CharField(max_length=255)
+    ciudad = models.CharField(max_length=255,null=True)
 
     def __str__(self):
         return self.ciudad
@@ -359,7 +364,7 @@ class Solicitud(models.Model):
     fecha_creacion = models.DateTimeField(auto_now_add=True, null=True)
     descripcion_rating = models.CharField(
         max_length=100, default=" ", null=True, blank=True)
-    rating = models.FloatField(default=4.0)
+    rating = models.FloatField(default=0)
 
     def __str__(self):
         return self.solicitante.user_datos.user.email + " | " + str(self.descripcion)
@@ -409,10 +414,17 @@ class Cupon_Aplicado(models.Model):
 
 class Notificacion(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE, null=True)
+    nombre = models.CharField(max_length=255, null=True)
     titulo = models.CharField(max_length=255, null=True)
-    descripcion = models.CharField(max_length=255, null=True)
+    descripcion = models.TextField()
+    tipo_proveedores = models.CharField(max_length=100, null=True)
+    frecuencia = models.CharField(max_length=100, null=True)
     ruta = models.CharField(max_length=100, null=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True, null=True)
+    fecha_iniciacion = models.DateTimeField(null=True)
+    fecha_expiracion = models.DateTimeField(null=True)
+    hora = models.TimeField(null=True)
+    estado = models.BooleanField(default=True)
     imagen = models.ImageField(
         upload_to='notificaciones', null=True, blank=True)
 
@@ -425,12 +437,17 @@ class Notificacion(models.Model):
 
 
 class NotificacionMasiva(models.Model):
-
+    nombre = models.CharField(max_length=255, null=True)
     titulo = models.CharField(max_length=255, null=True)
-    mensaje = models.CharField(max_length=255, null=True)
     descripcion = models.TextField()
+    tipo_proveedores = models.CharField(max_length=100, null=True)
+    frecuencia = models.CharField(max_length=100, null=True)
     ruta = models.CharField(max_length=100, null=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True, null=True)
+    fecha_iniciacion = models.DateTimeField(null=True)
+    fecha_expiracion = models.DateTimeField(null=True)
+    hora = models.TimeField(null=True)
+    estado = models.BooleanField(default=True)
     imagen = models.ImageField(
         upload_to='notificaciones-masivas', null=True, blank=True)
 
@@ -501,6 +518,8 @@ class PagoTarjeta(models.Model):
     prov_telefono = models.CharField(max_length=15, default="0999999999")
     servicio = models.CharField(max_length=255, default="")
     usuario = models.CharField(max_length=255, default="")
+    solicitud = models.ForeignKey(
+        Solicitud, on_delete=models.CASCADE, null=True)
 
 
 class PagoEfectivo(models.Model):
@@ -520,6 +539,8 @@ class PagoEfectivo(models.Model):
     prov_correo = models.CharField(max_length=255, default="")
     prov_telefono = models.CharField(max_length=15, default="0999999999")
     user_telefono = models.CharField(max_length=15, default="0999999999")
+    solicitud = models.ForeignKey(
+        Solicitud, on_delete=models.CASCADE, null=True)
 
 
 class PagoSolicitud(models.Model):

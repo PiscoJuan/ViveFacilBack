@@ -33,8 +33,9 @@ class CategoriaSerializer(serializers.ModelSerializer):
 class CuponSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cupon
-        fields = ['id', 'codigo', 'titulo', 'descripcion', 'porcentaje', 'fecha_creacion',
-                  'fecha_iniciacion', 'fecha_expiracion', 'estado', 'puntos', 'foto', 'tipo_categoria', 'cantidad']
+        fields = ['id', 'codigo', 'titulo', 'descripcion', 'porcentaje', 'participantes','fecha_creacion',
+                  'fecha_iniciacion', 'fecha_expiracion', 'estado', 'puntos', 'foto','tipo_categoria', 'cantidad']
+        
 
 
 class PublicidadSerializer(serializers.ModelSerializer):
@@ -161,12 +162,16 @@ class ProveedorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Proveedor
         fields = ['id', 'user_datos', 'direccion', 'copiaCedula', 'licencia', 'copiaLicencia', 'rating', 'servicios', 'descripcion',
-                  'profesion', 'ano_profesion', 'document', 'plan_proveedor', 'estado', 'banco', 'numero_cuenta', 'tipo_cuenta']
+                  'profesion', 'ano_profesion', 'document', 'plan_proveedor', 'estado', 'banco', 'numero_cuenta', 'tipo_cuenta', 'fecha_caducidad']
 
 
 class Profesion_ProveedorSerializer(serializers.ModelSerializer):
     profesion = ProfesionSerializer()
+    print("PROFESION")
+    print(profesion)
     proveedor = ProveedorSerializer()
+    print("PROVEEDOR")
+    print(proveedor)
 
     class Meta:
         model = Profesion_Proveedor
@@ -186,7 +191,7 @@ class Proveedor_PendienteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Proveedor_Pendiente
         fields = ['id', 'nombres', 'apellidos', 'ciudad', 'direccion', 'genero', 'fecha_registro', 'licencia', 'copiaLicencia', 'email', 'telefono', 'cedula',
-                  'copiaCedula', 'descripcion', 'estado', 'profesion', 'ano_experiencia', 'banco', 'numero_cuenta', 'tipo_cuenta', 'documentsPendientes', 'foto']
+                  'copiaCedula', 'descripcion', 'estado', 'profesion', 'ano_experiencia', 'banco', 'numero_cuenta', 'tipo_cuenta', 'documentsPendientes', 'foto', 'rechazo']
 
 class Proveedor_PendienteSerializer2(serializers.ModelSerializer):
     documentsPendientes = PendientesDocumentsSerializer(many=True)
@@ -292,8 +297,12 @@ class NotificacionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Notificacion
-        fields = ['id', 'user', 'titulo', 'descripcion', 'ruta',
-                  'fecha_creacion', 'imagen', 'fecha_creacion']
+        fields = [
+            'id','user', 'nombre', 'titulo', 'descripcion', 'tipo_proveedores', 
+            'frecuencia', 'ruta', 'fecha_creacion', 'fecha_iniciacion', 
+            'fecha_expiracion', 'hora', 'estado','imagen'
+        ]
+
 
 
 class PromocionSerializer(serializers.ModelSerializer):
@@ -316,21 +325,23 @@ class PagoTarjetaSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     tarjeta = TarjetaSerializer()
     promocion = PromocionSerializer()
+    solicitud = SolicitudSerializer()
 
     class Meta:
         model = PagoTarjeta
         fields = ['id', 'user', 'concepto', 'promocion', 'tarjeta', 'valor', 'descripcion', 'carrier_id', 'carrier_code', 'impuesto', 'referencia', 'fecha_creacion',
-                  'estado', 'pago_proveedor', 'cargo_paymentez', 'cargo_banco', 'cargo_sistema', 'proveedor', 'servicio', 'usuario', 'prov_correo', 'prov_telefono']
+                  'estado', 'pago_proveedor', 'cargo_paymentez', 'cargo_banco', 'cargo_sistema', 'proveedor', 'servicio', 'usuario', 'prov_correo', 'prov_telefono', 'solicitud']
 
 
 class PagoEfectivoSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     promocion = PromocionSerializer()
+    solicitud = SolicitudSerializer()
 
     class Meta:
         model = PagoEfectivo
         fields = ['id', 'user', 'concepto', 'promocion', 'valor', 'descripcion', 'referencia', 'fecha_creacion',
-                  'estado', 'proveedor', 'servicio', 'usuario', 'prov_correo', 'prov_telefono', 'user_telefono']
+                  'estado', 'proveedor', 'servicio', 'usuario', 'prov_correo', 'prov_telefono', 'user_telefono', 'solicitud']
 
 
 class PagoSolicitudSerializer(serializers.ModelSerializer):
@@ -366,8 +377,11 @@ class CiudadSerializer(serializers.ModelSerializer):
 class NotificacionMasivaSerializer(serializers.ModelSerializer):
     class Meta:
         model = NotificacionMasiva
-        fields = ['id', 'titulo', 'mensaje', 'descripcion',
-                  'ruta', 'fecha_creacion', 'imagen']
+        fields = [
+            'id', 'nombre', 'titulo', 'descripcion', 'tipo_proveedores', 
+            'frecuencia', 'ruta', 'fecha_creacion', 'fecha_iniciacion', 
+            'fecha_expiracion', 'hora', 'estado','imagen'
+        ]
 
 
 # class PagosSerializer(serializers.Serializer):
