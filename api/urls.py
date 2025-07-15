@@ -173,7 +173,7 @@ urlpatterns += [
     path('validarcodigo/<str:email>/<str:codigo>', ValidarCodigo.as_view()),
     path('recuperarpassword/<str:user_email>', RecuperarPassword.as_view()),
     path('cambiopasswordcodigo/<str:email>/<str:password>/<str:codigo>', CambioPasswordCodigo.as_view()),
-    path('cambiocontrasenia/<str:email>/<str:password>', CambioContrasenia.as_view()),
+    path('cambiocontrasenia/', CambioContrasenia.as_view()),
     path('pago_tarjeta/', PagosTarjeta.as_view()),
     path('pago_efectivo/', PagosEfectivo.as_view()),
     path('pago_tarjetas/', PagosTarjetaUser.as_view()),

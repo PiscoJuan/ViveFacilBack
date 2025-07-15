@@ -63,6 +63,8 @@ from firebase_admin.exceptions import FirebaseError
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from TomeSoft_1.settings import ACCESS_URL, FIREBASE_ACCESS_TOKEN
+from firebase_admin import auth as fire_auth
+from django.core.exceptions import ObjectDoesNotExist
 
 @csrf_exempt
 def send_notificationF(tokend, title, body, data):
@@ -772,32 +774,52 @@ class CambioPasswordCodigo(APIView):
                     data['success'] = True
         return Response(data)
 
-
 class CambioContrasenia(APIView):
-    def get(selt, request, email, password, format=None):
+    def post(self, request, format=None):
         data = {'success': False}
+        firetoken = request.data.get('token')
+        password = request.data.get('pass')
         try:
+            decoded_token = fire_auth.verify_id_token(firetoken)
+            email = decoded_token.get('email')
+            if not email:
+                data['message'] = "El token no contiene un correo electrónico válido."
+                return Response(data, status=400)
             usuario = User.objects.get(email=email)
-        except Exception as e:
-            data['success'] = False
-            data['message'] = "El usuario con ese correo no fue encontrado en la base de datos: " + \
-                str(e)
 
+        except fire_auth.InvalidIdTokenError:
+            data['message'] = "El token de Firebase es inválido."
+            return Response(data, status=401)
+
+        except fire_auth.ExpiredIdTokenError:
+            data['message'] = "El token de Firebase ha expirado."
+            return Response(data, status=401)
+
+        except User.DoesNotExist:
+            data['message'] = f"No existe un usuario con el correo {email} en la base de datos."
+            return Response(data, status=404)
+
+        except Exception as e:
+            data['message'] = f"Error inesperado al verificar el usuario: {str(e)}"
+            return Response(data, status=500)
+
+        # 2. Verificar que tenga datos asociados en la tabla Datos
         try:
             user_dato = Datos.objects.get(user=usuario)
+        except ObjectDoesNotExist:
+            data['message'] = f"No existe un registro en la tabla Datos para el usuario {usuario.email}."
+            return Response(data, status=404)
         except Exception as e:
-            data['success'] = False
-            data['message'] = "La tabla User Datos no fue enocontrada en la base de datos " + \
-                str(e)
+            data['message'] = f"Error al consultar Datos: {str(e)}"
+            return Response(data, status=500)
 
-        if (user_dato is not None):
-            usuario.set_password(password)
-            usuario.save()
-            data['success'] = True
-            data['message'] = "Contrsaseña cambiada con exito"
+        # 3. Cambiar contraseña
+        usuario.set_password(password)
+        usuario.save()
 
-        return Response(data)
-
+        data['success'] = True
+        data['message'] = "Contraseña cambiada con éxito"
+        return Response(data, status=200)
 
 class Categorias(APIView):
 
@@ -1040,138 +1062,141 @@ class Registro(viewsets.ModelViewSet):
     queryset = Datos.objects.all()
 
     def create(self, request, *args, **kwargs):
-        print("Hora de crear un nuevo usuario")
-        user_email = request.POST.get('email')
-        user_password = request.POST.get('password')
-        users = User.objects.filter(username=user_email).count()
         data = {}
-        email = FormatEmail()
-        if (users == 0):
-            usuario = User.objects.create_user(email=request.POST.get('email'), username=request.POST.get('email'), password=user_password)
-            tipo_user = request.POST.get('tipo')
-            nombre_user = request.POST.get('nombres')
-            apellido_user = request.POST.get('apellidos')
-            telefono_user = request.POST.get('telefono')
-            genero_user = request.POST.get('genero')
-            ciudad_user = request.POST.get('ciudad')
-            cedula_user = request.POST.get('cedula')
-            foto_user = request.FILES.get('foto')
-            print(foto_user)
-            print("nombre_user: " + nombre_user)
-            try:
-                dato, creado = Datos.objects.get_or_create(user=usuario, tipo=models.Group.objects.get(
-                    name=tipo_user), nombres=nombre_user, apellidos=apellido_user, telefono=telefono_user, genero=genero_user, ciudad=ciudad_user, cedula=cedula_user, foto=foto_user)
-                # data['error1']=dato.user.email
-                if creado:
-                    # thread = threading.Thread(target =email.send_email(user_email,'Bienvenido a TOME','emails/welcome.html',{"username":nombre_user}))
-                    # thread.start()
-                    # data['error2']=dato.user.email
-                    if tipo_user == 'Solicitante':
-                        Solicitante.objects.create(
-                            user_datos=dato, bool_registro_completo=True)
-                        grupoSolicitante = Group.objects.get(
-                            name='Solicitante')
-                        grupoSolicitante.user_set.add(usuario)
-                        asunto = 'Bienvenido a Vive Fácil'
-                        formatEmail = FormatEmail()
-                        thread = threading.Thread(target=formatEmail.send_email([user_email], asunto, 'emails/welcome.html', {"username":nombre_user}))
-                        thread.start()
-                    elif tipo_user == 'Proveedor':
-                        # Proveedor.objects.create(user_datos= dato, bool_registro_completo= True)
-                        try:
-                            proveedor_user, created = Proveedor.objects.get_or_create(user_datos=dato, ano_profesion=0, profesion = request.POST.get('profesion'))
-                            # pendiente, created_p = Proveedor_Pendiente.get_or_create(proveedor=proveedor_user, email = request.data.get('email'))
-                            print("Proveedor email: " + proveedor_user.user_datos.user.email)
-                            print("Proveedor trabalho: " + proveedor_user.profesion)
+        try:
+            with transaction.atomic():
+                print("Hora de crear un nuevo usuario")
+                # ===== 1. Validar si ya existe =====
+                user_email = request.POST.get('email')
+                user_password = request.POST.get('password')
+                if User.objects.filter(username=user_email).exists():
+                    raise Exception("Usuario ya existente")
+                # ===== 2. Crear usuario =====
+                usuario = User.objects.create_user(
+                    email=user_email,
+                    username=user_email,
+                    password=user_password
+                )
+                # ===== 3. Crear Datos =====
+                tipo_user = request.POST.get('tipo')
+                nombre_user = request.POST.get('nombres')
+                apellido_user = request.POST.get('apellidos')
 
-                        except:
-                            print("No se pudo crear el perfil de proveedor 1")
-                            data['error'] = "No se pudo crear el perfil de proveedor 1"
-                            data['success'] = False
-                            return Response(data)
-                        else:
-                            try:
-                                #trabajo
-                                print("trabalho?")
-                                profesiones_lista = request.POST.get('profesion').split(',')
-                                for profesion in profesiones_lista:
-                                    profesion_obnj = Profesion.objects.get(nombre=profesion)
-                                    profesion_proveedor = Profesion_Proveedor.objects.create(proveedor=proveedor_user, profesion=profesion_obnj,ano_experiencia=request.POST.get('ano_experiencia'))
-                                print("trabalho!!!!!!")
-                                # crear cuenta
-                                banco_user = Banco.objects.get_or_create(nombre=request.POST.get('banco'))
-                                tipo_cuenta_user = Tipo_Cuenta.objects.get_or_create(nombre=request.POST.get('tipo_cuenta'))
-                                numero_account = request.POST.get('numero_cuenta')
-                                cuenta = Cuenta.objects.get_or_create(banco=banco_user[0], tipo_cuenta=tipo_cuenta_user[0], proveedor=proveedor_user, numero_cuenta=numero_account)
-                                proveedor_user.banco = request.POST.get('banco')
-                                proveedor_user.numero_cuenta = numero_account
-                                proveedor_user.tipo_cuenta = request.POST.get('tipo_cuenta')
-                                print(request.POST.get('descripcion'))
-                                print(request.POST.get('ano_experiencia'))
-                                print(request.POST.get('licencia'))
-                                print(request.POST.get('direccion'))
-                                # Descripcion llega como none, cuando este arreglado descomentar la linea de abajo
-                                proveedor_user.descripcion = request.POST.get('descripcion')
-                                proveedor_user.ano_profesion = request.POST.get('ano_experiencia')
-                                proveedor_user.licencia = request.POST.get('licencia')
-                                proveedor_user.direccion = request.POST.get('direccion')
+                dato, creado = Datos.objects.get_or_create(
+                    user=usuario,
+                    tipo=Group.objects.get(name=tipo_user),
+                    nombres=nombre_user,
+                    apellidos=apellido_user,
+                    telefono=request.POST.get('telefono'),
+                    genero=request.POST.get('genero'),
+                    ciudad=request.POST.get('ciudad'),
+                    cedula=request.POST.get('cedula'),
+                    foto=request.FILES.get('foto')
+                )
 
-                                #No llegan los documentos ni la foto
+                if not creado:
+                    raise Exception("Esta persona ya existe en Datos")
 
-                                documents = request.POST.getlist('filesDocuments')
-                                print("He aqui los documentos")
-                                if 'filesDocuments' in request.POST:
-                                    doc = Document.objects.create(documento=request.POST.get('filesDocuments')[7:])
-                                    print("Document", doc)
-                                    print("Entra aqui")
-                                    filesDocuments = request.POST.get('filesDocuments')
-                                    print("Document", filesDocuments)
-                                    print("Aqui tambien")
-                                    arrayfilesDocuments=[doc]
-                                    print("memento sql")
-                                    proveedor_user.document.set(arrayfilesDocuments)
-                                    print("Document", arrayfilesDocuments)
-                                if 'foto' in request.POST:
-                                    foto_user = request.POST.get('foto')[7:]
-                                    proveedor_user.user_datos.foto = foto_user
-                                    print(foto_user, "foto")
-                                    print(proveedor_user.user_datos.foto, "proveedor_user.user_datos.foto")
-                                if 'copiaCedula' in request.POST:
-                                    copiaCedula = request.POST.get('copiaCedula')
-                                    proveedor_user.copiaCedula = copiaCedula[7:]
-                                    print(copiaCedula, "COPIA CEDULA")
-                                if 'copiaLicencia' in request.POST:
-                                    copiaLicencia = request.POST.get('copiaLicencia')
-                                    proveedor_user.copiaLicencia = copiaLicencia[7:]
-                                    print(copiaLicencia, "COPIA LICencia")
-                                proveedor_user.save()
-                                proveedor_user.user_datos.save()
-                                data['success'] = True
-                                asunto = "Solicitud Aceptada"
-                                formatEmail = FormatEmail()
-                                thread = threading.Thread(target=formatEmail.send_email([user_email], asunto, 'emails/formularioAceptado.html', {
-                                                                      "username": nombre_user + ' ' + apellido_user, "user": user_email, "password": user_password}))
-                                return Response(data)
-                            except:
-                                data['error'] = "No se pudo guardar la cuenta del usuario"
-                                data['success'] = False
-                                return Response(data)
-                    data['email'] = dato.user.email
-                    data['username'] = dato.user.username
-                    token = Token.objects.get(user=dato.user).key
-                    data['token'] = token
-                    return Response(data)
-                else:
-                    data['error'] = "Esta persona ya existe1!."
-                    return Response(data)
-            except:
-                data['error'] = "Esta persona ya existe2!."
+                # ===== 4. Crear Solicitante =====
+                if tipo_user == 'Solicitante':
+                    Solicitante.objects.create(
+                        user_datos=dato, bool_registro_completo=True
+                    )
+                    Group.objects.get(name='Solicitante').user_set.add(usuario)
+
+                    # Enviar correo (en hilo aparte)
+                    asunto = 'Bienvenido a Vive Fácil'
+                    formatEmail = FormatEmail()
+                    threading.Thread(
+                        target=formatEmail.send_email,
+                        args=([user_email], asunto, 'emails/welcome.html', {"username": nombre_user})
+                    ).start()
+
+                # ===== 4. Crear Proveedor =====
+                elif tipo_user == 'Proveedor':
+                    proveedor_user, created = Proveedor.objects.get_or_create(
+                        user_datos=dato,
+                        ano_profesion=0,
+                        profesion=request.POST.get('profesion')
+                    )
+                    if not created:
+                        raise Exception("No se pudo crear el perfil de proveedor")
+
+                    # Guardar profesiones
+                    profesiones_lista = request.POST.get('profesion').split(',')
+                    for profesion in profesiones_lista:
+                        profesion_obj = Profesion.objects.get(nombre=profesion)
+                        Profesion_Proveedor.objects.create(
+                            proveedor=proveedor_user,
+                            profesion=profesion_obj,
+                            ano_experiencia=request.POST.get('ano_experiencia')
+                        )
+
+                    # Crear cuenta bancaria
+                    banco_user = Banco.objects.get_or_create(nombre=request.POST.get('banco'))[0]
+                    tipo_cuenta_user = Tipo_Cuenta.objects.get_or_create(nombre=request.POST.get('tipo_cuenta'))[0]
+                    cuenta = Cuenta.objects.get_or_create(
+                        banco=banco_user,
+                        tipo_cuenta=tipo_cuenta_user,
+                        proveedor=proveedor_user,
+                        numero_cuenta=request.POST.get('numero_cuenta')
+                    )
+
+                    # Actualizar datos del proveedor
+                    proveedor_user.banco = request.POST.get('banco')
+                    proveedor_user.numero_cuenta = request.POST.get('numero_cuenta')
+                    proveedor_user.tipo_cuenta = request.POST.get('tipo_cuenta')
+                    proveedor_user.descripcion = request.POST.get('descripcion')
+                    proveedor_user.ano_profesion = request.POST.get('ano_experiencia')
+                    proveedor_user.licencia = request.POST.get('licencia')
+                    proveedor_user.direccion = request.POST.get('direccion')
+
+                    # Documentos y foto
+                    if 'filesDocuments' in request.POST:
+                        doc = Document.objects.create(documento=request.POST.get('filesDocuments')[7:])
+                        proveedor_user.document.set([doc])
+
+                    if 'foto' in request.POST:
+                        proveedor_user.user_datos.foto = request.POST.get('foto')[7:]
+
+                    if 'copiaCedula' in request.POST:
+                        proveedor_user.copiaCedula = request.POST.get('copiaCedula')[7:]
+
+                    if 'copiaLicencia' in request.POST:
+                        proveedor_user.copiaLicencia = request.POST.get('copiaLicencia')[7:]
+
+                    proveedor_user.save()
+                    proveedor_user.user_datos.save()
+
+                    # Enviar correo de aceptación
+                    asunto = "Solicitud Aceptada"
+                    formatEmail = FormatEmail()
+                    threading.Thread(
+                        target=formatEmail.send_email,
+                        args=([user_email], asunto, 'emails/formularioAceptado.html',
+                            {"username": nombre_user + ' ' + apellido_user, "user": user_email, "password": user_password})
+                    ).start()
+
+                # ===== 5. Eliminar de Firebase si existía antes =====
+                try:
+                    user_record = fire_auth.get_user_by_email(user_email)
+                    fire_auth.delete_user(user_record.uid)
+                    print(f"Usuario Firebase eliminado: {user_record.uid}")
+                except fire_auth.UserNotFoundError:
+                    pass
+                
+                # ===== 6. Todo OK =====
+                data['success'] = True
+                data['email'] = dato.user.email
+                data['username'] = dato.user.username
+                data['token'] = Token.objects.get(user=dato.user).key
                 return Response(data)
-        else:
-            data['error'] = "Usuario ya existente!."
+
+        except Exception as e:
+            data['success'] = False
+            data['error'] = f"Hubo un error: {e}"
             return Response(data)
-
-
+        
 class FacebookLogin(SocialLoginView):
     adapter_class = FacebookOAuth2Adapter
 
@@ -3128,8 +3153,8 @@ class Proveedores_Proveedores(APIView, MyPaginationMixin):
         if e.estado != False:
             thread = threading.Thread(target=formatEmail.send_email([e.user_datos.user.username], "Cuenta caducada", 'emails/enviarAlerta.html', {"username":e.user_datos.user.username, "contenido": "Tu cuenta ha caducado, si deseas extender tu contrato contactanos por nuestros canales oficiales."}))
             thread.start()
-        print('e.fecha_caducidad')
-        print(e.fecha_caducidad)
+        #print('e.fecha_caducidad')
+        #print(e.fecha_caducidad)
         e.estado = False
         e.save()
         datos=e.user_datos
@@ -3423,14 +3448,36 @@ class Administradores(APIView, MyPaginationMixin):
         data = {}
         userObj = request.data.get('user')
         try:
+            if User.objects.filter(email=request.data.get('email')).exists():
+                raise Exception("Ya registrado")
             usuario = User.objects.create_user(email=request.data.get(
                 'email'), username=request.data.get('email'), password=request.data.get('password'))
             grupo = Group.objects.get(name=request.data.get('rol'))
             grupo.user_set.add(usuario)
-        except:
+        except Exception as e:
+            print(e)
             data['error'] = "Usuario ya existente!."
             return Response(data)
+        try:
+            user_record = fire_auth.get_user_by_email(request.data.get('email'))
+            fire_auth.update_user(user_record.uid, password=request.data.get('password'))
+            print(f"Se actualizo la contraseña.")
 
+        except fire_auth.UserNotFoundError:
+            try:
+                user = fire_auth.create_user(
+                    email=request.data.get('email'),
+                    password=request.data.get('password'),
+                )
+                print(f'¡Usuario nuevo creado exitosamente! Email: {request.data.get("email")}, UID: {user.uid}')
+            except Exception as e:
+                print(f"Error al crear el nuevo usuario en firebase: {e}")
+                data['error'] = f"Error al crear el nuevo usuario en firebase: {e}"
+                return Response(data)
+        except Exception as e:
+            print(f"Error inesperado al intentar verificar o gestionar el usuario: {e}")
+            data['error'] = f"Error inesperado al intentar verificar o gestionar el usuario: {e}"
+            return Response(data)
         tipoUser = request.data.get('tipo')
         nombreUser = request.data.get('nombres')
         apellidosUser = request.data.get('apellidos')
