@@ -65,6 +65,7 @@ from django.views.decorators.csrf import csrf_exempt
 from TomeSoft_1.settings import ACCESS_URL, FIREBASE_ACCESS_TOKEN
 from firebase_admin import auth as fire_auth
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Q
 
 @csrf_exempt
 def send_notificationF(tokend, title, body, data):
@@ -482,11 +483,11 @@ class Medallas(APIView):
         medalla = Medalla.objects.get(id=id)
         serializer = MedallaSerializer(
             medalla, data=request.data, partial=True)
-        if serializer.is_valid():
-            print(serializer)
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        print(serializer)
+        serializer.save()
+        return Response(serializer.data)
 
     def delete(self, request, id, format=None):
         insignia = Insignia.objects.get(id=id)
@@ -1069,7 +1070,7 @@ class Registro(viewsets.ModelViewSet):
                 # ===== 1. Validar si ya existe =====
                 user_email = request.POST.get('email')
                 user_password = request.POST.get('password')
-                if User.objects.filter(username=user_email).exists():
+                if User.objects.filter(Q(username=user_email) | Q(email=user_email)).exists():
                     raise Exception("Usuario ya existente")
                 # ===== 2. Crear usuario =====
                 usuario = User.objects.create_user(
@@ -1622,10 +1623,18 @@ class Proveedores_Pendientes_Email(APIView):
 
     def get(self, request, mail, format=None):
         try:
-            administrador = Proveedor_Pendiente.objects.get(email=mail)
+
+            administrador = Proveedor_Pendiente.objects.filter(
+                email=mail,
+                estado=False
+            ).filter(
+                Q(rechazo__isnull=True) | Q(rechazo='')
+            ).first()
+            if not administrador:
+                raise Exception()
             serializer = Proveedor_PendienteSerializer(administrador)
             return Response(serializer.data)
-        except:
+        except Exception as e:
             return Response("nuevo")
 
 class Proveedores_Pendientes_Details(APIView):
@@ -1742,82 +1751,114 @@ class Proveedores_Proveedores_Details(APIView):
 
     def put(self, request, pk, format=None):
         print("dime si entra")
-        pendiente = Proveedor.objects.get(id=pk)
-        copiaCedula = request.data.get('copiaCedula')
-        copiaLicencia = request.data.get('copiaLicencia')
-        filesDocuments = request.data.get('filesDocuments')
-        foto = request.data.get('foto')
-        documents = request.FILES.getlist('filesDocuments')
+        try:
+            with transaction.atomic():
+                pendiente = Proveedor.objects.get(id=pk)
+                copiaCedula = request.data.get('copiaCedula')
+                copiaLicencia = request.data.get('copiaLicencia')
+                filesDocuments = request.data.get('filesDocuments')
+                foto = request.data.get('foto')
+                documents = request.FILES.getlist('filesDocuments')
 
-        print("Pendiente original")
-        print(pendiente)
-        print("Datos ingresados")
-        print(request.data)
-        if not copiaCedula == None:
-            pendiente.copiaCedula.delete()
+                print("Pendiente original")
+                print(pendiente)
+                print("Datos ingresados")
+                print(request.data)
+                if not copiaCedula == None:
+                    pendiente.copiaCedula.delete()
 
-        if not copiaLicencia == None:
-            pendiente.copiaLicencia.delete()
+                if not copiaLicencia == None:
+                    pendiente.copiaLicencia.delete()
 
-        # if not foto == None:
-        #     pendiente.foto.delete()
+                # if not foto == None:
+                #     pendiente.foto.delete()
 
-        for doc in documents:
-            print("Document", doc)
-            documento_creado = Document.objects.create(documento=doc)
-            pendiente.document.add(documento_creado)
-        if 'user_datos' in request.data:
-            user_datos_str = request.data['user_datos']
-            user_datos = json.loads(user_datos_str) if isinstance(user_datos_str, str) else user_datos_str
+                for doc in documents:
+                    print("Document", doc)
+                    documento_creado = Document.objects.create(documento=doc)
+                    pendiente.document.add(documento_creado)
+                if 'user_datos' in request.data:
+                    user_datos_str = request.data['user_datos']
+                    user_datos = json.loads(user_datos_str) if isinstance(user_datos_str, str) else user_datos_str
 
-            # Actualizar los campos de 'user_datos'
-            pendiente.user_datos.nombres = user_datos.get('nombres')
-            pendiente.user_datos.apellidos = user_datos.get('apellidos')
-            pendiente.user_datos.cedula = user_datos.get('cedula')
-            pendiente.user_datos.ciudad = user_datos.get('ciudad')
-            pendiente.user_datos.telefono = user_datos.get('telefono')
-            pendiente.user_datos.genero = user_datos.get('genero')
-            pendiente.user_datos.foto = foto or pendiente.user_datos.foto
-            pendiente.user_datos.fecha_creacion = timezone.now()
-            pendiente.user_datos.save()
-        serializer = ProveedorSerializer(pendiente, data=request.data, partial=True)
-        if 'foto' in request.FILES:
-            foto_user = request.FILES.get('foto')
-            serializer.foto = foto_user
-            print(foto_user, "foto")
-        if 'copiaCedula' in request.FILES:
-            copiaCedula = request.FILES.get('copiaCedula')
-            serializer.copiaCedula = copiaCedula
-            print(copiaCedula, "COPIA CEDULA")
-        if 'copiaLicencia' in request.FILES:
-            copiaLicencia = request.FILES.get('copiaLicencia')
-            serializer.copiaLicencia = copiaLicencia
-            print(copiaLicencia, "COPIA LICencia")
-        if 'filesDocuments' in request.FILES:
-            filesDocuments = request.FILES.get('filesDocuments')
-            arrayfilesDocuments=[filesDocuments]
-            serializer.document = arrayfilesDocuments
-            print(filesDocuments, "FILE DOCS")
+                    # Actualizar los campos de 'user_datos'
+                    pendiente.user_datos.nombres = user_datos.get('nombres')
+                    pendiente.user_datos.apellidos = user_datos.get('apellidos')
+                    pendiente.user_datos.cedula = user_datos.get('cedula')
+                    pendiente.user_datos.ciudad = user_datos.get('ciudad')
+                    pendiente.user_datos.telefono = user_datos.get('telefono')
+                    pendiente.user_datos.genero = user_datos.get('genero')
+                    pendiente.user_datos.foto = foto or pendiente.user_datos.foto
+                    pendiente.user_datos.fecha_creacion = timezone.now()
+                    pendiente.user_datos.save()
 
-        profesiones_lista = request.POST.get('profesion').split(',')
-        print("trabalho?", profesiones_lista)
-        if(profesiones_lista):
-            Profesion_Proveedor.objects.all().filter(proveedor = pendiente).delete()
-            for profesion in profesiones_lista:
-                profesion_obnj_lista = Profesion.objects.filter(nombre=profesion)
-                if(profesion_obnj_lista):
-                    profesion_obnj = Profesion.objects.get(nombre=profesion)
-                    #Comentado porque ano_experiencia no se guarda por lo que qeda como null y sale error, al arreglar descomentar la linea y comentar la que esta abajo de esta
-                    #profesion_proveedor = Profesion_Proveedor.objects.get_or_create(proveedor=pendiente, profesion=profesion_obnj,ano_experiencia=request.POST.get('ano_experiencia'))
-                    profesion_proveedor = Profesion_Proveedor.objects.get_or_create(proveedor=pendiente, profesion=profesion_obnj)
+                    email_actual = pendiente.user_datos.user.email
+                    email_nuevo = request.data.get('email')
+                    if not email_nuevo:
+                        raise Exception("Email no puede ser null")
+                    if email_actual != email_nuevo:
+                        pendiente.user_datos.user.email = email_nuevo
+                        pendiente.user_datos.user.save()
+                        try:
+                            user_record = fire_auth.get_user_by_email(email_actual)
+                            fire_auth.update_user(user_record.uid, email=email_nuevo)
+                            print(f"Se actualizo el correo.")
+                        except fire_auth.UserNotFoundError:
+                            try:
+                                user = fire_auth.create_user(
+                                    email=email_nuevo,
+                                    password=pendiente.user_datos.user.password,#hay que poner alguna contraseña
+                                )
+                                print(f'¡Usuario nuevo creado exitosamente! Email: {email_nuevo}, UID: {user.uid}')
+                                #reset_link = fire_auth.generate_password_reset_link(email_nuevo)
+                                #print(f"Email cambio de contraseña enviada: {reset_link}")
+                            except Exception as e:
+                                print(f"Error al crear el nuevo usuario en firebase: {e}")
+                                raise Exception(f"Error al crear el nuevo usuario en firebase: {e}")
+                        except Exception as e:
+                            print(f"Error inesperado al intentar verificar o gestionar el usuario: {e}")
+                            raise Exception(f"Error inesperado al intentar verificar o gestionar el usuario: {e}")
 
-            print("trabalho!!!!!!")
-            serializer.profesion = request.POST.get('profesion').split(',')
-        pendiente.user_datos.save()
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                serializer = ProveedorSerializer(pendiente, data=request.data, partial=True)
+                if 'foto' in request.FILES:
+                    foto_user = request.FILES.get('foto')
+                    serializer.foto = foto_user
+                    print(foto_user, "foto")
+                if 'copiaCedula' in request.FILES:
+                    copiaCedula = request.FILES.get('copiaCedula')
+                    serializer.copiaCedula = copiaCedula
+                    print(copiaCedula, "COPIA CEDULA")
+                if 'copiaLicencia' in request.FILES:
+                    copiaLicencia = request.FILES.get('copiaLicencia')
+                    serializer.copiaLicencia = copiaLicencia
+                    print(copiaLicencia, "COPIA LICencia")
+                if 'filesDocuments' in request.FILES:
+                    filesDocuments = request.FILES.get('filesDocuments')
+                    arrayfilesDocuments=[filesDocuments]
+                    serializer.document = arrayfilesDocuments
+                    print(filesDocuments, "FILE DOCS")
+
+                profesiones_lista = request.POST.get('profesion').split(',')
+                print("trabalho?", profesiones_lista)
+                if(profesiones_lista):
+                    Profesion_Proveedor.objects.all().filter(proveedor = pendiente).delete()
+                    for profesion in profesiones_lista:
+                        profesion_obnj_lista = Profesion.objects.filter(nombre=profesion)
+                        if(profesion_obnj_lista):
+                            profesion_obnj = Profesion.objects.get(nombre=profesion)
+                            #Comentado porque ano_experiencia no se guarda por lo que qeda como null y sale error, al arreglar descomentar la linea y comentar la que esta abajo de esta
+                            #profesion_proveedor = Profesion_Proveedor.objects.get_or_create(proveedor=pendiente, profesion=profesion_obnj,ano_experiencia=request.POST.get('ano_experiencia'))
+                            profesion_proveedor = Profesion_Proveedor.objects.get_or_create(proveedor=pendiente, profesion=profesion_obnj)
+
+                    print("trabalho!!!!!!")
+                    serializer.profesion = request.POST.get('profesion').split(',')
+                pendiente.user_datos.save()
+                if not serializer.is_valid():
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                serializer.save()
+                return Response(serializer.data)
+        except Exception as e:
+            return Response(e, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk, format=None):
 
