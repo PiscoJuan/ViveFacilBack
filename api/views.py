@@ -26,7 +26,8 @@ from django.contrib.auth import logout, login, authenticate
 from django.contrib.auth import models
 from allauth.socialaccount.providers.facebook.views import FacebookOAuth2Adapter
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
-from dj_rest_auth.registration.views import SocialLoginView
+#from rest_auth.registration.views import SocialLoginView #en produccion
+from dj_rest_auth.registration.views import SocialLoginView #en local
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from django.contrib.auth.forms import AuthenticationForm
