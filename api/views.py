@@ -63,102 +63,122 @@ from firebase_admin import messaging
 from firebase_admin.exceptions import FirebaseError
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
-from TomeSoft_1.settings import ACCESS_URL, FIREBASE_ACCESS_TOKEN
+from TomeSoft_1.settings import ACCESS_URL
 from firebase_admin import auth as fire_auth
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 
+class TokenFirebase:
+    expirado = False
+    nuevo_token = None
+
+def get_firebase_access_token():
+    try:
+        from firebase_admin import credentials
+        import firebase_admin
+        from google.auth.transport.requests import Request
+        from google.oauth2 import service_account
+        import os
+        from TomeSoft_1.settings import CRED_PATH, BASE_DIR
+        # Ruta al archivo de credenciales
+        # Generar el token de acceso utilizando google-auth
+        credentials = service_account.Credentials.from_service_account_file(
+            os.path.join(BASE_DIR, 'TomeSoft_1/vive-facil-66ae4-firebase-adminsdk-fo42r-94d590fc9a.json'),
+            scopes=["https://www.googleapis.com/auth/firebase.messaging"]
+        )
+
+        # Solicitar un token de acceso
+        credentials.refresh(Request())
+
+        # Obtener el token de acceso
+        FIREBASE_ACCESS_TOKEN = credentials.token
+        return FIREBASE_ACCESS_TOKEN
+    except Exception as e:
+        print(f"Error al inicializar Firebase Admin SDK o al obtener el token de acceso: {e}")
+        return None
+
 @csrf_exempt
 def send_notificationF(tokend, title, body, data):
     try:
-        # Verifica si el token está disponible
-        if not FIREBASE_ACCESS_TOKEN:
-            print("Error: No se pudo obtener el token de Firebase.")
+        responses = []
+        success_flag = False
+        token_trabajo = settings.FIREBASE_ACCESS_TOKEN
+        if not token_trabajo or TokenFirebase.expirado:
+            token_trabajo = TokenFirebase.nuevo_token
+        # Obtener token desde settings (no lo renueva si no hace falta)
+        if not token_trabajo:
+            print("No se pudo obtener el token de Firebase")
             return JsonResponse({"error": "No se pudo obtener el token de Firebase"}, status=500)
 
-        print("Firebase Access Token obtenido correctamente.")
+        print("Token Firebase listo.")
+        unique_tokens = list(set(tokend))
 
-        # Eliminar duplicados de la lista de tokens
-        unique_tokens = list(set(tokend))  # Convertir a conjunto y luego a lista para eliminar duplicados
-        print(f"Tokens únicos para enviar notificaciones: {unique_tokens}")
-
-        # Inicializa la lista para almacenar respuestas de Firebase
-        responses = []
-        success_flag = False  # Flag to track if at least one notification was successful
-
-        # Recorrer cada token en la lista
         for token in unique_tokens:
-            print(f"Enviando notificación al token: {token}")
-
-            # Cuerpo de la notificación
             message = {
                 "message": {
                     "token": token,
-                    "notification": {
-                        "title": title,
-                        "body": body
-                    },
+                    "notification": {"title": title, "body": body},
                     "data": data
                 }
             }
-            print(f"Mensaje a enviar: {message}")
 
-            # Envía la petición POST a FCM
-            try:
-                response = requests.post(
-                    ACCESS_URL,
-                    json=message,
-                    headers={
-                        'Content-Type': 'application/json',
-                        'Authorization': f'Bearer {FIREBASE_ACCESS_TOKEN}'
-                    }
-                )
-                print(f"Respuesta de Firebase para token {token}: {response.status_code} - {response.text}")
+            response = requests.post(
+                settings.ACCESS_URL,
+                json=message,
+                headers={
+                    'Content-Type': 'application/json',
+                    'Authorization': f'Bearer {token_trabajo}'
+                }
+            )
 
-                # Guarda la respuesta
-                if response.status_code == 200:
-                    success_flag = True  # Mark as success if at least one notification succeeds
-                    responses.append({
-                        "token": token,
-                        "status_code": response.status_code,
-                        "response": response.json()
-                    })
-                else:
-                    responses.append({
-                        "token": token,
-                        "status_code": response.status_code,
-                        "response": response.text
-                    })
-            except requests.exceptions.RequestException as req_error:
-                print(f"Error al enviar la notificación al token {token}: {req_error}")
+            # Si el token expiró (401/403), lo renovamos y reintentamos una vez
+            if response.status_code in (401, 403):
+                print("Token Firebase expirado, renovando...")
+                TokenFirebase.expirado = True
+                token_obtenido = get_firebase_access_token()
+                TokenFirebase.nuevo_token = token_obtenido
+                token_trabajo = token_obtenido
+                if token_obtenido:
+                    response = requests.post(
+                        settings.ACCESS_URL,
+                        json=message,
+                        headers={
+                            'Content-Type': 'application/json',
+                            'Authorization': f'Bearer {token_obtenido}'
+                        }
+                    )
+
+            print(f"Respuesta Firebase ({token}): {response.status_code}")
+
+            if response.status_code == 200:
+                success_flag = True
                 responses.append({
                     "token": token,
-                    "status_code": 500,
-                    "response": f"Error de conexión: {req_error}"
+                    "status_code": 200,
+                    "response": response.json()
+                })
+            else:
+                responses.append({
+                    "token": token,
+                    "status_code": response.status_code,
+                    "response": response.text
                 })
 
-        # Verifica si al menos una notificación fue exitosa
         if success_flag:
-            print("Al menos una notificación fue enviada exitosamente.")
-            successful_responses = [res for res in responses if res["status_code"] == 200]
-            print(f"Notificaciones exitosas: {successful_responses}")
             return JsonResponse({
                 "message": "Notificaciones enviadas con éxito.",
-                "successful_responses": successful_responses,
+                "successful_responses": [r for r in responses if r["status_code"] == 200],
                 "all_responses": responses
-            }, safe=False)
+            })
         else:
-            print("No se pudo enviar ninguna notificación.")
             return JsonResponse({
                 "message": "No se pudo enviar ninguna notificación.",
                 "all_responses": responses
-            }, safe=False)
+            })
 
     except Exception as e:
-        print(f"Error en el servidor: {str(e)}")
-        return JsonResponse({"error": "Error en el servidor", "details": str(e)}, status=500)
-
-
+        print(f"Error general al enviar notificación: {e}")
+        return JsonResponse({"error": "Error interno en el servidor", "details": str(e)}, status=500)
 
 @csrf_exempt
 def send_notificationI(token, title,body,data):
@@ -929,6 +949,12 @@ class Servicios(APIView):
     # permission_classes = (IsAuthenticated,)
     # authentication_class = (TokenAuthentication)
     def get(self, request, format=None):
+        from django.conf import settings
+        print(settings.FIREBASE_ACCESS_TOKEN)
+        settings.FIREBASE_API_KEY = "AIzaSyD-ExampleKey1234567890"
+        print()
+        print(settings.FIREBASE_ACCESS_TOKEN)
+        print()
         servicios = Servicio.objects.all().filter(estado = True)
         serializer = ServicioSerializer(servicios, many=True)
         return Response(serializer.data)
@@ -3677,8 +3703,6 @@ class Proveedor_Profesiones(APIView):
             # serializer.data[c]['profesion']['id'] = servicioTemp.id
             serializer.data[c]['profesion']['servicio'] = ServicioSerializer(servicioTemp).data
             c=c+1
-        print('JSONRenderer().render(serializer.data)')
-        print(JSONRenderer().render(serializer.data))
         return Response(serializer.data)
 
     def post(self, request, user, format=None):
