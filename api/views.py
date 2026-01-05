@@ -67,6 +67,9 @@ from TomeSoft_1.settings import ACCESS_URL
 from firebase_admin import auth as fire_auth
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
+from django.utils.timezone import now, localtime
+from django.db.models import Case, When, Value, CharField, DateTimeField
+from django.db.models.functions import Cast
 
 class TokenFirebase:
     expirado = False
@@ -2123,6 +2126,56 @@ class SolicitudesPastPag(APIView, MyPaginationMixin):
         try:
             page = self.paginate_queryset(self.queryset.filter(Q(solicitante__user_datos__user__email=correo) & (
                 Q(termino='finalizado') | Q(termino='cancelado') | Q(fecha_expiracion__lt=timezone.now(), adjudicar=False))).order_by('-id'))
+            if page is not None:
+                serializer = self.serializer_class(page, many=True)
+                return self.get_paginated_response(serializer.data)
+
+        except Exception as e:
+            data = {}
+            data['message'] = "No se pudo obtener la lista de solicitudes pasadas: " + \
+                str(e)
+            data['success'] = False
+            return Response(data)
+
+class SolicitudesEnProceso(APIView, MyPaginationMixin):
+    queryset = Solicitud.objects.all()
+    serializer_class = SolicitudEnProcesoSerializer
+    pagination_class = MyCustomPagination
+
+    def get(self, request, correo, format=None):
+        try:
+            #from django.db.models import Func
+            #ahora_guayaquil = localtime(now())
+            resultado = Solicitud.objects.filter(
+                solicitante__user_datos__user__email=correo
+            ).annotate(
+                estado_proceso=Case(
+                    When(
+                        adjudicar=False,
+                        proveedor__isnull=True,
+                        termino__isnull=True,
+                        fecha_expiracion__gt=timezone.now(),
+                        then=Value('ABIERTA')
+                    ),
+                    When(
+                        adjudicar=True,
+                        pagada=True,
+                        termino='pagado',
+                        then=Value('POR FINALIZAR')
+                    ),
+                    When(
+                        adjudicar=True,
+                        pagada=False,
+                        proveedor__isnull=False,
+                        then=Value('POR PAGAR')
+                    ),
+                    output_field=CharField()
+                )
+            ).filter(
+                estado_proceso__isnull=False
+            ).order_by('-id')
+                        
+            page = self.paginate_queryset( resultado .order_by('-id') )
             if page is not None:
                 serializer = self.serializer_class(page, many=True)
                 return self.get_paginated_response(serializer.data)

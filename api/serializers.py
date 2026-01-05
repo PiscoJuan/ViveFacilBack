@@ -262,6 +262,10 @@ class SolicitudSerializer(serializers.ModelSerializer):
         fields = ['id', 'descripcion', 'foto_descripcion', 'fecha_creacion', 'fecha_expiracion', 'solicitante', 'ubicacion',
                   'servicio', 'tipo_pago', 'proveedor', 'adjudicar', 'pagada', 'estado', 'termino', 'rating', 'descripcion_rating','descuento']
 
+class SolicitudEnProcesoSerializer(SolicitudSerializer):
+    estado_proceso = serializers.CharField(read_only=True)
+    class Meta(SolicitudSerializer.Meta):
+        fields = SolicitudSerializer.Meta.fields + ['estado_proceso']
 
 class Envio_InteresadosSerializer(serializers.ModelSerializer):
     solicitud = SolicitudSerializer(read_only=True)

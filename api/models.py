@@ -344,6 +344,10 @@ class Ubicacion(models.Model):
     def __str__(self):
         return str(self.latitud) + " | " + str(self.altitud)
 
+class Termino_solcitud(models.TextChoices):
+    FINALIZADO = 'finalizado', 'finalizado'
+    CANCELADO = 'cancelado', 'cancelado'
+    PAGADO = 'pagado', 'pagado'
 
 class Solicitud(models.Model):
     solicitante = models.ForeignKey(Solicitante, on_delete=models.CASCADE)
@@ -360,7 +364,7 @@ class Solicitud(models.Model):
     pagada = models.BooleanField(default=False)
     estado = models.BooleanField(default=True)
     descuento = models.FloatField(default=0.0)
-    termino = models.CharField(max_length=50, null=True, blank=True)
+    termino = models.CharField(max_length=50, null=True, blank=True, choices=Termino_solcitud.choices, default=None)
     fecha_creacion = models.DateTimeField(auto_now_add=True, null=True)
     descripcion_rating = models.CharField(
         max_length=100, default=" ", null=True, blank=True)

@@ -53,6 +53,7 @@ urlpatterns += [
     path('solicitudes_pasadasPag/<str:correo>', SolicitudesPastPag.as_view()),  # para Solicitante
     path('solicitudes_paidPag/<str:correo>',SolicitudesPaidPag.as_view()),      # para Solicitante
     path('solicitudes_no_paidPag/<str:correo>', SolicitudesNoPaidPag.as_view()),# para Solicitante
+    path('solicitudes_enProceso/<str:correo>', SolicitudesEnProceso.as_view()),  # para Solicitante    
     path('proveedores/', Proveedores.as_view()),
     path('proveedores/<str:id>', Proveedores.as_view()),
     # path('proveedor/<str:pk>', Proveedores_Details.as_view()),                #este endpoint es una basura.
