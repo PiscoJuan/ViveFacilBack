@@ -132,8 +132,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-**/migrations/*
-!**/migrations/__init__.py
 
 media/
 static/
@@ -141,7 +139,7 @@ static/
 *.pdf
 
 # FCM key
-backend/*firebase-adminsdk*.json
+**/*firebase-adminsdk*.json
 novacoin/.DS_Store
 .DS_Store
 .DS_Store
