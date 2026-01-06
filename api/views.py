@@ -2642,10 +2642,6 @@ class ProveedoresByProfesion(APIView):
         profesion= Profesion.objects.get(nombre=servicio.nombre)
         prov_prof = Profesion_Proveedor.objects.all().filter(
             profesion=profesion)
-        print("servicio")
-        print(servicio)
-        print("prov_prof")
-        print(prov_prof)
         serializer = Profesion_ProveedorSerializer(prov_prof, many=True)
         return Response(serializer.data)
 

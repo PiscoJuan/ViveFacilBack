@@ -5,7 +5,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from rest_framework.authtoken.models import Token
 from django.contrib.postgres.fields import ArrayField
-
+from django.utils.timezone import now
 # clase para paymentez
 
 
@@ -359,7 +359,7 @@ class Solicitud(models.Model):
     descripcion = models.CharField(max_length=500)
     foto_descripcion = models.ImageField(
         upload_to='foto_solicitud/foto_descripcion', null=True, blank=True)
-    fecha_expiracion = models.CharField(max_length=200)
+    fecha_expiracion = models.DateTimeField(max_length=200, default=now())
     adjudicar = models.BooleanField(default=False)
     pagada = models.BooleanField(default=False)
     estado = models.BooleanField(default=True)
