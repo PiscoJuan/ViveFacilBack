@@ -359,7 +359,7 @@ class Solicitud(models.Model):
     descripcion = models.CharField(max_length=500)
     foto_descripcion = models.ImageField(
         upload_to='foto_solicitud/foto_descripcion', null=True, blank=True)
-    fecha_expiracion = models.DateTimeField(max_length=200, default=now())
+    fecha_expiracion = models.DateTimeField(max_length=200, default=now)
     adjudicar = models.BooleanField(default=False)
     pagada = models.BooleanField(default=False)
     estado = models.BooleanField(default=True)

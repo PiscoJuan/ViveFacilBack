@@ -68,6 +68,7 @@ from firebase_admin import auth as fire_auth
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 from django.utils.timezone import now, localtime
+from django.utils import timezone
 from django.db.models import Case, When, Value, CharField, DateTimeField
 from django.db.models.functions import Cast
 
@@ -3265,7 +3266,7 @@ class Proveedores_Proveedores(APIView, MyPaginationMixin):
     #     return Response(serializer.data)
     print("querysetBan")
     formatEmail = FormatEmail()
-    today = timezone.now().date()
+    today = timezone.now()
     for e in Proveedor.objects.all().order_by('-id').filter(fecha_caducidad__lt=today):
         if e.estado != False:
             thread = threading.Thread(target=formatEmail.send_email([e.user_datos.user.username], "Cuenta caducada", 'emails/enviarAlerta.html', {"username":e.user_datos.user.username, "contenido": "Tu cuenta ha caducado, si deseas extender tu contrato contactanos por nuestros canales oficiales."}))
