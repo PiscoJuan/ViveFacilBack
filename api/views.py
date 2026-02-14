@@ -18,7 +18,7 @@ from django.db import transaction
 from rest_framework.renderers import JSONRenderer
 from django.contrib.auth.models import User, Group, Permission
 from django.db.models import Count, Sum
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
@@ -374,16 +374,14 @@ class InsigniasPersonales(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class MedallasPersonales(APIView):
-
-    def get(self, request, id,  format=None):
-        utc=pytz.UTC
-        print("AAAAAAAAAAAAAAAAAAAAAA")
-        print(id)
-        print("EEEEEEEEEEE")
+    permission_classes = [IsAuthenticated]
+    def get(self, request, format=None):
+        utc=pytz.UTC        
         medallasTot = Medalla.objects.all().filter()
-        print(medallasTot)
-        dato = Datos.objects.get(id=id)
-        print(dato)
+        user = request.user
+        dato = user.datos_set.all().first()
+        if not dato:
+            return Response([])
         fechaDato=dato.fecha_creacion
         correoDato=dato.user.email
         list_of_ids = []
@@ -398,7 +396,6 @@ class MedallasPersonales(APIView):
                     dato.save()
                     medallaNueva.save()
 
-        print("jeje")
         medallasMostrar=Medalla.objects.filter(id__in=list_of_ids)
         serializer = MedallaSerializer(medallasMostrar, many=True)
         return Response(serializer.data)
@@ -617,7 +614,7 @@ class DeviceNotification(APIView):
         data = {}
         num_devices = 0
         correo = request.data.get('correo')
-        devices = FCMDevice.objects.filter(active=True,user=correo)
+        devices = FCMDevice.objects.filter(active=True,user__email=correo)
         if len(devices) != 0:
             for device in devices:
                 device.delete()
@@ -950,15 +947,11 @@ class Categorias(APIView):
 
 
 class Servicios(APIView):
-    # permission_classes = (IsAuthenticated,)
-    # authentication_class = (TokenAuthentication)
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [AllowAny()]          # GET público
+        return [IsAuthenticated()]       # POST, PUT, DELETE protegidos
     def get(self, request, format=None):
-        from django.conf import settings
-        print(settings.FIREBASE_ACCESS_TOKEN)
-        settings.FIREBASE_API_KEY = "AIzaSyD-ExampleKey1234567890"
-        print()
-        print(settings.FIREBASE_ACCESS_TOKEN)
-        print()
         servicios = Servicio.objects.all().filter(estado = True)
         serializer = ServicioSerializer(servicios, many=True)
         return Response(serializer.data)
@@ -1429,7 +1422,7 @@ class Data_Proveedor_Pendiente(APIView):
     # authentication_class = (TokenAuthentication)
     def post(self, request, format=None):
         data = {}
-        print("ESTE")
+        print("PROVEEDOR PENDIENTE WEB")
         if request.data.get('tipo') != 'Proveedor_Pendiente':
             data['error'] = "El tipo de usuario no es un Proveedor Pendiente"
             return Response(data)
@@ -1596,6 +1589,7 @@ class Proveedor_Pendiente_Admin(APIView, MyPaginationMixin):
         return Response(serializer.data)
 
     def post(self, request, format=None):
+        print("PROVEEDOR PENDIENTE admin")
         data = {}
         nombres_prov = request.data.get('nombres')
         apellidos_prov = request.data.get('apellidos')
@@ -2021,6 +2015,7 @@ class SolicitudAdjudicada(APIView):
 
 
 class AdjudicarSolicitud(APIView):
+    permission_classes = [IsAuthenticated]
     def put(self, request, solicitud_ID, format=None):
         data = {}
         try:
@@ -2067,6 +2062,7 @@ class AdjudicarSolicitud(APIView):
 
 
 class SolicitudID(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self, request, solicitud_ID, format=None):
         solicitud = Solicitud.objects.get(id=solicitud_ID)
         serializer = SolicitudSerializer(solicitud)
@@ -2122,10 +2118,11 @@ class SolicitudesPastPag(APIView, MyPaginationMixin):
     queryset = Solicitud.objects.all()
     serializer_class = SolicitudSerializer
     pagination_class = MyCustomPagination
-
-    def get(self, request, correo, format=None):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, format=None):
         try:
-            page = self.paginate_queryset(self.queryset.filter(Q(solicitante__user_datos__user__email=correo) & (
+            user = request.user
+            page = self.paginate_queryset(self.queryset.filter(Q(solicitante__user_datos__user=user) & (
                 Q(termino='finalizado') | Q(termino='cancelado') | Q(fecha_expiracion__lt=timezone.now(), adjudicar=False))).order_by('-id'))
             if page is not None:
                 serializer = self.serializer_class(page, many=True)
@@ -2142,13 +2139,14 @@ class SolicitudesEnProceso(APIView, MyPaginationMixin):
     queryset = Solicitud.objects.all()
     serializer_class = SolicitudEnProcesoSerializer
     pagination_class = MyCustomPagination
-
-    def get(self, request, correo, format=None):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, format=None):
         try:
             #from django.db.models import Func
             #ahora_guayaquil = localtime(now())
+            user = request.user
             resultado = Solicitud.objects.filter(
-                solicitante__user_datos__user__email=correo
+                solicitante__user_datos__user=user
             ).annotate(
                 estado_proceso=Case(
                     When(
@@ -2290,7 +2288,7 @@ class SolicitudesNoPaid(APIView):
 
 
 class Solicituds(APIView):
-    # permission_classes = (IsAuthenticated,)
+    permission_classes = [IsAuthenticated]
     # authentication_class = (TokenAuthentication)
     def get(self, request, format=None):
         solicitud = Solicitud.objects.all().filter()
@@ -2359,6 +2357,7 @@ class Solicituds(APIView):
 
 
 class AddSolicitud(APIView):
+    permission_classes = [IsAuthenticated]
     def post(self, request, format=None):
         print('Entro Aca')
         # Data de respuesta
@@ -2526,8 +2525,10 @@ class Solicitudes(APIView):
 
 
 class Profesiones(APIView):
-   # permission_classes = (IsAuthenticated,)
-   # authentication_class = (TokenAuthentication)
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [AllowAny()]          # GET público
+        return [IsAuthenticated()]       # POST, PUT, DELETE protegidos
     def get(self, request, format=None):
         profesion = Profesion.objects.all().filter(estado=1)
         serializer = ProfesionSerializer(profesion, many=True)
@@ -2638,6 +2639,7 @@ class ProfesionProveedor(APIView):
 
 
 class ProveedoresByProfesion(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self, request, servicio_id, format=None):
         servicio= Servicio.objects.get(id=servicio_id)
         profesion= Profesion.objects.get(nombre=servicio.nombre)
@@ -3738,11 +3740,11 @@ class AdministradoresUser(APIView, MyPaginationMixin):
 
 
 class Proveedor_Profesiones(APIView):
-   # permission_classes = (IsAuthenticated,)
-   # authentication_class = (TokenAuthentication)
-    def get(self, request, user, format=None):
+    permission_classes = [IsAuthenticated]    
+    def get(self, request, format=None):
+        user = request.user
         proveedor_profesiones = Profesion_Proveedor.objects.filter(
-            proveedor__user_datos__user__username=user) | Profesion_Proveedor.objects.filter(proveedor__user_datos__user__email=user)
+            proveedor__user_datos__user=user) | Profesion_Proveedor.objects.filter(proveedor__user_datos__user=user)
         serializer = Profesion_ProveedorSerializer(
             proveedor_profesiones, many=True)
         c=0
@@ -3755,7 +3757,8 @@ class Proveedor_Profesiones(APIView):
             c=c+1
         return Response(serializer.data)
 
-    def post(self, request, user, format=None):
+    def post(self, request, format=None):
+        user = request.user
         data = {}
         profesion = request.data.get('profesion')
         anios = request.data.get('ano_experiencia')
@@ -3767,7 +3770,7 @@ class Proveedor_Profesiones(APIView):
             return Response(data)
 
         try:
-            proveedor = Proveedor.objects.get(user_datos__user__username=user)
+            proveedor = Proveedor.objects.get(user_datos__user=user)
         except:
             data['success'] = False
             data['message'] = 'El correo del proveedor pasado por parámetro no se ha encontrado en la base de datos.'
@@ -3798,7 +3801,7 @@ class Proveedor_Profesiones(APIView):
 
             # Notificacion al proveedor con el correo en especifico
             devices = FCMDevice.objects.filter(
-                active=True, user__username=user)
+                active=True, user=user)
             # Obtiene la lista de registration_ids (tokens)
             tokend = devices.values_list('registration_id', flat=True)
             titles="Tienes una Nueva Profesión: "+profesion,
@@ -3849,11 +3852,12 @@ class Proveedor_Profesiones(APIView):
 
 
 class Solicitud_Servicio_User(APIView):
- # permission_classes = (IsAuthenticated,)
+    permission_classes = [IsAuthenticated]
    # authentication_class = (TokenAuthentication)
-    def get(self, request, ID_servicio, user, format=None):
+    def get(self, request, ID_servicio, format=None):
+        user = request.user
         solicitud_servicio = Envio_Interesados.objects.filter(
-            solicitud__servicio=ID_servicio, solicitud__estado=True, proveedor__user_datos__user__username=user, interesado=False).order_by('-fecha_creacion')
+            solicitud__servicio=ID_servicio, solicitud__estado=True, proveedor__user_datos__user=user, interesado=False).order_by('-fecha_creacion')
         solicitudes = []
         for solicitud in solicitud_servicio:
             solicitudes.append(solicitud.solicitud)
@@ -3873,20 +3877,20 @@ class Service(APIView):
 
 
 class Envio(APIView):
-    # permission_classes = (IsAuthenticated,)
-    # authentication_class = (TokenAuthentication)
+    permission_classes = [IsAuthenticated]
     def get(self, request, solicitud_ID, format=None):
         envio_interesado = Envio_Interesados.objects.all().filter(
             solicitud=solicitud_ID, interesado=False)
         serializer = Envio_InteresadosSerializer(envio_interesado, many=True)
         return Response(serializer.data)
 
-    def put(self, request, user, solicitud_ID, format=None):
+    def put(self, request, solicitud_ID, format=None):
+        user_proveedor = request.user.username
         solicitud = Solicitud.objects.get(id=solicitud_ID)
         esNuevo = solicitud.adjudicar
         solicitante = solicitud.solicitante
         envio_interesado = Envio_Interesados.objects.all().get(
-            solicitud=solicitud_ID, proveedor__user_datos__user__username=user)
+            solicitud=solicitud_ID, proveedor__user_datos__user__username=user_proveedor)
         serializer = Envio_InteresadosSerializer(
             envio_interesado, data=request.data, partial=True)
         if serializer.is_valid():
@@ -3920,11 +3924,12 @@ class Envio(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request, user, solicitud_ID, format=None):
+    def delete(self, request, solicitud_ID, format=None):
         respuesta = {}
+        user_proveedor = request.user.username
         try:
             instance = Envio_Interesados.objects.get(
-                solicitud=solicitud_ID, proveedor__user_datos__user__username=user)
+                solicitud=solicitud_ID, proveedor__user_datos__user__username=user_proveedor)
             instance.delete()
             respuesta['success'] = True
             respuesta['message'] = 'Se ha eliminado el objeto Envio_Interesados correctamente de la base de datos'
@@ -4154,8 +4159,7 @@ class SolicitudesPagadas(APIView):
 
 
 class Envio_Interesado(APIView):
-    # permission_classes = (IsAuthenticated,)
-    # authentication_class = (TokenAuthentication)
+    permission_classes = [IsAuthenticated]
     def get(self, request, solicitud_ID, format=None):
         datos = []
         envio_interesado = Envio_Interesados.objects.all().filter(
@@ -4218,93 +4222,28 @@ class Login(APIView):
         res_tipo = request.data.get('tipo')
         data = {}
         form = AuthenticationForm(data=request.data)
-        if form.is_valid():
-            username = form.cleaned_data['username']
-            password = form.cleaned_data['password']
-            user = authenticate(username=username, password=password)
-            if user is not None:
-                do_login(request, user)
-                usuario = Datos.objects.get(user=user)
-                tipo = usuario.tipo.name
-                if (tipo == res_tipo and usuario.estado == True):
-                    token, _ = Token.objects.get_or_create(user=user)
-                    if (tipo == 'Proveedor'):
-                        proveedor = Proveedor.objects.get(user_datos=usuario)
-                        if (proveedor.estado):
-                            # data['token']=token = Token.objects.get(user=user).key
-                            data['token'] = token.key
-                            data['active'] = True
-                            data['form'] = request.data
-                            return Response(data)
-                        else:
-                            data['clave'] = usuario.security_access
-                            # data['token']=token = Token.objects.get(user=user).key
-                            data['token'] = token.key
-                            data['active'] = True
-                            data['form'] = request.data
-                            return Response(data)
-                    elif (tipo == 'Solicitante'):
-                        data['active'] = True
-                        data['token'] = token = Token.objects.get(
-                            user=user).key
-                        data['form'] = request.data
-                        return Response(data)
-                #elif (tipo == res_tipo and usuario.estado == False):
-                #    data['active'] = False
-                #    data['form'] = request.data
-                #    return Response(data)
-                else:
-                    data['error'] = 'Usuario no permitido'
-                    data['active'] = True
-                    data['form'] = request.data
-                    return Response(data, status=status.HTTP_400_BAD_REQUEST)
-        else:
+        if not form.is_valid():
             data['error'] = 'Error de formulario login'
             data['active'] = True
             data['form'] = request.data
             form = AuthenticationForm()
             return Response(data, status=status.HTTP_400_BAD_REQUEST)
-
-
-class LoginAdmin(APIView):
-    def post(self, request, format=None):
-        print("entra aca")
-        res_tipo = request.data.get('tipo')
-        data = {}
-        form = AuthenticationForm(data=request.data)
-        print(form)
-
         username = form.cleaned_data['username']
         password = form.cleaned_data['password']
-        print(username)
-        print(password)
         user = authenticate(username=username, password=password)
-        print(user)
-        print("autentico")
         if user is not None:
-            print("No es none")
             do_login(request, user)
-            print("login?")
             usuario = Datos.objects.get(user=user)
-            print(usuario)
-            print(usuario.tipo)
-            print("le hace get")
             tipo = usuario.tipo.name
-            print("tipo "+tipo)
-            print("res_tipo "+res_tipo)
             if (tipo == res_tipo and usuario.estado == True):
-                print("logro entrar")
                 token, _ = Token.objects.get_or_create(user=user)
-                print(token)
-                if (tipo == 'Administrador'):
-                    print("tipo "+tipo)
-                    admin = Administrador.objects.get(user_datos=usuario)
-                    if (admin.estado):
+                if (tipo == 'Proveedor'):
+                    proveedor = Proveedor.objects.get(user_datos=usuario)
+                    if (proveedor.estado):
                         # data['token']=token = Token.objects.get(user=user).key
                         data['token'] = token.key
                         data['active'] = True
                         data['form'] = request.data
-                        print("ACABA")
                         return Response(data)
                     else:
                         data['clave'] = usuario.security_access
@@ -4313,18 +4252,63 @@ class LoginAdmin(APIView):
                         data['active'] = True
                         data['form'] = request.data
                         return Response(data)
-            elif (tipo == res_tipo and usuario.estado == False):
-                data['active'] = False
-                data['form'] = request.data
-                print("estado == false")
-                return Response(data)
+                elif (tipo == 'Solicitante'):
+                    data['active'] = True
+                    data['token'] = token = Token.objects.get(
+                        user=user).key
+                    data['form'] = request.data
+                    return Response(data)
             else:
                 data['error'] = 'Usuario no permitido'
                 data['active'] = True
                 data['form'] = request.data
-                print("tipo != res.tipo")
                 return Response(data, status=status.HTTP_400_BAD_REQUEST)
-        return Response(data, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LoginAdmin(APIView):
+    def post(self, request, format=None):
+        res_tipo = request.data.get('tipo')
+        data = {}
+        form = AuthenticationForm(data=request.data)
+        if not form.is_valid():
+            data['error'] = 'Error de formulario login'
+            data['active'] = True
+            data['form'] = request.data
+            return Response(data, status=status.HTTP_400_BAD_REQUEST)
+        username = form.cleaned_data['username']
+        password = form.cleaned_data['password']
+        user = authenticate(username=username, password=password)
+        if user is None:
+            return Response(data, status=status.HTTP_400_BAD_REQUEST)
+        do_login(request, user)
+        usuario = Datos.objects.get(user=user)
+        tipo = usuario.tipo.name
+        if (tipo == res_tipo and usuario.estado == True):
+            token, _ = Token.objects.get_or_create(user=user)
+            if (tipo == 'Administrador'):
+                admin = Administrador.objects.get(user_datos=usuario)
+                if (admin.estado):
+                    # data['token']=token = Token.objects.get(user=user).key
+                    data['token'] = token.key
+                    data['active'] = True
+                    data['form'] = request.data
+                    return Response(data)
+                else:
+                    data['clave'] = usuario.security_access
+                    # data['token']=token = Token.objects.get(user=user).key
+                    data['token'] = token.key
+                    data['active'] = True
+                    data['form'] = request.data
+                    return Response(data)
+        elif (tipo == res_tipo and usuario.estado == False):
+            data['active'] = False
+            data['form'] = request.data
+            return Response(data)
+        else:
+            data['error'] = 'Usuario no permitido'
+            data['active'] = True
+            data['form'] = request.data
+            return Response(data, status=status.HTTP_400_BAD_REQUEST)
 
 # PAYMENTEZ-------------------------
 class Paymentez:
@@ -4410,7 +4394,7 @@ class Paymentez:
 
 
 class TarjetaUser(APIView):
-
+    permission_classes = [IsAuthenticated]
     def get(self, request, identifier, format=None):
         # id -> username
         tarjetas = Tarjeta.objects.all().filter(
@@ -4439,7 +4423,7 @@ class TarjetaUser(APIView):
 
 
 class Tarjetas(APIView):
-
+    permission_classes = [IsAuthenticated]
     def get(self, request, format=None):
         data = {}
         tarjetas = Tarjeta.objects.all()
@@ -5136,6 +5120,7 @@ class PagosTarjeta(APIView):
 
 
 class PagosEfectivo(APIView):
+    permission_classes = [IsAuthenticated]
     def post(self, request, format=None):
         data = {}
         data['success'] = False
@@ -5416,7 +5401,7 @@ class UnreadSuggestions(APIView, MyPaginationMixin):
 
 
 class Politics(APIView):
-
+    permission_classes = [IsAuthenticated]
     def get(self, request, format=None):
         politics = Politicas.objects.all().filter()
         serializer = PoliticasSerializer(politics, many=True)
@@ -6173,9 +6158,11 @@ class ConfirmarDescuento(APIView):
             return Response("no_existe")
 
 class RevisarDescuentoUnico(APIView):
-    def get(self, request, mail):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
         try:
-            usuario = Datos.objects.get(user__email=mail)
+            user = request.user
+            usuario = Datos.objects.get(user=user)
             if usuario.descuento == 1:
                 return Response("descuento")
             else:
@@ -6247,6 +6234,10 @@ class RevisarCaducidad (APIView):
             return Response("error: ")
 
 class Bancos(APIView):
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [AllowAny()]          # GET público
+        return [IsAuthenticated()]       # POST, PUT, DELETE protegidos    
     def get(self, request):
         try:
             bancos = Banco.objects.all()

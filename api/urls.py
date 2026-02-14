@@ -16,7 +16,7 @@ urlpatterns += [
     path('medallas/', Medallas.as_view()),
     path('medalla_update/<str:id>', Medallas.as_view()),
     path('insigniaspersonales/<str:id>', InsigniasPersonales.as_view()),
-    path('medallaspersonales/<str:id>', MedallasPersonales.as_view()),
+    path('medallaspersonales/', MedallasPersonales.as_view()),
     path('insignia_update/<str:id>', Insignias.as_view()),
     path('insignia_delete/<str:id>', Insignias.as_view()),
     path('insignias/<str:pk>', Insignia_Details.as_view()),
@@ -30,30 +30,30 @@ urlpatterns += [
     path('suggestion/<str:pk>', Suggestions_Details.as_view()),
     path('suggestion_estado/', Suggestions_Details.as_view()),
     path('post-token/', DeviceNotification.as_view()),
-    path('dispositivos-notificacion/', DeviceNotification.as_view()),
+    path('dispositivos-notificacion/', DeviceNotification.as_view()),  # solicitante y proveedor
     path('categoria_update/<str:id>', Categorias.as_view()),
     path('categoria_delete/<str:id>', Categorias.as_view()),
-    path('servicios/', Servicios.as_view()),
+    path('servicios/', Servicios.as_view()), # app solicitante, administrador, web
     path('servicios_update/<str:id>', Servicios.as_view()),
     path('servicios_delete/<str:id>', Servicios.as_view()),
     path('servicios/<category_ID>', Service.as_view()),
     path('logout/<str:token>', Logout.as_view()),
-    path('solicitud/', Solicituds.as_view()),
+    path('solicitud/', Solicituds.as_view()), # proveedor y solicitante
     path('cupon_aplicado/', Cupones_Aplicados.as_view()),
     path('get_cupon_aplicado/<str:user>',Get_Cupon_Aplicado.as_view()),
     #path('solicitud/<str:solicitud_ID>/<float:solicitud_Rate>', Solicituds.as_view()),
     path('solicitud/<str:solicitud_ID>', Solicituds.as_view()),
-    path('solicitudID/<str:solicitud_ID>', SolicitudID.as_view()),
+    path('solicitudID/<str:solicitud_ID>', SolicitudID.as_view()), # proveedor (cancelar)
     path('solicitudes/<str:user>', Solicitudes.as_view()),
     path('solicitudes_espera/<str:correo>', SolicitudesPending.as_view()),      # para Solicitante
     path('solicitudes_pasadas/<str:correo>', SolicitudesPast.as_view()),        # para Solicitante
     path('solicitudes_paid/<str:correo>', SolicitudesPaid.as_view()),           # para Solicitante
     path('solicitudes_no_paid/<str:correo>', SolicitudesNoPaid.as_view()),      # para Solicitante
     path('solicitudes_esperaPag/<str:correo>',SolicitudesPendingPag.as_view()), # para Solicitante
-    path('solicitudes_pasadasPag/<str:correo>', SolicitudesPastPag.as_view()),  # para Solicitante
+    path('solicitudes_pasadasPag/', SolicitudesPastPag.as_view()),  # Solicitante
     path('solicitudes_paidPag/<str:correo>',SolicitudesPaidPag.as_view()),      # para Solicitante
     path('solicitudes_no_paidPag/<str:correo>', SolicitudesNoPaidPag.as_view()),# para Solicitante
-    path('solicitudes_enProceso/<str:correo>', SolicitudesEnProceso.as_view()),  # para Solicitante    
+    path('solicitudes_enProceso/', SolicitudesEnProceso.as_view()),  # Solicitante    
     path('proveedores/', Proveedores.as_view()),
     path('proveedores/<str:id>', Proveedores.as_view()),
     # path('proveedor/<str:pk>', Proveedores_Details.as_view()),                #este endpoint es una basura.
@@ -65,19 +65,18 @@ urlpatterns += [
     path('datos/', DatosUsers.as_view()),
     path('usuarios/', Usuarios.as_view()),
     path('datoRedes/<str:user>', RegistroFromRedes.as_view()),
-    path('profesiones/', Profesiones.as_view()),
+    path('profesiones/', Profesiones.as_view()), # web
     path('profesion/<str:pk>',ProfesionDetails.as_view()),
     path('profesiones/<str:pk>', Profesiones.as_view()),
-    path('proveedor_profesiones/<str:user>', Proveedor_Profesiones.as_view()),
+    path('proveedor_profesiones/', Proveedor_Profesiones.as_view()), # proveedor
     path('profesion_prov/<str:pk>', Proveedor_Profesiones.as_view()),
     path('crear_profesiones_faltantes/', CrearProfesionesFaltantesView.as_view(), name='crear_profesiones_faltantes'),
-    path('solicitud_servicio/<str:ID_servicio>/<str:user>', Solicitud_Servicio_User.as_view()),
+    path('solicitud_servicio/<str:ID_servicio>/', Solicitud_Servicio_User.as_view()), # proveedor
     path('rest-auth/facebook/', FacebookLogin.as_view(), name='fb_login'),
     path('rest-auth/google/', GoogleLogin.as_view(), name='google_login'),
-    path('envio/<str:solicitud_ID>', Envio.as_view()),
-    path('envio/<str:solicitud_ID>/<str:user>', Envio.as_view()),
-    path('envio_interesados/<str:solicitud_ID>', Envio_Interesado.as_view()),
-    path('solicitante/<str:user>', SolicitanteUser.as_view()),
+    path('envio/<str:solicitud_ID>', Envio.as_view()), # proveedor
+    path('envio_interesados/<str:solicitud_ID>', Envio_Interesado.as_view()), # solicitante
+    path('solicitante/<str:user>', SolicitanteUser.as_view()), # esto se usa para obtener el perfil y para validar el usuario cuando se registra
     path('solicitanteByUserDatosID/<str:UserDatosId>', SolicitanteByUserDatos.as_view()), #Endopint Add
     path('solicitantes/', Solicitantes.as_view()),
     path('fechas-filtro/', SolicitantesFilter.as_view()),
@@ -92,7 +91,7 @@ urlpatterns += [
     path('administrador/<str:pk>', Admin_Details.as_view()),
     path('administrador_estado/', Administradores.as_view()),
     path('administrador_delete/<str:id>', Administradores.as_view()),
-    path('addsolicitud/' , AddSolicitud.as_view()),
+    path('addsolicitud/' , AddSolicitud.as_view()), # solicitante
     path('proveedores_pendientes/', Proveedores_Pendientes.as_view()),
     path('proveedores_rechazados/', Proveedores_Rechazados.as_view()),
     path('proveedores_proveedores/', Proveedores_Proveedores.as_view()),
@@ -104,32 +103,31 @@ urlpatterns += [
     path('proveedor_pendiente/', Proveedor_Pendiente_Admin.as_view()),
     path('proveedores_pendientes/<str:pk>', Proveedores_Pendientes_Details.as_view()),
     path('proveedores_pendientes_estado/', Proveedores_Pendientes_Estado.as_view()),
-    path('proveedores_pendientes_email/<str:mail>', Proveedores_Pendientes_Email.as_view()),
+    path('proveedores_pendientes_email/<str:mail>', Proveedores_Pendientes_Email.as_view()), # web
     path('proveedores_pendientes2/<str:pk>', Proveedores_Pendientes_Details2.as_view()),
     path('proveedores_rechazados/<str:pk>', Proveedores_Rechazados_Details.as_view()),
     path('proveedores_pendientes/<str:username>/<str:desc>', Proveedores_Pendientes.as_view()),
     path('documentos_proveedor/<str:username>', Documentos_proveedor.as_view()),
     path('cuenta_proveedor/<proveedorID>', CuentaProveedor.as_view()),
     path('register_proveedor/', Register_Proveedor.as_view()),
-    path('proveedor_pendiente/', Data_Proveedor_Pendiente.as_view()),
+    path('proveedor_pendiente/', Data_Proveedor_Pendiente.as_view()), # web
     path('proveedor_proveedor/', Data_Proveedor_Proveedor.as_view()),
     path('update_pendiente/', Update_Proveedor_Pendiente.as_view()),
     path('email/', Email.as_view()),
-    path('login/', Login.as_view()),
-    path('loginadmin/', LoginAdmin.as_view()),
+    path('login/', Login.as_view()), # proveedor y solicitante
+    path('loginadmin/', LoginAdmin.as_view()), # administrador
     path('changePassword/<str:access_security>', ChangePassword.as_view()),
-    path('adjudicarsolicitud/<str:solicitud_ID>', AdjudicarSolicitud.as_view()),
+    path('adjudicarsolicitud/<str:solicitud_ID>', AdjudicarSolicitud.as_view()), # solicitante
     path('solicitud_adjudicada/<str:solicitud_ID>', SolicitudAdjudicada.as_view()),
     path('tarjeta/', Tarjetas.as_view()),
     path('tarjeta/<str:identifier>', TarjetaUser.as_view()),
     path('dato_usuario/<str:id>',Datos_Users.as_view()),
     path('complete_dato/<str:username>', Complete_Data_User.as_view()),
-    path('proveedores_servicio/<str:servicio_id>',
-         ProveedoresByProfesion.as_view()),
+    path('proveedores_servicio/<str:servicio_id>',ProveedoresByProfesion.as_view()),
     path('sincronizar_profesion_proveedor/', SincronizarProfesionProveedorView.as_view(), name='sincronizar_profesion_proveedor'),
 
-    path('confirmar_descuento/<str:mail>', ConfirmarDescuento.as_view()),
-    path('revisar_descuento_unico/<str:mail>', RevisarDescuentoUnico.as_view()),
+    path('confirmar_descuento/<str:mail>', ConfirmarDescuento.as_view()), # web
+    path('revisar_descuento_unico/', RevisarDescuentoUnico.as_view()), # proveedor
     path('usar_descuento_unico/<str:mail>', UsarDescuentoUnico.as_view()),
 
     # ! Quitar, ya no se va a usar
@@ -174,10 +172,10 @@ urlpatterns += [
     path('validarcodigo/<str:email>/<str:codigo>', ValidarCodigo.as_view()),
     path('recuperarpassword/<str:user_email>', RecuperarPassword.as_view()),
     path('cambiopasswordcodigo/<str:email>/<str:password>/<str:codigo>', CambioPasswordCodigo.as_view()),
-    path('cambiocontrasenia/', CambioContrasenia.as_view()),
+    path('cambiocontrasenia/', CambioContrasenia.as_view()), # proveedor y solicitante
     path('pago_tarjeta/', PagosTarjeta.as_view()),
-    path('pago_efectivo/', PagosEfectivo.as_view()),
-    path('pago_tarjetas/', PagosTarjetaUser.as_view()),
+    path('pago_efectivo/', PagosEfectivo.as_view()), # solicitante
+    path('pago_tarjetas/', PagosTarjetaUser.as_view()), # solicitante
     path('pago_efectivos/', PagosEfectivoUser.as_view()),
     path('pago_efectivosP/', PagosEfectivoUserP.as_view()),
     path('valor_total_efectivo/', ValorTotalEfectivo.as_view()),
@@ -192,7 +190,7 @@ urlpatterns += [
     path('pagosol_efectivo/<str:pago_ID>', PagosSolicitudesEfectivo.as_view()),
     path('pagosol_tarjeta/<str:pago_ID>', PagosSolicitudesTarjeta.as_view()),
     path('enviaralerta/<str:user_email>/<str:asunto>/<str:texto>', EnviarAlerta.as_view()),
-    path('politics/', Politics.as_view()),
+    path('politics/', Politics.as_view()), # solicitante
     path('politics/<str:identifier>/', Politics.as_view(), name='politica-detail'),
     path('planes/', Planes.as_view()),
     path('planes/<str:id>', Planes.as_view()),
@@ -240,7 +238,7 @@ urlpatterns += [
     path('politica/',Politica.as_view()),
     re_path("static/", AdminPage.as_view()),
     path('actualizar_caducidad/<str:pk>', ActualizarCaducidad.as_view()),
-    path('bancos/', Bancos.as_view()),
+    path('bancos/', Bancos.as_view()), # web
     path('bancos/delete/<int:id>', Bancos.as_view()),
 
     path('version_android_solicitante/', VerionAndroidSolicitante.as_view()),
