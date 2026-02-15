@@ -242,7 +242,7 @@ urlpatterns += [
     path('bancos/delete/<int:id>', Bancos.as_view()),
 
     path('version_android_solicitante/', VerionAndroidSolicitante.as_view()),
-    path('version_ios_solicitante/', VerionIosProveedor.as_view()),
+    path('version_ios_solicitante/', VerionIosSolicitante.as_view()),
     path('version_android_proveedor/', VerionAndroidProveedor.as_view()),
     path('version_ios_proveedor/', VerionIosProveedor.as_view()),
 

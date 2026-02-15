@@ -6265,20 +6265,21 @@ class Bancos(APIView):
         bancocreado = Banco.objects.create(nombre=nombre, estado=estado)
 
         return Response({'id': bancocreado.id, 'nombre': bancocreado.nombre, 'estado': bancocreado.estado}, status=status.HTTP_201_CREATED)
-
+from api.versionamiento import (VERSION_ANDROID_SOLICITANTE, VERSION_IOS_SOLICITANTE, 
+                                VERSION_ANDROID_PROVEEDOR, VERSION_IOS_PROVEEDOR)
 
 class VerionAndroidSolicitante(APIView):
     def get(self, request):
-        return Response(1)
+        return Response(VERSION_ANDROID_SOLICITANTE)
 
-class VerionIosProveedor(APIView):
+class VerionIosSolicitante(APIView):
     def get(self, request):
-        return Response(1)
+        return Response(VERSION_IOS_SOLICITANTE)
 
 class VerionAndroidProveedor(APIView):
     def get(self, request):
-        return Response(1)
+        return Response(VERSION_ANDROID_PROVEEDOR)
 
 class VerionIosProveedor(APIView):
     def get(self, request):
-        return Response(1)
+        return Response(VERSION_IOS_PROVEEDOR)
