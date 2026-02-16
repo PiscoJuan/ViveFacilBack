@@ -138,7 +138,17 @@ urlpatterns += [
 
     # Paginado
     path('proveedores_interesadosPag/<str:id_proveedor_user_datos>',
-         Proveedores_Interesados_Pag.as_view()),
+         Proveedores_Interesados_Pag.as_view()), # proveedor
+    
+    
+    # Paginado
+    path('proveedores_interesadosPagEnProceso/<str:id_proveedor_user_datos>',
+         Proveedores_Interesados_Proceso_Pag.as_view()), # proveedor
+    # Paginado
+    path('proveedores_interesadosPagPasados/<str:id_proveedor_user_datos>',
+         Proveedores_Interesados_Pasadas_Pag.as_view()), # proveedor
+
+
     path('proveedores_interesadosEfectivoPag/<str:id_proveedor_user_datos>',
          Proveedores_Interesados_Efectivo_Pag.as_view()),
     path('proveedores_interesadosTarjetaPag/<str:id_proveedor_user_datos>',

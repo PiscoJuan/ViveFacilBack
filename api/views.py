@@ -3856,13 +3856,12 @@ class Solicitud_Servicio_User(APIView):
    # authentication_class = (TokenAuthentication)
     def get(self, request, ID_servicio, format=None):
         user = request.user
-        solicitud_servicio = Envio_Interesados.objects.filter(
+        envio_interesados = Envio_Interesados.objects.filter(
             solicitud__servicio=ID_servicio, solicitud__estado=True, proveedor__user_datos__user=user, interesado=False).order_by('-fecha_creacion')
         solicitudes = []
-        for solicitud in solicitud_servicio:
-            solicitudes.append(solicitud.solicitud)
+        for envio_interesado in envio_interesados:
+            solicitudes.append(envio_interesado.solicitud)
         serializer = SolicitudSerializer(solicitudes, many=True)
-        # print(JSONRenderer().render(serializer.data))
         return Response(serializer.data)
 
 
@@ -4109,6 +4108,60 @@ class Proveedores_Interesados_Pag(APIView, MyPaginationMixin):
             data['success'] = False
             return Response(data)
 
+
+class Proveedores_Interesados_Proceso_Pag(APIView, MyPaginationMixin):
+    queryset = Envio_Interesados.objects.all()
+    serializer_class = Envio_InteresadosSerializer
+    pagination_class = MyCustomPagination
+
+    def get(self, request, id_proveedor_user_datos, format=None):
+        try:
+            base = self.queryset.filter(
+                proveedor__user_datos_id=id_proveedor_user_datos,
+                interesado=True
+            )
+            now = timezone.now()
+            pasadas_q = Q(solicitud__termino__in=['finalizado', 'cancelado']) | Q(
+                solicitud__fecha_expiracion__lt=now,
+                solicitud__adjudicar=False
+            )
+            qs = base.exclude(pasadas_q).order_by('-fecha_creacion')
+            page = self.paginate_queryset(qs)
+            if page is not None:
+                serializer = self.serializer_class(page, many=True)
+                return self.get_paginated_response(serializer.data)
+            serializer = self.serializer_class(qs, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            data = {'message': 'No se pudo obtener la lista de solicitudes en proceso: ' + str(e), 'success': False}
+            return Response(data)
+
+class Proveedores_Interesados_Pasadas_Pag(APIView, MyPaginationMixin):
+    queryset = Envio_Interesados.objects.all()
+    serializer_class = Envio_InteresadosSerializer
+    pagination_class = MyCustomPagination
+
+    def get(self, request, id_proveedor_user_datos, format=None):
+        try:
+            uid_er = request.user.pk
+            base = self.queryset.filter(
+                proveedor__user_datos_id=id_proveedor_user_datos,
+                interesado=True
+            )
+            now = timezone.now()
+            qs = base.filter(
+                Q(solicitud__termino__in=['finalizado', 'cancelado']) |
+                Q(solicitud__fecha_expiracion__lt=now, solicitud__adjudicar=False)
+            ).order_by('-fecha_creacion')
+            page = self.paginate_queryset(qs)
+            if page is not None:
+                serializer = self.serializer_class(page, many=True)
+                return self.get_paginated_response(serializer.data)
+            serializer = self.serializer_class(qs, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            data = {'message': 'No se pudo obtener la lista de solicitudes pasadas: ' + str(e), 'success': False}
+            return Response(data)
 
 class Proveedores_Interesados_Efectivo_Pag(APIView, MyPaginationMixin):
     queryset = Envio_Interesados.objects.all()
@@ -5401,7 +5454,10 @@ class UnreadSuggestions(APIView, MyPaginationMixin):
 
 
 class Politics(APIView):
-    permission_classes = [IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [AllowAny()]          # GET público
+        return [IsAuthenticated()]      
     def get(self, request, format=None):
         politics = Politicas.objects.all().filter()
         serializer = PoliticasSerializer(politics, many=True)
