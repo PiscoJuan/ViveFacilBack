@@ -2128,8 +2128,15 @@ class SolicitudesPastPag(APIView, MyPaginationMixin):
     def get(self, request, format=None):
         try:
             user = request.user
+            ordenar = request.GET.get('ordenar', None)
+            orden = None
+            if ordenar == "asc":
+                orden = 'id'
+            else:
+                orden = '-id'            
             page = self.paginate_queryset(self.queryset.filter(Q(solicitante__user_datos__user=user) & (
-                Q(termino='finalizado') | Q(termino='cancelado') | Q(fecha_expiracion__lt=timezone.now(), adjudicar=False))).order_by('-id'))
+                Q(termino='finalizado') | Q(termino='cancelado') | Q(fecha_expiracion__lt=timezone.now(), adjudicar=False))).order_by(orden))
+
             if page is not None:
                 serializer = self.serializer_class(page, many=True)
                 return self.get_paginated_response(serializer.data)
@@ -2178,9 +2185,14 @@ class SolicitudesEnProceso(APIView, MyPaginationMixin):
                 )
             ).filter(
                 estado_proceso__isnull=False
-            ).order_by('-id')
-                        
-            page = self.paginate_queryset( resultado .order_by('-id') )
+            )
+            ordenar = request.GET.get('ordenar', None)
+            if ordenar == "asc":
+                resultado = resultado.order_by('id')
+            else:
+                resultado = resultado.order_by('-id')
+            
+            page = self.paginate_queryset(resultado)
             if page is not None:
                 serializer = self.serializer_class(page, many=True)
                 return self.get_paginated_response(serializer.data)
@@ -4120,7 +4132,12 @@ class Proveedores_Interesados_Proceso_Pag(APIView, MyPaginationMixin):
                 solicitud__fecha_expiracion__lt=now,
                 solicitud__adjudicar=False
             )
-            qs = base.exclude(pasadas_q).order_by('-fecha_creacion')
+            qs = base.exclude(pasadas_q)
+            ordenar = request.GET.get('ordenar', None)
+            if ordenar == "asc":
+                qs = qs.order_by('fecha_creacion')
+            else:
+                qs = qs.order_by('-fecha_creacion')
             page = self.paginate_queryset(qs)
             if page is not None:
                 serializer = self.serializer_class(page, many=True)
@@ -4147,7 +4164,12 @@ class Proveedores_Interesados_Pasadas_Pag(APIView, MyPaginationMixin):
             qs = base.filter(
                 Q(solicitud__termino__in=['finalizado', 'cancelado']) |
                 Q(solicitud__fecha_expiracion__lt=now, solicitud__adjudicar=False)
-            ).order_by('-fecha_creacion')
+            )
+            ordenar = request.GET.get('ordenar', None)
+            if ordenar == "asc":
+                qs = qs.order_by('fecha_creacion')
+            else:
+                qs = qs.order_by('-fecha_creacion')
             page = self.paginate_queryset(qs)
             if page is not None:
                 serializer = self.serializer_class(page, many=True)
