@@ -197,7 +197,7 @@ class Proveedor(models.Model):
     numero_cuenta = models.CharField(max_length=25, default='')
     tipo_cuenta = models.CharField(max_length=50, default='')
 
-    fecha_caducidad = models.DateTimeField(auto_now_add=True, null=True)
+    fecha_caducidad = models.DateTimeField(default=now, null=True)
     # planilla_servicios = models.FileField(upload_to='documents', null=True)
 
     def __str__(self):
@@ -504,6 +504,8 @@ class PagoTarjeta(models.Model):
     tarjeta = models.ForeignKey(Tarjeta, on_delete=models.CASCADE, null=True)
     promocion = models.ForeignKey(
         Promocion, on_delete=models.CASCADE, null=True, blank=True)
+    cupon = models.ForeignKey(
+        Cupon, on_delete=models.CASCADE, null=True, blank=True)
     valor = models.FloatField(default=0.0)
     descripcion = models.CharField(max_length=255, null=True)
     impuesto = models.IntegerField(null=False)
@@ -530,6 +532,8 @@ class PagoEfectivo(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE, null=True)
     promocion = models.ForeignKey(
         Promocion, on_delete=models.CASCADE, null=True,  blank=True)
+    cupon = models.ForeignKey(
+        Cupon, on_delete=models.CASCADE, null=True,  blank=True)
     valor = models.FloatField(default=0.0)
     oferta = models.FloatField(default=0.0)
     descripcion = models.CharField(max_length=255, null=True)

@@ -501,13 +501,11 @@ class Medallas(APIView):
             return Response(data)
 
     def put(self, request, id, format=None):
-        print("AAAAAAAAAAAAAAAA")
         medalla = Medalla.objects.get(id=id)
         serializer = MedallaSerializer(
             medalla, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        print(serializer)
         serializer.save()
         return Response(serializer.data)
 
@@ -952,7 +950,10 @@ class Servicios(APIView):
             return [AllowAny()]          # GET público
         return [IsAuthenticated()]       # POST, PUT, DELETE protegidos
     def get(self, request, format=None):
-        servicios = Servicio.objects.all().filter(estado = True)
+        todas = request.GET.get('todas')
+        servicios = Servicio.objects.all()
+        if not todas:
+            servicios = Servicio.objects.all().filter(estado = True)
         serializer = ServicioSerializer(servicios, many=True)
         return Response(serializer.data)
 
@@ -960,22 +961,18 @@ class Servicios(APIView):
         servicios = Servicio.objects.get(id=id)
         profesion = Profesion.objects.get_or_create(nombre=servicios.nombre)
         profesion = Profesion.objects.get(nombre=servicios.nombre)
+        data_actualizar = request.data.copy()
+        categoria = Categoria.objects.get(nombre=request.data.get('categoria'))
+        data_actualizar['categoria'] = categoria.pk
         serializer = ServicioSerializer(
-            servicios, data=request.data, partial=True)
-        print("hasta aca llega0")
+            servicios, data=data_actualizar, partial=True)
         if serializer.is_valid():
             serializer.save()
-            print("hasta aca llega")
             servicios2 = Servicio.objects.get(id=id)
-            print("hasta aca llega2")
             profesion.nombre=servicios2.nombre
-            print("hasta aca llega3")
             profesion.foto=servicios2.foto
-            print("hasta aca llega4")
             profesion.descripcion=servicios2.descripcion
-            print("hasta aca llega5")
             profesion.save()
-            print("hasta aca llega6")
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1412,7 +1409,7 @@ class Cupones_Aplicados(APIView):
 
 class Get_Cupon_Aplicado(APIView):
     def get(self, request, user, format=None):
-        cupon_aplicado = Cupon_Aplicado.objects.all().filter(user=user)
+        cupon_aplicado = Cupon_Aplicado.objects.all().filter(user=user, estado=True)
         serializer = Cupon_AplicadoSerializer(cupon_aplicado, many=True)
         return Response(serializer.data)
 
@@ -1712,9 +1709,18 @@ class Proveedores_Pendientes_Details(APIView):
         print(copiaCedula)
         print(copiaLicencia)
         print(filesDocuments)
+        profesiones_lista = request.data.get('profesion').split(',')
+        print("trabalho?", profesiones_lista)
+        if(profesiones_lista):
+            Profesion_Proveedor.objects.all().filter(proveedor = pendiente).delete()
+            for profesion in profesiones_lista:
+                profesion_obnj_lista = Profesion.objects.filter(nombre=profesion)
+                if(profesion_obnj_lista):
+                    profesion_obnj = Profesion.objects.get(nombre=profesion)
+                    profesion_proveedor = Profesion_Proveedor.objects.get_or_create(proveedor=pendiente, profesion=profesion_obnj)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
+            return Response(serializer.data)        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk, format=None):
@@ -2644,7 +2650,7 @@ class ProveedoresByProfesion(APIView):
         servicio= Servicio.objects.get(id=servicio_id)
         profesion= Profesion.objects.get(nombre=servicio.nombre)
         prov_prof = Profesion_Proveedor.objects.all().filter(
-            profesion=profesion)
+            profesion=profesion, proveedor__estado=True)
         serializer = Profesion_ProveedorSerializer(prov_prof, many=True)
         return Response(serializer.data)
 
@@ -3864,17 +3870,6 @@ class Solicitud_Servicio_User(APIView):
         serializer = SolicitudSerializer(solicitudes, many=True)
         return Response(serializer.data)
 
-
-class Service(APIView):
-    # permission_classes = (IsAuthenticated,)
-    # authentication_class = (TokenAuthentication)
-
-    def get(self, request, category_ID,  format=None):
-        servicios = Servicio.objects.all().filter(categoria=category_ID)
-        serializer = ServicioSerializer(servicios, many=True)
-        return Response(serializer.data)
-
-
 class Envio(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request, solicitud_ID, format=None):
@@ -4763,8 +4758,8 @@ class Promociones(APIView):
     def get(self, request, format=None):
         today = date.today()
         enddate = today + timedelta(days=30)
-        promociones = Promocion.objects.all().filter(
-            fecha_expiracion__range=[today, enddate])
+        promociones = Promocion.objects.all().order_by("-pk")
+        #filter(fecha_expiracion__range=[today, enddate])
         serializer = PromocionSerializer(promociones, many=True)
         return Response(serializer.data)
 
@@ -4916,8 +4911,8 @@ class Cupones(APIView):
     def get(self, request, format=None):
         today = date.today()
         enddate = today + timedelta(days=30)
-        cupones = Cupon.objects.all().filter(
-            fecha_expiracion__range=[today, enddate])
+        cupones = Cupon.objects.all().order_by("-pk")
+        #.filter(fecha_expiracion__range=[today, enddate])
         serializer = CuponSerializer(cupones, many=True)
         return Response(serializer.data)
 
@@ -5093,10 +5088,14 @@ class CuponesCategoria(APIView):
 
 
 class AllCuponesCategoria(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self, request, format=None):
+        usuario = request.user.username
         cupones = CuponCategoria.objects.all()
         cupones = CuponCategoria.objects.all().filter(cupon__fecha_expiracion__gte = datetime.datetime.today())
         cupones = cupones.filter(cupon__fecha_iniciacion__lte = datetime.datetime.today())
+        ids_cupones_aplicados = list(Cupon_Aplicado.objects.all().filter(user=usuario, estado=False).distinct().values_list('cupon', flat=True))
+        cupones = cupones.exclude(cupon__pk__in=ids_cupones_aplicados)
         serializer = CuponCategoriaSerializer(cupones, many=True)
         return Response(serializer.data)
 
@@ -5107,7 +5106,8 @@ class PagosTarjeta(APIView):
         data['success'] = False
         user = request.data.get('username')
         tarjeta_user = request.data.get('tarjeta')  # numero de la tarjeta
-        promotion = request.data.get('promocion')  # codigo de la promocion
+        #promocion = request.data.get('promocion')  # codigo de la promocion
+        id_cupon = request.data.get('id_cupon')
         amount = request.data.get('valor')
         desc = request.data.get('descripcion')
         descuento = request.data.get('descuento')
@@ -5131,7 +5131,7 @@ class PagosTarjeta(APIView):
             data['detail'] = "Tarjeta"
             tarjeta = Tarjeta.objects.get(id=tarjeta_user)
             data['detail'] = "Promocion"
-            promocion = Promocion.objects.get(codigo=promotion)
+            cupon = Cupon.objects.get(pk=id_cupon)
             data['detail'] = "Solicitud"
             solicitud = Solicitud.objects.get(id=solicitud_ID)
 
@@ -5143,8 +5143,15 @@ class PagosTarjeta(APIView):
         else:
             try:
                 data['detail'] = "pago_tarjeta"
-                pago_tarjeta_user = PagoTarjeta.objects.create(user=usuario, tarjeta=tarjeta, carrier_id=carrier_ID, carrier_code=carrier_c, promocion=promocion, valor=amount, descripcion=desc, impuesto=impuesto, solicitud=solicitud,
+                pago_tarjeta_user = PagoTarjeta.objects.create(user=usuario, tarjeta=tarjeta, carrier_id=carrier_ID, carrier_code=carrier_c, promocion=None, cupon=cupon, valor=amount, descripcion=desc, impuesto=impuesto, solicitud=solicitud,
                                                                referencia=referencia, cargo_paymentez=carg_Pay, cargo_banco=carg_Banc, cargo_sistema=carg_Sis, usuario=us, servicio=serv, proveedor=prov, prov_correo=prov_email, prov_telefono=prov_phone)
+                if cupon:
+                    try:
+                        cupon_aplicado = Cupon_Aplicado.objects.get(cupon=cupon, user=usuario)
+                        cupon_aplicado.estado = False
+                        cupon_aplicado.save()
+                    except Exception as e:
+                        print("Error al registrar el uso del cupón:", e)
                 data['detail'] = "pago_solicitud"
                 pago_solicitud = PagoSolicitud.objects.create(
                     pago_tarjeta=pago_tarjeta_user, solicitud=solicitud)
@@ -5178,7 +5185,8 @@ class PagosEfectivo(APIView):
         data = {}
         data['success'] = False
         user = request.data.get('username')
-        promotion = request.data.get('promocion')  # codigo de la promocion
+        #promocion = request.data.get('promocion')  # codigo de la promocion
+        id_cupon = request.data.get('id_cupon')
         amount = request.data.get('valor')
         descuento = request.data.get('descuento')
         desc = request.data.get('descripcion')
@@ -5193,22 +5201,31 @@ class PagosEfectivo(APIView):
 
         try:
             usuario = User.objects.get(username=user)
-            promocion = Promocion.objects.get(codigo=promotion)
+            cupon = Cupon.objects.get(pk=id_cupon)
             solicitud = Solicitud.objects.get(id=solicitud_ID)
-        except:
+        except Exception as e:
+            print(e)
             data['error'] = "No se encontraron los datos de la promocion"
             return Response(data)
 
         else:
             try:
                 data['detail'] = "pago_efectivo"
-                pago_efectivo_user = PagoEfectivo.objects.create(user=usuario, promocion=promocion, valor=amount, descripcion=desc, referencia=referencia, oferta=descuento, solicitud=solicitud,
+                pago_efectivo_user = PagoEfectivo.objects.create(user=usuario, promocion=None, cupon=cupon,valor=amount, descripcion=desc, referencia=referencia, oferta=descuento, solicitud=solicitud,
                                                                  usuario=us, servicio=serv, proveedor=prov, prov_correo=prov_email, prov_telefono=prov_phone, user_telefono=us_phone)
+                if cupon:
+                    try:
+                        cupon_aplicado = Cupon_Aplicado.objects.get(cupon=cupon, user=usuario)
+                        cupon_aplicado.estado = False
+                        cupon_aplicado.save()
+                    except Exception as e:
+                        print("Error al registrar el uso del cupón:", e)
                 data['detail'] = "pago_solicitud"
                 data['oferta'] = descuento
                 pago_solicitud = PagoSolicitud.objects.create(
                     pago_efectivo=pago_efectivo_user, solicitud=solicitud)
-            except:
+            except Exception as e:
+                print(e)
                 data['error'] = "No se pudo guardar el pago/sin embargo, si se realizo"
                 data['oferta'] = descuento
                 return Response(data)
@@ -6339,3 +6356,24 @@ class VerionAndroidProveedor(APIView):
 class VerionIosProveedor(APIView):
     def get(self, request):
         return Response(VERSION_IOS_PROVEEDOR)
+
+class ActualizarCaducidadProveedoresRequest(APIView):
+    def get(self, request):
+        resultados = []
+        formatEmail = FormatEmail()
+        today = timezone.now()
+        proveedores_caducados= Proveedor.objects.all().order_by('-id').filter(fecha_caducidad__lt=today, estado=True)
+        if not proveedores_caducados:
+            resultados.append("No hay proveedores caducados")
+            return Response({"error": resultados}, status=status.HTTP_400_BAD_REQUEST)
+        for e in proveedores_caducados:
+            if e.estado != False:
+                thread = threading.Thread(target=formatEmail.send_email([e.user_datos.user.username], "Cuenta caducada", 'emails/enviarAlerta.html', {"username":e.user_datos.user.username, "contenido": "Tu cuenta ha caducado, si deseas extender tu contrato contactanos por nuestros canales oficiales."}))
+                thread.start()
+            e.estado = False
+            e.save()
+            datos=e.user_datos
+            datos.estado=False
+            datos.save()
+            resultados.append("Proveedor " + e.user_datos.user.username + " actualizado, fecha: " + str(e.fecha_caducidad))
+        return Response({"success": resultados}, status=status.HTTP_200_OK)

@@ -34,13 +34,13 @@ urlpatterns += [
     path('categoria_update/<str:id>', Categorias.as_view()),
     path('categoria_delete/<str:id>', Categorias.as_view()),
     path('servicios/', Servicios.as_view()), # app solicitante, administrador, web
+    path('servicios/<int:id>', Servicios.as_view()), # app solicitante, administrador, web
     path('servicios_update/<str:id>', Servicios.as_view()),
     path('servicios_delete/<str:id>', Servicios.as_view()),
-    path('servicios/<category_ID>', Service.as_view()),
     path('logout/<str:token>', Logout.as_view()),
     path('solicitud/', Solicituds.as_view()), # proveedor y solicitante
     path('cupon_aplicado/', Cupones_Aplicados.as_view()),
-    path('get_cupon_aplicado/<str:user>',Get_Cupon_Aplicado.as_view()),
+    path('get_cupon_aplicado/<str:user>',Get_Cupon_Aplicado.as_view()), #solicitante
     #path('solicitud/<str:solicitud_ID>/<float:solicitud_Rate>', Solicituds.as_view()),
     path('solicitud/<str:solicitud_ID>', Solicituds.as_view()),
     path('solicitudID/<str:solicitud_ID>', SolicitudID.as_view()), # proveedor (cancelar)
@@ -123,7 +123,7 @@ urlpatterns += [
     path('tarjeta/<str:identifier>', TarjetaUser.as_view()),
     path('dato_usuario/<str:id>',Datos_Users.as_view()),
     path('complete_dato/<str:username>', Complete_Data_User.as_view()),
-    path('proveedores_servicio/<str:servicio_id>',ProveedoresByProfesion.as_view()),
+    path('proveedores_servicio/<str:servicio_id>',ProveedoresByProfesion.as_view()), # solicitante
     path('sincronizar_profesion_proveedor/', SincronizarProfesionProveedorView.as_view(), name='sincronizar_profesion_proveedor'),
 
     path('confirmar_descuento/<str:mail>', ConfirmarDescuento.as_view()), # web
@@ -176,7 +176,7 @@ urlpatterns += [
     path('cupon_estado/', Cupon_Details.as_view()),
     path('cupon_cant/<str:pk>', Cupon_Cant.as_view()),
     path('cupcategorias/<str:promCode>', CuponesCategoria.as_view()),
-    path('all_cupcategorias/', AllCuponesCategoria.as_view()),
+    path('all_cupcategorias/', AllCuponesCategoria.as_view()), # solicitante
     path('grupos/', Grupos.as_view()),
     path('recuperarpassword/<str:user_email>', RecuperarPassword.as_view()),
     path('validarcodigo/<str:email>/<str:codigo>', ValidarCodigo.as_view()),
@@ -256,6 +256,8 @@ urlpatterns += [
     path('version_android_proveedor/', VerionAndroidProveedor.as_view()),
     path('version_ios_proveedor/', VerionIosProveedor.as_view()),
 
+    path('actualizar_caducidad_proveedores/', ActualizarCaducidadProveedoresRequest.as_view()),
+    
     # path('pagos/', Pagos.as_view()),
     # path('send_correo/', EnviarCorreoProveedor.as_view()),
 

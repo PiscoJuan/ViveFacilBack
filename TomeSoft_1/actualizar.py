@@ -1,20 +1,13 @@
-import sys
-sys.path.append('/home/tomesoft1/TomeSoft_1/')
+import requests
 
-import os
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "TomeSoft_1.settings")
+url = "https://tomesoft1.pythonanywhere.com/actualizar_caducidad_proveedores/"
 
-import django
-django.setup()
+try:
+    response = requests.get(url, timeout=30)
 
-from api.models import PlanProveedor
-from django.utils import timezone
-from api.serializers import PlanProveedorSerializer
+    print("Status code:", response.status_code)
+    print("Respuesta:")
+    print(response.text)
 
-planesProveedor = PlanProveedor.objects.filter(fecha_expiracion__lt = timezone.now(), estado=True)
-request = {"estado": False}
-for i in planesProveedor:
-    serializer = PlanProveedorSerializer(i, data=request, partial=True)
-    if serializer.is_valid():
-        serializer.save()
-        print(serializer.data, flush=True)
+except requests.exceptions.RequestException as e:
+    print("Error en la solicitud:", e)
