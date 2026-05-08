@@ -5153,7 +5153,9 @@ class PagosTarjeta(APIView):
             data['detail'] = "Tarjeta"
             tarjeta = Tarjeta.objects.get(id=tarjeta_user)
             data['detail'] = "Promocion"
-            cupon = Cupon.objects.get(pk=id_cupon)
+            cupon = None
+            if id_cupon:
+                cupon = Cupon.objects.get(pk=id_cupon)
             data['detail'] = "Solicitud"
             solicitud = Solicitud.objects.get(id=solicitud_ID)
 
@@ -5223,7 +5225,9 @@ class PagosEfectivo(APIView):
 
         try:
             usuario = User.objects.get(username=user)
-            cupon = Cupon.objects.get(pk=id_cupon)
+            cupon = None
+            if id_cupon:
+                cupon = Cupon.objects.get(pk=id_cupon)
             solicitud = Solicitud.objects.get(id=solicitud_ID)
         except Exception as e:
             print(e)
