@@ -1,0 +1,43 @@
+from django.urls import path
+
+from accounts.api.solicitante.views import (
+    CambioContraseniaSolicitanteView,
+    CambioPasswordCodigoSolicitanteView,
+    CompleteDataUserSolicitanteView,
+    DatosUsuarioSolicitanteView,
+    DatoSolicitanteView,
+    DispositivoNotificacionSolicitanteView,
+    FacebookLoginSolicitanteView,
+    GoogleLoginSolicitanteView,
+    LoginSolicitanteView,
+    PuntosSolicitanteView,
+    RecuperarPasswordSolicitanteView,
+    RegistroRedesSolicitanteView,
+    SolicitanteUserSolicitanteView,
+    TarjetaCvcSolicitanteView,
+    ValidarCodigoSolicitanteView,
+    VersionAndroidSolicitanteView,
+    VersionIosSolicitanteView,
+)
+
+urlpatterns = [
+    path("login/", LoginSolicitanteView.as_view()),
+    path("login-social/facebook/", FacebookLoginSolicitanteView.as_view()),
+    path("login-social/google/", GoogleLoginSolicitanteView.as_view()),
+    path("cambiocontrasenia/", CambioContraseniaSolicitanteView.as_view()),
+    path("dispositivos-notificacion/", DispositivoNotificacionSolicitanteView.as_view()),
+    path("dispositivos-notificacion/token/", DispositivoNotificacionSolicitanteView.as_view()),
+    path("tarjeta-cvc/", TarjetaCvcSolicitanteView.as_view()),
+    path("tarjeta-cvc/<str:token>", TarjetaCvcSolicitanteView.as_view()),
+    path("datos/<str:user>/", DatoSolicitanteView.as_view()),
+    path("redes/<str:user>/", RegistroRedesSolicitanteView.as_view()),
+    path("perfil/<str:user>", SolicitanteUserSolicitanteView.as_view()),
+    path("dato-usuario/<str:id>", DatosUsuarioSolicitanteView.as_view()),
+    path("completar-datos/<str:username>/", CompleteDataUserSolicitanteView.as_view()),
+    path("recuperar-password/<str:user_email>", RecuperarPasswordSolicitanteView.as_view()),
+    path("validar-codigo/<str:email>/<str:codigo>", ValidarCodigoSolicitanteView.as_view()),
+    path("cambiar-password-codigo/<str:email>/<str:password>/<str:codigo>", CambioPasswordCodigoSolicitanteView.as_view()),
+    path("puntos/<str:email>", PuntosSolicitanteView.as_view()),
+    path("version/android/", VersionAndroidSolicitanteView.as_view()),
+    path("version/ios/", VersionIosSolicitanteView.as_view()),
+]

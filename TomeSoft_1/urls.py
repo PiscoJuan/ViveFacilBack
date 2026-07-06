@@ -22,11 +22,12 @@ from django.conf.urls import url, include
 
 
 urlpatterns = [
-    # path('admin/', admin.site.urls),
-    # path('/', TemplateView.as_view(template_name="index.html"), name="home"),
-    path('', include('api.urls')),
-    # path('admin/', TemplateView.as_view(template_name='index.html'), name='index'),
+    path('admin/',       include('core.urls.admin')),
+    path('proveedor/',   include('core.urls.proveedor')),
+    path('solicitante/', include('core.urls.solicitante')),
+    path('web/',         include('core.urls.web')),
     path('adminDefault/', admin.site.urls),
+    path('', include('api.urls')),
 ]
 
 if settings.DEBUG:

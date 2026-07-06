@@ -147,3 +147,4 @@ novacoin/.DS_Store
 # PyCharm files
 .idea/
 .idea/*
+docs/*
