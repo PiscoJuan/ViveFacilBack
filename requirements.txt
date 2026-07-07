@@ -19,6 +19,7 @@ dj-rest-auth==4.0.1
 Django==3.2
 django-allauth==0.54.0
 django-cors-headers==3.11.0
+django-environ==0.9.0
 django-filter==21.1
 django-inlinecss==0.3.0
 django-naomi==0.8
