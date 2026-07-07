@@ -133,7 +133,6 @@ dmypy.json
 
 
 media/
-static/
 .vscode/
 *.pdf
 
