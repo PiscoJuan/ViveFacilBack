@@ -13,6 +13,7 @@ from accounts.api.solicitante.views import (
     PuntosSolicitanteView,
     RecuperarPasswordSolicitanteView,
     RegistroRedesSolicitanteView,
+    RegistroSolicitanteView,
     SolicitanteUserSolicitanteView,
     TarjetaCvcSolicitanteView,
     ValidarCodigoSolicitanteView,
@@ -22,6 +23,7 @@ from accounts.api.solicitante.views import (
 
 urlpatterns = [
     path("login/", LoginSolicitanteView.as_view()),
+    path("registro/", RegistroSolicitanteView.as_view()),
     path("login-social/facebook/", FacebookLoginSolicitanteView.as_view()),
     path("login-social/google/", GoogleLoginSolicitanteView.as_view()),
     path("cambiocontrasenia/", CambioContraseniaSolicitanteView.as_view()),

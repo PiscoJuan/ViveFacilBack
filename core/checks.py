@@ -26,8 +26,7 @@ def check_role_permissions(app_configs, **kwargs):
     rol (admin/proveedor/solicitante/web) no tiene la permission class que
     corresponde a ese rol entre sus `permission_classes`.
 
-    Backstop de docs/refactor/01-arquitectura-objetivo.md#5 — hereda de
-    AdminAPIView/etc. en vez de APIView pelado para pasar este check."""
+    Heredar de AdminAPIView/etc. en vez de APIView pelado para pasar este check."""
     errors = []
     for namespace, required_permission in ROLE_PERMISSION_BY_NAMESPACE.items():
         try:

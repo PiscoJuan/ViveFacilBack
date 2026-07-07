@@ -1,14 +1,50 @@
 from rest_framework import status
 from rest_framework.response import Response
 
-from api.serializers import CargoSerializer, InsigniaSerializer, MedallaSerializer, PublicidadSerializer, SuggestionSerializer
+from api.serializers import (
+    CargoSerializer,
+    InsigniaSerializer,
+    MedallaSerializer,
+    PoliticasSerializer,
+    PublicidadSerializer,
+    SuggestionSerializer,
+)
 from content import services
 from core.pagination import MyCustomPagination, MyPaginationMixin
 from core.views import AdminAPIView
 
 
+class InsigniasListAdminView(AdminAPIView):
+    """Ruta base `admin/content/insignias/` (GET+POST) — antes Admin2022 la
+    pedía en `web/catalog/insignias/` (misma lógica que
+    content.api.web.views.InsigniasWebView)."""
+
+    def get(self, request, format=None):
+        from api.models import Insignia
+        return Response(InsigniaSerializer(Insignia.objects.all().filter(), many=True).data)
+
+    def post(self, request, format=None):
+        return Response(services.crear_insignia(request.POST, request.FILES))
+
+
+class PoliticasAdminView(AdminAPIView):
+    """Ruta propia del admin para políticas — antes Admin2022 pedía directo
+    a `web/content/politicas/` (content.api.web.views.PoliticasWebView)."""
+
+    def get(self, request, format=None):
+        return Response(PoliticasSerializer(services.list_politicas(), many=True).data)
+
+    def put(self, request, identifier, format=None):
+        from django.core.exceptions import ObjectDoesNotExist
+        try:
+            politica = services.actualizar_politica(identifier, request.data.get('terminos'))
+        except ObjectDoesNotExist:
+            return Response({"error": "Política no encontrada."}, status=404)
+        return Response({'politics': PoliticasSerializer(politica).data})
+
+
 class InsigniasAdminView(AdminAPIView):
-    """Réplica del PUT/DELETE de Insignias (api/views.py:373). El GET (lista
+    """El GET (lista
     completa) y el POST (comparten la URL `insignias/` con el GET) se
     quedan en la clase legacy — GET lo consumen también Provedor2022 y
     Solicitante2022 (grep confirmado), así que no puede exigir rol admin; el
@@ -33,7 +69,7 @@ class InsigniasAdminView(AdminAPIView):
 
 
 class InsigniaDetailsAdminView(AdminAPIView):
-    """Réplica de Insignia_Details (api/views.py:453). El GET (`insignias/
+    """El GET (`insignias/
     <pk>`) y el PUT de estado (`insignia_estado/`, sin pk en la URL, por
     query param) se registran en paths separados — ver urls.py."""
 
@@ -46,7 +82,7 @@ class InsigniaDetailsAdminView(AdminAPIView):
 
 
 class MedallasAdminView(AdminAPIView):
-    """Réplica de Medallas (api/views.py:414). Todo el CRUD, incluido el
+    """Todo el CRUD, incluido el
     GET: sin evidencia de consumidor fuera del panel admin (a diferencia de
     Insignias)."""
 
@@ -68,11 +104,10 @@ class MedallasAdminView(AdminAPIView):
 
 
 class MedallaEstadoAdminView(AdminAPIView):
-    """Réplica del PUT de Medalla_Details (api/views.py:476) — toggle de
-    estado. El GET de esa misma clase no se migra: nunca estuvo wireado a
-    ninguna URL (`medallas/<pk>` no existe en api/urls.py) y además tenía un
-    bug de copy-paste (consultaba Insignia en vez de Medalla) — código
-    muerto, no se replica."""
+    """Toggle de estado. No tiene GET: la clase legacy análoga tenía uno,
+    pero nunca estuvo wireado a ninguna URL y además tenía un bug de
+    copy-paste (consultaba Insignia en vez de Medalla) — código muerto, no
+    se replica."""
 
     def put(self, request, format=None):
         services.actualizar_estado_medalla(request.GET.get("id"))
@@ -80,8 +115,6 @@ class MedallaEstadoAdminView(AdminAPIView):
 
 
 class CargosAdminView(AdminAPIView):
-    """Réplica de Cargos (api/views.py:4955), CRUD completo."""
-
     def get(self, request, format=None):
         return Response(CargoSerializer(services.list_cargos(), many=True).data)
 
@@ -102,16 +135,14 @@ class CargosAdminView(AdminAPIView):
 
 
 class CargoDetailsAdminView(AdminAPIView):
-    """Réplica de Cargo_Details.get (api/views.py:4991) — el PUT de esa
-    clase está comentado en el original, no existe."""
+    """No tiene PUT."""
 
     def get(self, request, pk, format=None):
         return Response(CargoSerializer(services.obtener_cargo(pk)).data)
 
 
 class PublicidadesAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de Publicidades (api/views.py:4347), CRUD completo, admin-
-    exclusivo (grep confirmado, solo Admin2022 lo consume)."""
+    """Admin-exclusivo, solo Admin2022 lo consume."""
 
     pagination_class = MyCustomPagination
 
@@ -137,8 +168,6 @@ class PublicidadesAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class PublicidadesBuscarAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de FiltroPublicidadesNombres (api/views.py:4385)."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, format=None):
@@ -148,8 +177,6 @@ class PublicidadesBuscarAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class ReadSuggestionsAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de ReadSuggestions (api/views.py), Fase 5 Bloque 3."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, format=None):
@@ -159,8 +186,6 @@ class ReadSuggestionsAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class UnreadSuggestionsAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de UnreadSuggestions (api/views.py), Fase 5 Bloque 3."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, format=None):
@@ -170,9 +195,8 @@ class UnreadSuggestionsAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class SuggestionsDetalleAdminView(AdminAPIView):
-    """Réplica de Suggestions_Details (api/views.py), Fase 5 Bloque 3. Sirve
-    dos alias de URL legacy: `suggestion/<pk>` (GET, confirmado en uso real
-    por Admin2022) y `suggestion_estado/` (PUT, id por query param — ver
+    """Sirve dos alias de URL: `suggestion/<pk>` (GET, uso real por
+    Admin2022) y `suggestion_estado/` (PUT, id por query param — ver
     `content.services.actualizar_estado_sugerencia` para el bug de 500
     real que esto corrige)."""
 

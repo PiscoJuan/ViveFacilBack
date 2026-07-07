@@ -8,12 +8,10 @@ from core.views import AdminAPIView
 
 
 class LoginAdminView(AdminAPIView):
-    """Vista delgada de AuthService para el rol Administrador — mismo
-    mecanismo que LoginSolicitanteView/LoginProveedorView (Fase 3/4).
-    Reemplaza el branching manual que hoy vive en `LoginAdmin.post()`
-    (api/views.py:3198). Ver la rama `expected_role == "Administrador"` en
-    `accounts.services.authenticate_login` para la réplica exacta del caso
-    "cuenta deshabilitada", que difiere del de Proveedor/Solicitante."""
+    """El caso "cuenta deshabilitada" para Administrador devuelve 200 con
+    `active=False` en vez de 400 — distinto del comportamiento para
+    Proveedor/Solicitante. Ver la rama `expected_role == "Administrador"` en
+    `accounts.services.authenticate_login`."""
 
     permission_classes = [IsPublic]
 
@@ -26,14 +24,7 @@ class LoginAdminView(AdminAPIView):
         return Response(data, status=http_status)
 
 
-# ---------------------------------------------------------------------------
-# Fase 5, Bloque 2 — gestión de cuentas y usuarios
-# ---------------------------------------------------------------------------
-
 class AdministradoresAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de Administradores (api/views.py:2442). Antes sin ningún
-    permission_classes."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, format=None):
@@ -54,9 +45,31 @@ class AdministradoresAdminView(AdminAPIView, MyPaginationMixin):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class AdminDetailsAdminView(AdminAPIView):
-    """Réplica de Admin_Details (api/views.py:2540)."""
+class AdministradoresFilterAdminView(AdminAPIView, MyPaginationMixin):
+    pagination_class = MyCustomPagination
 
+    def get(self, request, format=None):
+        page = self.paginate_queryset(
+            services.administradores_por_rango_fecha_queryset(
+                request.GET.get("fechaInicio"), request.GET.get("fechaFin")
+            )
+        )
+        if page is not None:
+            from api.serializers import AdministradorSerializer
+            return self.get_paginated_response(AdministradorSerializer(page, many=True).data)
+
+
+class AdministradoresUserAdminView(AdminAPIView, MyPaginationMixin):
+    pagination_class = MyCustomPagination
+
+    def get(self, request, user, format=None):
+        page = self.paginate_queryset(services.administradores_por_nombre_queryset(user))
+        if page is not None:
+            from api.serializers import AdministradorSerializer
+            return self.get_paginated_response(AdministradorSerializer(page, many=True).data)
+
+
+class AdminDetailsAdminView(AdminAPIView):
     def get(self, request, pk, format=None):
         from api.serializers import AdministradorSerializer
         return Response(AdministradorSerializer(services.obtener_administrador(pk)).data)
@@ -71,9 +84,6 @@ class AdminDetailsAdminView(AdminAPIView):
 
 
 class SolicitantesAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de Solicitantes (api/views.py:2360). Antes sin ningún
-    permission_classes."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, format=None):
@@ -92,9 +102,6 @@ class SolicitantesAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class ProveedoresAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de Proveedores (api/views.py:1637). Antes sin ningún
-    permission_classes."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, format=None):
@@ -113,8 +120,6 @@ class ProveedoresAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class ProveedoresPendientesAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de Proveedores_Pendientes (api/views.py:1995)."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, format=None):
@@ -134,8 +139,6 @@ class ProveedoresPendientesAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class ProveedoresPendientesDetailsAdminView(AdminAPIView):
-    """Réplica de Proveedores_Pendientes_Details (api/views.py:1069)."""
-
     def get(self, request, pk, format=None):
         from api.serializers import Proveedor_PendienteSerializer
         return Response(Proveedor_PendienteSerializer(services.obtener_proveedor_pendiente(pk)).data)
@@ -150,24 +153,18 @@ class ProveedoresPendientesDetailsAdminView(AdminAPIView):
 
 
 class ProveedoresPendientesEstadoAdminView(AdminAPIView):
-    """Réplica de Proveedores_Pendientes_Estado (api/views.py:1149)."""
-
     def put(self, request, format=None):
         services.pendiente_aprobar_por_id(request.GET.get("id"))
         return Response(status=status.HTTP_200_OK)
 
 
 class ProveedoresPendientesRechazoAdminView(AdminAPIView):
-    """Réplica de Proveedores_Pendientes_Details2 (api/views.py:1158)."""
-
     def put(self, request, pk, format=None):
         services.pendiente_rechazar(pk, request.data.get("razon"))
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ProveedoresRechazadosAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de Proveedores_Rechazados (api/views.py:2082)."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, format=None):
@@ -187,8 +184,6 @@ class ProveedoresRechazadosAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class ProveedoresRechazadosDetailsAdminView(AdminAPIView):
-    """Réplica de Proveedores_Rechazados_Details (api/views.py:1331)."""
-
     def get(self, request, pk, format=None):
         from api.serializers import Proveedor_PendienteSerializer2
         return Response(Proveedor_PendienteSerializer2(services.obtener_proveedor_rechazado(pk)).data)
@@ -203,10 +198,9 @@ class ProveedoresRechazadosDetailsAdminView(AdminAPIView):
 
 
 class ProveedoresProveedoresAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de Proveedores_Proveedores (api/views.py:2171). Ver
-    accounts.services.listar_proveedores_proveedores_queryset para el
-    hallazgo del efecto secundario de import que esta clase dispara en
-    api/views.py (no se toca, no se duplica)."""
+    """El listado depende de un efecto secundario de import en
+    api/views.py (escaneo de caducidad a nivel de módulo) que no se
+    duplica acá — ver accounts.services.listar_proveedores_proveedores_queryset."""
 
     pagination_class = MyCustomPagination
 
@@ -227,8 +221,6 @@ class ProveedoresProveedoresAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class ProveedoresProveedoresDetailsAdminView(AdminAPIView):
-    """Réplica de Proveedores_Proveedores_Details (api/views.py:1173)."""
-
     def get(self, request, pk, format=None):
         from api.serializers import Proveedor_PendienteSerializer
         return Response(Proveedor_PendienteSerializer(services.obtener_proveedor_proveedores_detalle(pk)).data)
@@ -243,8 +235,6 @@ class ProveedoresProveedoresDetailsAdminView(AdminAPIView):
 
 
 class ProveedorDeleteAdminView(AdminAPIView):
-    """Réplica de ProveedorDeleteView (api/views.py:1308)."""
-
     def delete(self, request, proveedor_id, format=None):
         eliminadas = services.eliminar_proveedor_cascade(proveedor_id)
         return Response({
@@ -254,8 +244,8 @@ class ProveedorDeleteAdminView(AdminAPIView):
 
 
 class ProveedorEdicionAdminView(AdminAPIView):
-    """Réplica de ProveedorEdicion (api/views.py:4004). Confirmado por grep
-    que lo llama Admin2022, no Provedor2022, pese al nombre."""
+    """Pese al nombre, esta vista es de uso exclusivo de Admin2022, no de
+    Proveedor."""
 
     def put(self, request, format=None):
         data, http_status = services.editar_proveedor_admin(request.data, request.FILES)
@@ -263,8 +253,6 @@ class ProveedorEdicionAdminView(AdminAPIView):
 
 
 class PendientesDocumentsAdminView(AdminAPIView):
-    """Réplica de PendientesDocumentsView (api/views.py:3882)."""
-
     def get(self, request, format=None):
         from api.serializers import PendientesDocumentsSerializer
         return Response(PendientesDocumentsSerializer(services.listar_documentos_pendientes(), many=True).data)
@@ -275,8 +263,6 @@ class PendientesDocumentsAdminView(AdminAPIView):
 
 
 class ProveedoresDocumentsAdminView(AdminAPIView):
-    """Réplica de ProveedoresDocumentsView (api/views.py:1966)."""
-
     def get(self, request, format=None):
         from api.serializers import DocumentSerializer
         return Response(DocumentSerializer(services.listar_documentos_proveedores(), many=True).data)
@@ -287,10 +273,9 @@ class ProveedoresDocumentsAdminView(AdminAPIView):
 
 
 class RolesPermisosAdminView(AdminAPIView):
-    """Réplica de RolesPermisos (api/views.py:4252). No es scaffolding, ya
-    hace CRUD real de Group/Permission — ver docs/refactor/07-fase-5-admin.md.
-    Ver accounts.services.actualizar_permisos_grupo para un hallazgo real de
-    lógica invertida en el PUT, preservado tal cual."""
+    """El PUT delega en `accounts.services.actualizar_permisos_grupo`, que
+    tiene una lógica de sincronización de permisos invertida — ver
+    docstring de esa función."""
 
     def get(self, request, id, format=None):
         from api.serializers import GroupSerializer
@@ -312,32 +297,24 @@ class RolesPermisosAdminView(AdminAPIView):
 
 
 class PermisosAdminView(AdminAPIView):
-    """Réplica de Permisos (api/views.py:4300)."""
-
     def get(self, request, format=None):
         from api.serializers import PermissionSerializer
         return Response(PermissionSerializer(services.listar_permisos_queryset(), many=True).data)
 
 
 class GruposAdminView(AdminAPIView):
-    """Réplica de Grupos (api/views.py:3349) — lista simple de todos los
-    Group, distinto de RolesPermisosAdminView (que busca uno por nombre)."""
+    """Lista todos los Group; a diferencia de RolesPermisosAdminView, que
+    busca uno por nombre."""
 
     def get(self, request, format=None):
         from api.serializers import GroupSerializer
         return Response(GroupSerializer(services.listar_grupos_queryset(), many=True).data)
 
 
-# ---------------------------------------------------------------------------
-# Cleanup post-Fase-5 — cierre del checklist maestro (endpoints no cubiertos
-# por las tablas de Fase 3/4/5), Bloque 1: auth/social/password/versionamiento.
-# ---------------------------------------------------------------------------
-
 class SolicitanteUserAdminView(AdminAPIView):
-    """Réplica de SolicitanteUser.get (api/views.py:1639-1645), endpoint
-    multi-rol (ver SolicitanteUserSolicitanteView en
-    accounts/api/solicitante/views.py) — confirmado usado por Admin2022
-    (`pendientes.component.ts`, búsqueda de un solicitante por correo)."""
+    """Endpoint multi-rol: comparte lógica con SolicitanteUserSolicitanteView
+    (accounts/api/solicitante/views.py). Usado por Admin2022 para buscar un
+    solicitante por correo."""
 
     def get(self, request, user, format=None):
         from api.serializers import SolicitanteSerializer
@@ -347,21 +324,17 @@ class SolicitanteUserAdminView(AdminAPIView):
 
 
 class AdminUserView(AdminAPIView):
-    """Réplica de AdminUser.get (api/views.py:2539-2546). Definida en el
-    service de Admin2022 (`obtener_admin_user`) pero sin ningún llamador
-    real (grep sobre componentes) — el login real de Admin2022 pasa por
-    Firebase directo, no por este mecanismo (ver Fase 5, Bloque 4 y
-    AdminUserPassView de abajo)."""
+    """Sin llamador real conocido: el login de Admin2022 pasa por Firebase
+    directo, no por este mecanismo (ver AdminUserPassView)."""
 
     def get(self, request, user, format=None):
         return Response(services.obtener_admin_por_email(user))
 
 
 class AdminUserPassView(AdminAPIView):
-    """Réplica de AdminUserPass.post (api/views.py:2549-...). Sin llamador
-    real (ver AdminUserView) — segundo mecanismo de login de administrador,
-    no consolidado con `authenticate_login`. Público (IsPublic): es login,
-    no puede exigir sesión previa."""
+    """Sin llamador real conocido (ver AdminUserView) — mecanismo de login
+    alternativo, no consolidado con `authenticate_login`. Público
+    (IsPublic): es login, no puede exigir sesión previa."""
 
     permission_classes = [IsPublic]
 
@@ -374,14 +347,9 @@ class AdminUserPassView(AdminAPIView):
 
 
 class LogoutAdminView(AdminAPIView):
-    """Réplica de Logout (api/views.py:639-645). Sin evidencia de llamador
-    real en ningún frontend (grep fresco: Admin2022 define el wrapper en
-    python-anywhere.service.ts pero ningún componente lo invoca; su logout
-    real es Firebase `signOut`, mismo patrón que LoginAdmin/AdminUser —
-    ver docs/refactor/07-fase-5-admin.md y checklist). Se preserva público
-    (IsPublic, igual que el original sin permission_classes): es una acción
-    de cierre de sesión por token explícito en la URL, no requiere estar
-    ya autenticado vía DRF."""
+    """Sin evidencia de uso real: el logout real de Admin2022 usa Firebase
+    `signOut`. Público (IsPublic): es un cierre de sesión por token
+    explícito en la URL, no requiere estar ya autenticado vía DRF."""
 
     permission_classes = [IsPublic]
 
@@ -391,9 +359,8 @@ class LogoutAdminView(AdminAPIView):
 
 
 class ActualizarCaducidadAdminView(AdminAPIView):
-    """Réplica de ActualizarCaducidad (api/views.py:2856-2882). Confirmado
-    real, exclusivo de Admin2022 (`proveedores.component.ts`). Endurecimiento
-    real: antes sin permission_classes."""
+    """Confirmado real, exclusivo de Admin2022 (`proveedores.component.ts`).
+    Exige IsAdministrador (heredado de AdminAPIView)."""
 
     def put(self, request, pk, format=None):
         try:
@@ -404,12 +371,10 @@ class ActualizarCaducidadAdminView(AdminAPIView):
 
 
 class ActualizarCaducidadProveedoresAdminView(AdminAPIView):
-    """Réplica de ActualizarCaducidadProveedoresRequest (api/views.py:2929-2948).
-    Sin evidencia de llamador real en ningún frontend — probable trigger
-    manual o cron externo a este repo. DELIBERADAMENTE se preserva público
-    (IsPublic, no IsAdministrador): endurecerlo sin poder confirmar si algo
-    externo lo golpea sin sesión rompería esa integración en silencio. Ver
-    docs/refactor/CHECKLIST-inventario-endpoints.md."""
+    """Sin evidencia de llamador real en ningún frontend — probable trigger
+    manual o cron externo a este repo. Se mantiene público (IsPublic, no
+    IsAdministrador) a propósito: endurecerlo sin poder confirmar si algo
+    externo lo golpea sin sesión rompería esa integración en silencio."""
 
     permission_classes = [IsPublic]
 
@@ -419,9 +384,6 @@ class ActualizarCaducidadProveedoresAdminView(AdminAPIView):
 
 
 class DatosAdminView(AdminAPIView):
-    """Réplica de DatosUsers (api/views.py:1364-1382). Sin evidencia de
-    llamador real en ningún frontend — se migra igual por consistencia."""
-
     def get(self, request, format=None):
         from api.serializers import DatosSerializer
         return Response(DatosSerializer(services.listar_datos_queryset(), many=True).data)
@@ -431,9 +393,6 @@ class DatosAdminView(AdminAPIView):
 
 
 class UsuariosAdminView(AdminAPIView):
-    """Réplica de Usuarios (api/views.py:1385-1403). Sin evidencia de
-    llamador real en ningún frontend."""
-
     def get(self, request, format=None):
         from api.serializers import UserSerializer
         return Response(UserSerializer(services.listar_usuarios_queryset(), many=True).data)
@@ -443,9 +402,6 @@ class UsuariosAdminView(AdminAPIView):
 
 
 class ProveedoresSearchAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de Proveedores_Search_Name (api/views.py:1249-1261). Sin
-    evidencia de llamador real en ningún frontend."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, user, format=None):
@@ -456,9 +412,6 @@ class ProveedoresSearchAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class ProveedoresFilterDateAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de Proveedores_Filter_Date (api/views.py:1264-1279). Sin
-    evidencia de llamador real en ningún frontend."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, format=None):
@@ -470,9 +423,6 @@ class ProveedoresFilterDateAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class SolicitantesFilterAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de SolicitantesFilter (api/views.py:1452-1466). Confirmado
-    real, exclusivo de Admin2022."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, format=None):
@@ -484,9 +434,6 @@ class SolicitantesFilterAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class FiltroNombresAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de FiltroNombres (api/views.py:1469-1481). Confirmado real,
-    exclusivo de Admin2022."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, user, format=None):
@@ -497,9 +444,6 @@ class FiltroNombresAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class PendientesSearchAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de Pendientes_Search_Name (api/views.py:875-887). Confirmado
-    real, exclusivo de Admin2022."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, user, format=None):
@@ -510,9 +454,6 @@ class PendientesSearchAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class PendientesFilterDateAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de Pendientes_FilterDate (api/views.py:890-905). Confirmado
-    real, exclusivo de Admin2022."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, format=None):
@@ -524,21 +465,15 @@ class PendientesFilterDateAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class UpdateProveedorPendienteAdminView(AdminAPIView):
-    """Réplica de Update_Proveedor_Pendiente (api/views.py:665-729). Sin
-    evidencia de llamador real en ningún frontend — se migra igual por
-    consistencia."""
-
     def post(self, request, format=None):
         data, http_status = services.actualizar_datos_proveedor_pendiente(request.data)
         return Response(data, status=http_status)
 
 
 class DataProveedorProveedorAdminView(AdminAPIView):
-    """Réplica de Data_Proveedor_Proveedor (api/views.py:791-860). Confirmado
-    real (POST), único consumidor Admin2022
-    (`crear_proveedor_proveedor`). El `delete` original no captura ningún id
-    de URL y solo hace `print("In process")` — no-op preexistente sin
-    consumidor real, se preserva tal cual."""
+    """`delete` es intencionalmente un no-op (no captura ningún id de URL):
+    así era el original, no hay consumidor real que dependa de que borre
+    algo."""
 
     def post(self, request, format=None):
         return Response(services.crear_proveedor_proveedor_manual(request.data))
@@ -548,10 +483,34 @@ class DataProveedorProveedorAdminView(AdminAPIView):
 
 
 class GetAdminByUserAdminView(AdminAPIView):
-    """Réplica de Get_AdminByUser (api/views.py:1137-1143). Confirmado real,
-    exclusivo de Admin2022 (nombre de clase engañoso, ver
-    accounts.services.obtener_admin_por_username)."""
+    """Nombre engañoso: pese a "AdminByUser", devuelve datos de Proveedor,
+    no de Administrador (ver accounts.services.obtener_admin_por_username)."""
 
     def get(self, request, user, format=None):
         from api.serializers import ProveedorSerializer
         return Response(ProveedorSerializer(services.obtener_admin_por_username(user)).data)
+
+
+class RegistroAdminView(AdminAPIView):
+    """Alta manual de cuenta desde el panel admin — misma lógica que
+    `accounts.api.web.views.RegistroWebView` (un `ModelViewSet` por router,
+    no una vista simple), llamada acá directo sin pasar por el router."""
+
+    permission_classes = [IsPublic]
+
+    def post(self, request, format=None):
+        return Response(services.crear_cuenta_registro(request.POST, request.FILES))
+
+
+class ProveedorPendienteAdminView(AdminAPIView):
+    """Alta manual de un proveedor pendiente desde el panel admin — misma
+    lógica que `accounts.api.web.views.ProveedorPendienteWebView` (el
+    formulario público "quiero ser proveedor"). Antes Admin2022 pegaba
+    directo a esa ruta pública a propósito (ver
+    docs/refactor/CHECKLIST-inventario-endpoints.md, fila 74); esta vista
+    reemplaza esa decisión para que el panel admin no dependa de una ruta
+    de otro rol."""
+
+    def post(self, request, format=None):
+        _, serializer = services.crear_proveedor_pendiente(request.data, request.FILES)
+        return Response({"success": True, "serializer": serializer.data})

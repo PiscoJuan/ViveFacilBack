@@ -5,16 +5,19 @@ from rest_framework.response import Response
 
 from api.serializers import Profesion_ProveedorSerializer
 from catalog import services
-from catalog.api.admin.serializers import CategoriaSerializer, SolicitudProfesionSerializer
+from catalog.api.admin.serializers import (
+    CategoriaSerializer,
+    ProfesionSerializer,
+    ServicioSerializer,
+    SolicitudProfesionSerializer,
+)
 from core.pagination import MyCustomPagination, MyPaginationMixin
 from core.views import AdminAPIView
 
 
 class CategoriasAdminView(AdminAPIView):
-    """Réplica de Categorias (api/views.py:716), Fase 5. Solo gestión
-    (POST/PUT/DELETE) — el GET no tiene evidencia de consumidor fuera del
-    panel admin (a diferencia de Servicios/Profesiones, cuyo GET ya es
-    público desde la Fase 2), así que se migra completo."""
+    """El GET es exclusivo de este panel admin, a diferencia de
+    Servicios/Profesiones, cuyo GET es público en catalog.api.web.views."""
 
     def get(self, request, format=None):
         return Response(CategoriaSerializer(services.listar_categorias(), many=True).data)
@@ -39,14 +42,8 @@ class CategoriasAdminView(AdminAPIView):
 
 
 class ServiciosAdminView(AdminAPIView):
-    """Réplica del PUT/DELETE de Servicios en `servicios/<id>`
-    (api/views.py:818), ambos ya admin-exclusivos en esa URL (grep
-    confirmado). El GET (`web/catalog/servicios/`, Fase 2) y el POST
-    (comparte URL `servicios/` con el GET) NO se tocan acá: `Servicios.post`
-    en api/views.py delega a `catalog.services.crear_servicio`, con
-    `get_permissions()` endurecido a IsAdministrador para todo lo que no
-    sea GET (antes exigía solo IsAuthenticated — cualquier usuario logueado,
-    de cualquier rol, podía crear/editar/borrar servicios)."""
+    """Solo PUT/DELETE de `servicios/<id>/`. La ruta base `servicios/`
+    (GET+POST) vive en ServiciosListAdminView."""
 
     def put(self, request, id, format=None):
         data, valido = services.actualizar_servicio(id, request.data.copy())
@@ -59,27 +56,63 @@ class ServiciosAdminView(AdminAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class ServiciosListAdminView(AdminAPIView):
+    """Ruta base `admin/catalog/servicios/` (GET+POST) — antes Admin2022 la
+    pedía en `web/catalog/servicios/` (misma lógica que
+    catalog.api.web.views.ServiciosWebView)."""
+
+    def get(self, request, format=None):
+        todas = request.GET.get("todas")
+        return Response(ServicioSerializer(services.list_servicios(todas=bool(todas)), many=True).data)
+
+    def post(self, request, format=None):
+        _, data = services.crear_servicio(
+            request.POST.get("nombre"), request.POST.get("descripcion"),
+            request.POST.get("categoria"), request.FILES.get("foto"),
+        )
+        return Response(data)
+
+
 class ProfesionesAdminView(AdminAPIView):
-    """Réplica del DELETE de Profesiones en `profesiones/<pk>`
-    (api/views.py:1714), la única URL admin-exclusiva propia de esta clase.
-    El GET (`web/catalog/profesiones/`, Fase 2) y el POST/PUT (comparten la
-    URL `profesiones/` con el GET) se quedan en la clase legacy, que ahora
-    delega a `catalog.services.crear_profesion`/`actualizar_profesion` con
-    el mismo endurecimiento de permiso que Servicios."""
+    """Sirve tanto `profesiones/<pk>` (DELETE) como `profesion/<pk>` (GET,
+    singular) — dos URLs distintas que delegan a esta misma clase. La ruta
+    base `profesiones/` (GET+POST+PUT) vive en ProfesionesListAdminView."""
+
+    def get(self, request, pk, format=None):
+        return Response(ProfesionSerializer(services.obtener_profesion(pk)).data)
 
     def delete(self, request, pk, format=None):
         services.eliminar_profesion(pk)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class ProfesionesListAdminView(AdminAPIView):
+    """Ruta base `admin/catalog/profesiones/` (GET+POST+PUT) — antes
+    Admin2022 la pedía en `web/catalog/profesiones/` (misma lógica que
+    catalog.api.web.views.ProfesionesWebView)."""
+
+    def get(self, request, format=None):
+        return Response(ProfesionSerializer(services.list_profesiones_activas(), many=True).data)
+
+    def post(self, request, format=None):
+        return Response(services.crear_profesion(
+            request.data.get("nombre"), request.data.get("descripcion"),
+            request.data.get("servicio"), request.FILES.get("foto"),
+        ))
+
+    def put(self, request, format=None):
+        data, valido = services.actualizar_profesion(
+            request.data.get("id"), request.data.get("servicio"), request.data
+        )
+        if not valido:
+            return Response(data, status=status.HTTP_400_BAD_REQUEST)
+        return Response(data)
+
+
 class CiudadesAdminView(AdminAPIView):
-    """Réplica del POST de Ciudades (api/views.py:4456), registrada acá
-    además de en la ruta legacy `ciudades/` (que comparte URL con el GET,
-    compartido de verdad por Proveedor2022 y Solicitante2022 — grep
-    confirmado, no se toca). El PUT que llama Admin2022 a `ciudades/` no
-    existe en ningún lado del backend (`Ciudades` nunca definió ese método,
-    ver docs/refactor/CHECKLIST-inventario-endpoints.md) — no se inventa
-    acá, es una decisión de producto pendiente."""
+    """El panel admin llama también un PUT a `ciudades/` que no está
+    implementado en el backend (405 esperado) — decisión de producto
+    pendiente, no agregar sin confirmar el comportamiento deseado."""
 
     def post(self, request, format=None):
         data, valido = services.crear_ciudad(request.data)
@@ -89,8 +122,6 @@ class CiudadesAdminView(AdminAPIView):
 
 
 class SolicitudesProfesionAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de SolicitudProfesionProveedor (api/views.py:1413), Fase 5."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, format=None):
@@ -100,33 +131,20 @@ class SolicitudesProfesionAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class SolicitudPorUsuarioAdminView(AdminAPIView):
-    """Réplica de SolicitudByName (api/views.py:1509). Sin evidencia de uso
-    real en ningún frontend (grep confirmado sobre
-    `solicitudes-proveedores/<user>`) — se migra igual por consistencia de
-    namespace."""
-
     def get(self, request, user, format=None):
         return Response(SolicitudProfesionSerializer(services.solicitudes_profesion_por_usuario(user), many=True).data)
 
 
 class SolicitudProfesionDetalleAdminView(AdminAPIView):
-    """Réplica de SolicitudDetails (api/views.py:1519)."""
-
     def get(self, request, pk, format=None):
         return Response(SolicitudProfesionSerializer(services.obtener_solicitud_profesion(pk)).data)
 
 
 class ManejoSolicitudAdminView(AdminAPIView):
-    """Réplica de ManejoSolicitud (api/views.py:1426-1472), Fase 5. Atendía 3
-    paths viejos con verbos distintos: GET/POST
-    (`obtener_solicitudes_profesiones/`, `crear_solicitud_profesion/`) no
-    tienen evidencia de consumidor en ninguno de los 4 frontends (grep
-    fresco confirmado); PUT/DELETE (`change-solicitud/<pk>`) sí los usa
-    Admin2022 activamente. Se migra la clase completa sin split: a
-    diferencia de otros casos de esta fase donde el split por verbo sí se
-    confirmó con grep (ej. `SendNotificacion` en el Bloque 3), acá no hay
-    evidencia de que GET/POST pertenezcan a otro rol — son código sin
-    consumidor conocido, no un flujo real de otro rol."""
+    """Sirve tres paths distintos por verbo: GET/POST en
+    `obtener_solicitudes_profesiones/`/`crear_solicitud_profesion/`, y
+    PUT/DELETE en `change-solicitud/<pk>` (este último usado activamente
+    por el panel admin)."""
 
     def get(self, request, format=None):
         return Response(SolicitudProfesionSerializer(services.obtener_solicitudes_profesion(), many=True).data)
@@ -150,36 +168,47 @@ class ManejoSolicitudAdminView(AdminAPIView):
 
 
 class CrearProfesionesFaltantesAdminView(AdminAPIView):
-    """Réplica de CrearProfesionesFaltantesView (api/views.py:853), cleanup
-    post-Fase-5, Bloque 4. Sin evidencia de consumidor real en ningún
-    frontend (grep fresco, cero resultados) — se migra igual por
-    consistencia."""
-
     def post(self, request, format=None):
         return Response(services.crear_profesiones_faltantes())
 
 
 class ProfesionProveedorAdminView(AdminAPIView):
-    """Réplica de ProfesionProveedor (api/views.py:903), cleanup
-    post-Fase-5, Bloque 4. Sin consumidor real confirmado (ver
-    `catalog.services.profesiones_por_proveedor`)."""
-
     def get(self, request, proveedor_id, format=None):
         return Response(Profesion_ProveedorSerializer(services.profesiones_por_proveedor(proveedor_id), many=True).data)
 
 
-class SincronizarProfesionProveedorAdminView(AdminAPIView):
-    """Réplica de SincronizarProfesionProveedorView (api/views.py:740),
-    cleanup post-Fase-5, Bloque 4. Sin evidencia de consumidor real en
-    ningún frontend."""
+class CrearProfesionProveedorAdminView(AdminAPIView):
+    """Usada al aceptar una SolicitudProfesion (ver
+    catalog.api.admin.views.ManejoSolicitudAdminView): crea el
+    Profesion_Proveedor real para el proveedor identificado por username."""
 
+    def post(self, request, username, format=None):
+        data, creada = services.crear_profesion_proveedor_por_username(username, request.data)
+        if creada is not None:
+            data["profesion_proveedor"] = Profesion_ProveedorSerializer(creada).data
+        return Response(data)
+
+
+class ProfesionProveedorDetalleAdminView(AdminAPIView):
+    """El PUT es exclusivo del panel admin; el DELETE se conserva aunque
+    no tenga llamador confirmado."""
+
+    def put(self, request, pk, format=None):
+        data, valido = services.actualizar_profesion_proveedor(pk, request.data)
+        if not valido:
+            return Response(data, status=status.HTTP_400_BAD_REQUEST)
+        return Response(data)
+
+    def delete(self, request, pk, format=None):
+        return Response(services.eliminar_profesion_proveedor(pk))
+
+
+class SincronizarProfesionProveedorAdminView(AdminAPIView):
     def post(self, request, format=None):
         return Response(services.sincronizar_profesion_proveedor())
 
 
 class SolicitudesProfesionBusquedaAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de Solicitudes_Search_Name (api/views.py:1528)."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, user, format=None):
@@ -189,8 +218,6 @@ class SolicitudesProfesionBusquedaAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class SolicitudesProfesionFechaAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de Solicitudes_Filter_Date (api/views.py:1543)."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, format=None):

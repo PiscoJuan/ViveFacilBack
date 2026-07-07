@@ -1,3 +1,3 @@
-from api.serializers import ProfesionSerializer, ServicioSerializer
+from api.serializers import CiudadSerializer, ProfesionSerializer, ServicioSerializer
 
-__all__ = ["ProfesionSerializer", "ServicioSerializer"]
+__all__ = ["CiudadSerializer", "ProfesionSerializer", "ServicioSerializer"]

@@ -3,17 +3,28 @@ from api.serializers import CargoSerializer, InsigniaSerializer, MedallaSerializ
 
 
 def list_politicas():
-    """Replica de Politics.get (api/views.py:5322-5330)."""
     return Politicas.objects.all().filter()
 
 
+def crear_o_actualizar_politica(identifier, terminos):
+    """Sin consumidor real confirmado en ningún frontend."""
+    return Politicas.objects.update_or_create(identifier=identifier, defaults={'terminos': terminos})
+
+
+def actualizar_politica(identifier, terminos):
+    """ViveFacil_Admin2022 (`politicas.component.ts::saveChanges`) edita
+    los términos y condiciones desde acá."""
+    politica = Politicas.objects.get(identifier=identifier)
+    politica.terminos = terminos
+    politica.save()
+    return politica
+
+
 def list_insignias_proveedor():
-    """Réplica de InsigniasProveedor.get (api/views.py:490-495)."""
     return Insignia.objects.all().filter(tipo_usuario="Proveedor")
 
 
 def crear_insignia(data, files):
-    """Réplica de Insignias.post (api/views.py:373-398), Fase 5."""
     insignia = Insignia.objects.create(
         nombre=data.get("nombre"), imagen=files.get("imagen"), servicio=data.get("servicio"),
         pedidos=data.get("pedidos"), descripcion=data.get("descripcion"), tipo=data.get("tipo"),
@@ -23,7 +34,6 @@ def crear_insignia(data, files):
 
 
 def actualizar_insignia(id, data):
-    """Réplica de Insignias.put (api/views.py:400-407), Fase 5."""
     insignia = Insignia.objects.get(id=id)
     serializer = InsigniaSerializer(insignia, data=data, partial=True)
     if not serializer.is_valid():
@@ -33,29 +43,24 @@ def actualizar_insignia(id, data):
 
 
 def eliminar_insignia(id):
-    """Réplica de Insignias.delete (api/views.py:409-412), Fase 5."""
     Insignia.objects.get(id=id).delete()
 
 
 def obtener_insignia(pk):
-    """Réplica de Insignia_Details.get (api/views.py:455-459), Fase 5."""
     return Insignia.objects.get(id=pk)
 
 
 def actualizar_estado_insignia(id, estado):
-    """Réplica de Insignia_Details.put (api/views.py:461-466), Fase 5."""
     insignia = Insignia.objects.get(id=id)
     insignia.estado = estado
     insignia.save()
 
 
 def list_medallas():
-    """Réplica de Medallas.get (api/views.py:415-419), Fase 5."""
     return Medalla.objects.filter(estado=True)
 
 
 def crear_medalla(data, files):
-    """Réplica de Medallas.post (api/views.py:421-437), Fase 5."""
     medalla = Medalla.objects.create(
         nombre=data.get("nombre"), imagen=files.get("imagen"), descripcion=data.get("descripcion"),
         tiempo=int(data.get("tiempo")), valor=int(data.get("valor")), cantidad=int(data.get("cantidad")),
@@ -64,7 +69,6 @@ def crear_medalla(data, files):
 
 
 def actualizar_medalla(id, data):
-    """Réplica de Medallas.put (api/views.py:439-446), Fase 5."""
     medalla = Medalla.objects.get(id=id)
     serializer = MedallaSerializer(medalla, data=data, partial=True)
     if not serializer.is_valid():
@@ -74,9 +78,7 @@ def actualizar_medalla(id, data):
 
 
 def eliminar_medalla(id):
-    """Réplica de Medallas.delete (api/views.py:448-451), Fase 5.
-
-    Bug real encontrado y corregido al mover el código: el original hacía
+    """Bug real encontrado y corregido al mover el código: el original hacía
     `Insignia.objects.get(id=id)` y borraba esa Insignia en vez de la
     Medalla pedida (copy-paste de Insignias.delete) — en el caso común
     (ningún Insignia comparte el mismo id) esto lanzaba un 500
@@ -88,26 +90,22 @@ def eliminar_medalla(id):
 
 
 def actualizar_estado_medalla(id):
-    """Réplica de Medalla_Details.put (api/views.py:476-487), Fase 5.
-    Invierte el estado (toggle), tal cual el original."""
+    """Invierte el estado (toggle), tal cual el original."""
     medalla = Medalla.objects.get(id=id)
     medalla.estado = not medalla.estado
     medalla.save()
 
 
 def list_cargos():
-    """Réplica de Cargos.get (api/views.py:4955-4960), Fase 5."""
     return Cargo.objects.all().filter()
 
 
 def crear_cargo(nombre, titulo, porcentaje):
-    """Réplica de Cargos.post (api/views.py:4962-4975), Fase 5."""
     cargo = Cargo.objects.create(nombre=nombre, porcentaje=porcentaje, titulo=titulo)
     return {"cargo": CargoSerializer(cargo).data}
 
 
 def actualizar_cargo(id, data):
-    """Réplica de Cargos.put (api/views.py:4982-4988), Fase 5."""
     cargo = Cargo.objects.get(id=id)
     serializer = CargoSerializer(cargo, data=data, partial=True)
     if not serializer.is_valid():
@@ -117,22 +115,18 @@ def actualizar_cargo(id, data):
 
 
 def eliminar_cargo(id):
-    """Réplica de Cargos.delete (api/views.py:4977-4980), Fase 5."""
     Cargo.objects.get(id=id).delete()
 
 
 def obtener_cargo(pk):
-    """Réplica de Cargo_Details.get (api/views.py:4991-4997), Fase 5."""
     return Cargo.objects.get(id=pk)
 
 
 def list_publicidades():
-    """Réplica del queryset base de Publicidades.get (api/views.py:4347-4357), Fase 5."""
     return Publicidad.objects.all()
 
 
 def crear_publicidad(data):
-    """Réplica de Publicidades.post (api/views.py:4359-4366), Fase 5."""
     serializer = PublicidadSerializer(data=data)
     if not serializer.is_valid():
         return serializer.errors, False
@@ -141,7 +135,7 @@ def crear_publicidad(data):
 
 
 def actualizar_publicidad(id, data):
-    """Réplica de Publicidades.put (api/views.py:4368-4376), Fase 5. El
+    """El
     `id` viene del body (`request.data.get('id')`), no de la URL, tal cual
     el original."""
     publicidad = Publicidad.objects.get(id=id)
@@ -153,34 +147,34 @@ def actualizar_publicidad(id, data):
 
 
 def eliminar_publicidad(id):
-    """Réplica de Publicidades.delete (api/views.py:4378-4382), Fase 5."""
     publicidad = Publicidad.objects.get(id=id)
     data = PublicidadSerializer(publicidad).data
     publicidad.delete()
     return data
 
 
+def list_sugerencias():
+    """Sin consumidor real confirmado en ningún frontend."""
+    return Suggestion.objects.all().filter()
+
+
 def list_sugerencias_leidas():
-    """Réplica de ReadSuggestions (api/views.py), Fase 5 Bloque 3."""
     return Suggestion.objects.all().filter(estado=True)
 
 
 def list_sugerencias_no_leidas():
-    """Réplica de UnreadSuggestions (api/views.py), Fase 5 Bloque 3."""
     return Suggestion.objects.all().filter(estado=False)
 
 
 def obtener_sugerencia(pk):
-    """Réplica de Suggestions_Details.get (api/views.py), Fase 5 Bloque 3."""
     return Suggestion.objects.get(id=pk)
 
 
 def actualizar_estado_sugerencia(id, estado):
-    """Réplica de Suggestions_Details.put (api/views.py) — con un bug real
-    corregido al mover el código. El original tomaba `pk` de la URL
-    (`def put(self, request, pk, format=None)`), pero la única ruta que lo
-    sirve en producción (`suggestion_estado/`) nunca captura ningún `pk` en
-    el patrón de URL — cada llamada real (confirmado en
+    """Bug real corregido al mover el código. El original tomaba `pk` de
+    la URL (`def put(self, request, pk, format=None)`), pero la única ruta
+    que lo sirve en producción (`suggestion_estado/`) nunca captura ningún
+    `pk` en el patrón de URL — cada llamada real (confirmado en
     `ViveFacil_Admin2022`, que manda el id por query string:
     `PUT suggestion_estado/?id=...`) lanzaba `TypeError: put() missing 1
     required positional argument: 'pk'`, un 500 garantizado. Se corrige acá
@@ -197,8 +191,7 @@ def actualizar_estado_sugerencia(id, estado):
 
 
 def insignias_personales(id):
-    """Réplica de InsigniasPersonales.get (api/views.py:237-276), cleanup
-    post-Fase-5, Bloque 4. Preserva el efecto secundario original: si la
+    """Preserva el efecto secundario original: si la
     profesión del proveedor no tiene ninguna Insignia asociada, crea una
     "Insignia de Bienvenida" de una sola vez."""
     prov = Proveedor.objects.get(user_datos_id=id)
@@ -223,8 +216,7 @@ def insignias_personales(id):
 
 
 def medallas_personales(user):
-    """Réplica de MedallasPersonales.get (api/views.py:313-338), cleanup
-    post-Fase-5, Bloque 4. Preserva el efecto secundario original: otorga
+    """Preserva el efecto secundario original: otorga
     (y persiste) cada medalla que el usuario ya califica y todavía no
     tiene, sumando sus puntos a `Datos.puntos`."""
     import datetime
@@ -254,14 +246,11 @@ def medallas_personales(user):
 
 
 def list_insignias_solicitante():
-    """Réplica de InsigniaSolicitantes.get (api/views.py:416-421), cleanup
-    post-Fase-5, Bloque 4."""
     return Insignia.objects.all().filter(tipo_usuario="Solicitante")
 
 
 def crear_sugerencia(data, files):
-    """Réplica de Suggestions.post (api/views.py:1810-1825), cleanup
-    post-Fase-5, Bloque 4. Devuelve el dict de respuesta tal cual el
+    """Devuelve el dict de respuesta tal cual el
     original (incluye 'sugerencia' o 'error')."""
     result = {}
     sugerencia = Suggestion.objects.create(
@@ -275,8 +264,7 @@ def crear_sugerencia(data, files):
 
 
 def buscar_publicidades(buscar):
-    """Réplica de FiltroPublicidadesNombres.get (api/views.py:4385-4397),
-    Fase 5. Devuelve el queryset filtrado, sin paginar (la vista pagina)."""
+    """Devuelve el queryset filtrado, sin paginar (la vista pagina)."""
     from django.db.models import Q
 
     return Publicidad.objects.all().filter(Q(titulo__icontains=buscar) | Q(descripcion__icontains=buscar))
@@ -286,6 +274,6 @@ _TERMINOS_CONDICIONES_TEXTO = 'TÉRMINOS Y CONDICIONES PARA USO DE LA APLICACIÓ
 
 
 def terminos_condiciones_texto():
-    """Replica de Politica.get (api/views.py:2024-2026). Texto plano
+    """Texto plano
     estatico, no depende de la base de datos."""
     return _TERMINOS_CONDICIONES_TEXTO

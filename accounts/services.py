@@ -25,7 +25,6 @@ from api.serializers import DocumentSerializer, Proveedor_PendienteSerializer
 
 
 def get_proveedor_pendiente_activo_por_email(mail):
-    """Replica de Proveedores_Pendientes_Email (api/views.py:1644-1660)."""
     return (
         Proveedor_Pendiente.objects.filter(email=mail, estado=False)
         .filter(Q(rechazo__isnull=True) | Q(rechazo=""))
@@ -34,20 +33,19 @@ def get_proveedor_pendiente_activo_por_email(mail):
 
 
 def crear_proveedor_pendiente(data, files):
-    """Replica de Proveedor_Pendiente_Admin.post (api/views.py:1570-1643,
-    la vista que en realidad atiende el formulario público "quiero ser
-    proveedor" pese al nombre — ver docs/refactor/04-fase-2-web.md).
+    """Es la vista que en realidad atiende el formulario público "quiero
+    ser proveedor" pese al nombre.
 
     Se omite a propósito la línea original `data['data'] = {nombres_prov}`:
     asignaba un `set` de Python a una respuesta JSON, no serializable por
     DRF — hacía fallar la respuesta con un 500 después de guardar el
-    registro en la base. Se corrige acá al mover el código.
+    registro en la base.
 
     El `threading.Thread(...)` sin `.start()` de abajo replica un patrón
     repetido en todo `api/views.py`: el `target=` se evalúa (y por lo tanto
     el email se manda) al construir el `Thread`, nunca llega a ejecutarse
     en background. Se deja igual a propósito — arreglarlo es un cambio de
-    comportamiento (timing) fuera del alcance de esta fase.
+    comportamiento (timing).
     """
     proveedor_pend = Proveedor_Pendiente.objects.create(
         nombres=data.get("nombres"),
@@ -91,11 +89,10 @@ def crear_proveedor_pendiente(data, files):
 
 
 def authenticate_login(request, username, password, expected_role):
-    """Replica de Login.post()/LoginAdmin.post() (api/views.py:4113-4210),
-    generalizada para los 3 roles vía `expected_role` en vez de duplicar la
-    lógica por rol (AuthService, ver docs/refactor/05-fase-3-solicitante.md).
+    """Generalizada para los 3 roles vía `expected_role` en vez de duplicar
+    la lógica por rol.
 
-    Corrige un bug latente encontrado al mover el código: si
+    Corrige un bug latente: si
     `authenticate_django` devuelve None, el `Login.post()` original no tenía
     un `else` para ese caso y devolvía implícitamente `None` en vez de un
     `Response` — DRF lanza un `AssertionError` (500). En `Login.post()` casi
@@ -115,13 +112,10 @@ def authenticate_login(request, username, password, expected_role):
         return {"error": "Usuario no permitido", "active": True}, status.HTTP_400_BAD_REQUEST
     if not usuario.estado:
         if expected_role == "Administrador":
-            # Réplica exacta de LoginAdmin.post() (api/views.py:3198, Fase 5):
-            # a diferencia de Proveedor/Solicitante (que acá mismo devuelven
+            # A diferencia de Proveedor/Solicitante (que acá mismo devuelven
             # 400 "Usuario no permitido"), una cuenta de Administrador
-            # deshabilitada a nivel Datos respondía 200 con active=False, sin
-            # token ni mensaje de error. Confirmado via `git diff` contra el
-            # Login.post() original: Proveedor/Solicitante NUNCA tuvieron esta
-            # rama, es exclusiva de LoginAdmin.
+            # deshabilitada a nivel Datos responde 200 con active=False, sin
+            # token ni mensaje de error — es exclusivo de este rol.
             return {"active": False}, status.HTTP_200_OK
         return {"error": "Usuario no permitido", "active": True}, status.HTTP_400_BAD_REQUEST
 
@@ -142,8 +136,7 @@ def authenticate_login(request, username, password, expected_role):
 
 
 def cambiar_contrasenia_firebase(firetoken, password):
-    """Replica exacta de CambioContrasenia.post (api/views.py:798-843).
-    Devuelve (data: dict, http_status: int)."""
+    """Devuelve (data: dict, http_status: int)."""
     from firebase_admin import auth as fire_auth
     from django.contrib.auth.models import User
     from django.core.exceptions import ObjectDoesNotExist
@@ -186,12 +179,11 @@ def cambiar_contrasenia_firebase(firetoken, password):
 
 
 def buscar_cvc_tarjeta(token):
-    """Replica de CardsAuth.get (api/views.py:230-248)."""
     return Cardauth.objects.get(token=token).auth
 
 
 def guardar_cvc_tarjeta(token, cvc):
-    """Replica de CardsAuth.post (api/views.py:250-277). Si ya existe una
+    """Si ya existe una
     credencial con ese token, el original NO la actualiza (solo crea si no
     existía) — devuelve False en ese caso, tal cual el 'valid': 'NO' viejo."""
     if Cardauth.objects.filter(token=token).exists():
@@ -201,7 +193,7 @@ def guardar_cvc_tarjeta(token, cvc):
 
 
 def eliminar_cvc_tarjeta(token):
-    """Replica de CardsAuth.delete (api/views.py:279-297). Devuelve
+    """Devuelve
     (success: bool, message: str)."""
     try:
         Cardauth.objects.get(token=token).delete()
@@ -211,7 +203,6 @@ def eliminar_cvc_tarjeta(token):
 
 
 def registrar_dispositivo(request, token):
-    """Replica de DeviceNotification.post (api/views.py:591-609)."""
     from fcm_django.models import FCMDevice
 
     if FCMDevice.objects.filter(active=True, registration_id=token).exists():
@@ -224,12 +215,9 @@ def registrar_dispositivo(request, token):
 
 
 def registrar_proveedor(email, tipo, nombres, apellidos, telefono, genero, foto):
-    """Replica de Register_Proveedor.post (api/views.py:1106-1160), Fase 4.
-
-    Sin evidencia de llamador real en ninguno de los 4 frontends (grep
+    """Sin evidencia de llamador real en ninguno de los 4 frontends (grep
     confirmado): `ViveFacil_Provedor2022` usa el router DRF `registro/`
     (`postRegistro`) para el alta real, no este endpoint. Se migra igual
-    por consistencia de namespace — ver docs/refactor/06-fase-4-proveedor.md.
     Devuelve (data: dict, http_status: int), status siempre 200 como el
     original (nunca seteaba status explícito).
 
@@ -288,9 +276,7 @@ def registrar_proveedor(email, tipo, nombres, apellidos, telefono, genero, foto)
 
 
 def actualizar_documento_proveedor(username, descripcion, data):
-    """Replica de Documentos_proveedor.put (api/views.py:2285-2295), Fase 4.
-
-    La URL vieja capturaba `<str:username>` pero el método original nunca lo
+    """La URL vieja capturaba `<str:username>` pero el método original nunca lo
     declaraba en su firma (`put(self, request, format=None)`) — con DRF,
     cualquier PUT real a esa ruta habría lanzado un TypeError por el kwarg
     inesperado (probablemente por eso nunca se detectó: sin llamador
@@ -306,17 +292,12 @@ def actualizar_documento_proveedor(username, descripcion, data):
 
 
 def actualizar_datos_usuario(email, data, files):
-    """Replica exacta de Dato.put (api/views.py:2668-2692), Fase 4. Endpoint
-    multi-rol (`dato/<user>`, confirmado usado por Solicitante2022 y
-    Provedor2022 vía grep) — no estaba tageado como tal en `urls.py` ni se
-    había detectado en la Fase 3, se resuelve acá con el mismo mecanismo de
-    doble-registro.
+    """Endpoint multi-rol (`dato/<user>`, usado por Solicitante2022 y
+    Provedor2022).
 
     El `if persona:` original es código muerto: `Datos.objects.get(...)` ya
     lanza `DoesNotExist` antes de llegar ahí si no existe — se deja igual,
-    es el comportamiento real de hoy (la excepción la maneja el
-    EXCEPTION_HANDLER global desde la Fase 1, antes y después de este
-    movimiento)."""
+    la excepción la maneja el EXCEPTION_HANDLER global."""
     persona = Datos.objects.get(user__email=email)
     persona.nombres = data.get("nombres")
     persona.ciudad = data.get("ciudad")
@@ -332,9 +313,7 @@ def actualizar_datos_usuario(email, data, files):
 
 
 def eliminar_dispositivos_por_correo(correo):
-    """Replica de DeviceNotification.delete (api/views.py:611-628).
-
-    Bug real encontrado y corregido al mover el código: el original arma
+    """Bug real encontrado y corregido al mover el código: el original arma
     `'...#' + num_devices + '...'` concatenando un int con str, lo que lanza
     un TypeError (500) DESPUÉS de haber borrado los dispositivos de la base
     — y este endpoint sí lo llaman ambos frontends (Solicitante2022 y
@@ -352,19 +331,32 @@ def eliminar_dispositivos_por_correo(correo):
 
 
 # ---------------------------------------------------------------------------
-# Fase 5, Bloque 2 — gestión de cuentas y usuarios (admin). Todas las vistas
-# legacy de este bloque no tenían ningún permission_classes (comentado en el
-# código original) — cualquiera, sin sesión, podía gestionar administradores,
-# solicitantes y proveedores. La ruta nueva exige IsAdministrador
-# estructuralmente; la legacy queda igual de abierta hasta observar tráfico.
+# Gestión de cuentas y usuarios (admin). Las rutas legacy de este bloque no
+# tenían ningún permission_classes (comentado en el código original) —
+# cualquiera, sin sesión, podía gestionar administradores, solicitantes y
+# proveedores. La ruta nueva exige IsAdministrador estructuralmente; la
+# legacy queda igual de abierta hasta observar tráfico.
 # ---------------------------------------------------------------------------
 
 def listar_administradores_queryset():
     return Administrador.objects.all().order_by("-id")
 
 
+def administradores_por_rango_fecha_queryset(fecha_inicio, fecha_fin):
+    fecha_in = datetime.datetime.strptime(fecha_inicio, "%Y-%m-%d")
+    fecha_fi = datetime.datetime.strptime(fecha_fin, "%Y-%m-%d")
+    return Administrador.objects.all().filter(
+        user_datos__fecha_creacion__date__range=[fecha_in, fecha_fi]
+    )
+
+
+def administradores_por_nombre_queryset(nombre):
+    return Administrador.objects.all().filter(
+        Q(user_datos__nombres__icontains=nombre) | Q(user_datos__apellidos__icontains=nombre)
+    )
+
+
 def crear_administrador(data, foto):
-    """Replica de Administradores.post (api/views.py:2455-2522)."""
     from firebase_admin import auth as fire_auth
 
     out = {}
@@ -412,8 +404,7 @@ def crear_administrador(data, foto):
 
 
 def cambiar_estado_administrador(admin_id, estado):
-    """Replica de Administradores.put (api/views.py:2524-2532) — `estado`
-    se aplica tanto a Administrador como a Datos."""
+    """`estado` se aplica tanto a Administrador como a Datos."""
     admin = Administrador.objects.get(id=admin_id)
     persona = Datos.objects.get(id=admin.user_datos.id)
     admin.estado = estado
@@ -423,8 +414,7 @@ def cambiar_estado_administrador(admin_id, estado):
 
 
 def eliminar_administrador(admin_id):
-    """Replica de Administradores.delete / Admin_Details.delete (ambas
-    hacen exactamente lo mismo: borrado duro del registro Administrador)."""
+    """Borrado duro del registro Administrador."""
     Administrador.objects.get(id=admin_id).delete()
 
 
@@ -433,7 +423,7 @@ def obtener_administrador(pk):
 
 
 def actualizar_administrador(pk, data, files):
-    """Replica de Admin_Details.put (api/views.py:2548-2590). El `if
+    """El `if
     persona:` original es código muerto (Datos.objects.get ya lanza
     DoesNotExist si no existe) — se deja igual, mismo patrón que
     actualizar_datos_usuario más arriba en este archivo."""
@@ -471,7 +461,6 @@ def actualizar_administrador(pk, data, files):
 
 
 def listar_solicitantes_queryset(filtro):
-    """Replica de Solicitantes.get (api/views.py:2367-2378)."""
     queryset = Solicitante.objects.all().order_by("-id")
     if filtro == "activos":
         queryset = queryset.filter(estado=True).order_by("-id")
@@ -481,7 +470,6 @@ def listar_solicitantes_queryset(filtro):
 
 
 def actualizar_solicitante(id, data):
-    """Replica de Solicitantes.put (api/views.py:2385-2396)."""
     from api.serializers import DatosSerializer, SolicitanteSerializer
 
     solicitante = Solicitante.objects.get(id=id)
@@ -500,12 +488,10 @@ def eliminar_solicitante(id):
 
 
 def listar_proveedores_queryset():
-    """Replica del queryset de Proveedores (api/views.py:1640)."""
     return Proveedor.objects.all().exclude(user_datos__tipo=4).order_by("-id")
 
 
 def actualizar_proveedor(id, data):
-    """Replica de Proveedores.put (api/views.py:1657-1668)."""
     from api.serializers import DatosSerializer, ProveedorSerializer
 
     proveedor = Proveedor.objects.get(id=id)
@@ -520,9 +506,9 @@ def actualizar_proveedor(id, data):
 
 
 def desactivar_proveedor(id):
-    """Replica de Proveedores.delete (api/views.py:1670-1677) — pese al
-    nombre del endpoint (`proveedor_delete/<id>`), es un soft-delete: solo
-    desactiva `estado` en Proveedor y Datos, no borra ningún registro."""
+    """Pese al nombre del endpoint (`proveedor_delete/<id>`), es un
+    soft-delete: solo desactiva `estado` en Proveedor y Datos, no borra
+    ningún registro."""
     proveedor = Proveedor.objects.get(id=id)
     proveedor.estado = False
     proveedor.save()
@@ -541,9 +527,6 @@ def desactivar_proveedor(id):
 # veces en la nueva base.
 
 def eliminar_documento_pendiente_admin(username, desc):
-    """Replica del `delete(self, request, username, desc)` compartido por
-    Proveedores_Pendientes/Rechazados/Proveedores (api/views.py:2012-2029,
-    2101-2118, 2203-2220)."""
     proveedor_pendiente = Proveedor_Pendiente.objects.get(
         proveedor__user_datos__user__username=username)
     descripcion = desc.split("|")
@@ -562,8 +545,7 @@ def eliminar_documento_pendiente_admin(username, desc):
 
 
 def actualizar_descripcion_documento_pendiente_admin(descripcion, profesion):
-    """Replica del `put(self, request)` compartido por las 3 clases de
-    arriba (api/views.py:2031-2045, 2120-2134, 2222-2236). El código muerto
+    """El código muerto
     tras el `return` original (un segundo bloque que arma un `Cuenta`/
     `Proveedor_Pendiente` nuevo, inalcanzable porque siempre se retorna
     antes) no se replica — nunca se ejecutaba."""
@@ -587,20 +569,8 @@ def listar_proveedores_rechazados_queryset():
 
 
 def listar_proveedores_proveedores_queryset():
-    """Replica del queryset de listado de Proveedores_Proveedores
-    (api/views.py:2192) — Proveedor, no Proveedor_Pendiente (a diferencia
-    de su propio put/delete, ver nota del trío arriba).
-
-    El escaneo de caducidad + envío de emails + desactivación de cuentas que
-    la clase original ejecuta a nivel de módulo (api/views.py:2178-2191, NO
-    dentro de ningún método — se dispara una vez por cada import de
-    api.views, es decir en cada arranque del servidor o `manage.py`) NO se
-    replica ni se mueve acá a propósito: es un hallazgo real de producción,
-    ajeno a esta migración de namespaces, que requiere decisión de producto
-    (ver docs/refactor/CHECKLIST-inventario-endpoints.md). Como la clase
-    legacy `Proveedores_Proveedores` en api/views.py se mantiene definida
-    (solo sus métodos pasan a delegar acá), ese efecto secundario sigue
-    disparándose exactamente igual que antes — una sola vez, no duplicado."""
+    """Devuelve Proveedor, no Proveedor_Pendiente (a diferencia de su
+    propio put/delete, ver nota del trío arriba)."""
     return Proveedor.objects.all().order_by("-id")
 
 
@@ -609,7 +579,6 @@ def obtener_proveedor_pendiente(pk):
 
 
 def actualizar_proveedor_pendiente_detalle(pk, data, files):
-    """Replica de Proveedores_Pendientes_Details.put (api/views.py:1077-1131)."""
     pendiente = Proveedor_Pendiente.objects.get(id=pk)
     if data.get("copiaCedula") is not None:
         pendiente.copiaCedula.delete()
@@ -639,27 +608,21 @@ def actualizar_proveedor_pendiente_detalle(pk, data, files):
 
 
 def pendiente_marcar_procesado(pk):
-    """Replica de Proveedores_Pendientes_Details.delete (api/views.py:1133-1147)
-    y de Proveedores_Proveedores_Details.delete (api/views.py:1292-1306) —
-    ambas hacen exactamente lo mismo: `estado = 1` sobre Proveedor_Pendiente."""
+    """`estado = 1` sobre Proveedor_Pendiente."""
     pendiente = Proveedor_Pendiente.objects.get(id=pk)
     pendiente.estado = 1
     pendiente.save()
 
 
 def pendiente_aprobar_por_id(ident):
-    """Replica de Proveedores_Pendientes_Estado.put (api/views.py:1151-1156)
-    — mismo efecto que pendiente_marcar_procesado (estado=1)."""
+    """Mismo efecto que pendiente_marcar_procesado (estado=1)."""
     pendiente_marcar_procesado(ident)
 
 
 def pendiente_rechazar(pk, razon):
-    """Replica de Proveedores_Pendientes_Details2.put (api/views.py:1160-1171).
-
-    El `threading.Thread(...)` de abajo se crea sin `.start()` en el
-    original — mismo patrón repetido en todo api/views.py (el email se
-    manda igual, de forma síncrona, al construir el Thread). Se deja igual
-    a propósito, no es parte del alcance de esta migración."""
+    """El `threading.Thread(...)` de abajo se crea sin `.start()` — el
+    email se manda igual, de forma síncrona, al construir el Thread. Se
+    deja igual a propósito."""
     from api.views import FormatEmail
 
     pendiente = Proveedor_Pendiente.objects.get(id=pk)
@@ -673,15 +636,13 @@ def pendiente_rechazar(pk, razon):
 
 
 def obtener_proveedor_rechazado(pk):
-    """Replica de Proveedores_Rechazados_Details.get (api/views.py:1333-1337)
-    — usa Proveedor_PendienteSerializer2, no el Serializer normal (ambos
+    """Usa Proveedor_PendienteSerializer2, no el Serializer normal (ambos
     serializers son idénticos campo a campo, ver api/serializers.py:184-198;
     la distinción parece vestigial, se preserva igual)."""
     return Proveedor_Pendiente.objects.get(id=pk)
 
 
 def actualizar_proveedor_rechazado_detalle(pk, data, files):
-    """Replica de Proveedores_Rechazados_Details.put (api/views.py:1339-1360)."""
     pendiente = Proveedor_Pendiente.objects.get(id=pk)
     if data.get("copiaCedula") is not None:
         pendiente.copiaCedula.delete()
@@ -698,8 +659,7 @@ def actualizar_proveedor_rechazado_detalle(pk, data, files):
 
 
 def rechazado_revertir_a_pendiente(pk):
-    """Replica de Proveedores_Rechazados_Details.delete (api/views.py:1362-1376)
-    — pese a estar en un endpoint DELETE, no borra nada: pone `estado = 0`,
+    """Pese a estar en un endpoint DELETE, no borra nada: pone `estado = 0`,
     lo que en la práctica revierte el rechazo (vuelve a aparecer como
     pendiente). Nombre del método deliberadamente distinto de
     `pendiente_marcar_procesado` porque el efecto es el opuesto (0, no 1)."""
@@ -709,9 +669,7 @@ def rechazado_revertir_a_pendiente(pk):
 
 
 def obtener_proveedor_proveedores_detalle(pk):
-    """Replica de Proveedores_Proveedores_Details.get (api/views.py:1175-1179).
-
-    Hallazgo real: pese a que la clase se llama "Proveedores_Proveedores" y
+    """Hallazgo real: pese a que la clase se llama "Proveedores_Proveedores" y
     su PUT/DELETE operan sobre el modelo `Proveedor`, su GET busca en
     `Proveedor_Pendiente` (mismo bug de copy-paste que el resto del trío).
     Se preserva tal cual — devuelve datos de Proveedor_Pendiente, no de
@@ -720,8 +678,7 @@ def obtener_proveedor_proveedores_detalle(pk):
 
 
 def actualizar_proveedor_proveedores_detalle(pk, data, files):
-    """Replica de Proveedores_Proveedores_Details.put (api/views.py:1181-1290).
-    Único método de este archivo que además sincroniza el email en Firebase
+    """Único método de este archivo que además sincroniza el email en Firebase
     Auth cuando cambia — se preserva la transacción atómica y el manejo de
     excepciones (captura genérica que devuelve 400 con la excepción cruda
     como body, igual que el original, aunque no sea JSON-serializable en
@@ -788,7 +745,6 @@ def actualizar_proveedor_proveedores_detalle(pk, data, files):
 
 
 def eliminar_proveedor_cascade(proveedor_id):
-    """Replica de ProveedorDeleteView.delete (api/views.py:1308-1328)."""
     from django.db import transaction
     from django.shortcuts import get_object_or_404
     from api.models import Envio_Interesados, Solicitud
@@ -802,7 +758,7 @@ def eliminar_proveedor_cascade(proveedor_id):
 
 
 def editar_proveedor_admin(data, files):
-    """Replica de ProveedorEdicion.put (api/views.py:4006-4073). Endpoint
+    """Endpoint
     confirmado (grep) llamado por Admin2022, no por Provedor2022, pese al
     nombre — un admin editando el perfil de un proveedor, no autoedición."""
     proveedor = Proveedor.objects.get(id=data.get("id"))
@@ -871,7 +827,6 @@ def obtener_grupo_por_nombre(nombre):
 
 
 def crear_grupo_con_permisos(nombre, permisos_nombres):
-    """Replica de RolesPermisos.post (api/views.py:4260-4267)."""
     grupo = Group.objects.create(name=nombre)
     for permiso in permisos_nombres:
         grupo.permissions.add(Permission.objects.get(name=permiso))
@@ -879,18 +834,14 @@ def crear_grupo_con_permisos(nombre, permisos_nombres):
 
 
 def actualizar_permisos_grupo(grupo_id, permisos_enviados):
-    """Replica EXACTA de RolesPermisos.put (api/views.py:4269-4291).
-
-    Hallazgo real: la lógica de sincronización está invertida. Agrega
-    correctamente los permisos nuevos que no estaban antes, pero el segundo
-    bucle remueve los permisos que SÍ están en `permisos_enviados` (debería
-    remover los que ya NO están, es decir los que el admin deselecciono) —
-    en la práctica, marcar un permiso que el grupo ya tenía lo elimina, y
-    los permisos no tocados nunca se remueven. El doc de la Fase 5 asegura
-    que este panel 'ya funciona' — este bug contradice esa afirmación. No
-    se corrige acá (no es un crash, es lógica de negocio, fuera del alcance
-    de esta migración de namespaces) pero queda documentado en el checklist
-    para que el equipo decida si vale la pena arreglarlo por separado."""
+    """La lógica de sincronización está invertida. Agrega correctamente
+    los permisos nuevos que no estaban antes, pero el segundo bucle remueve
+    los permisos que SÍ están en `permisos_enviados` (debería remover los
+    que ya NO están, es decir los que el admin deselecciono) — en la
+    práctica, marcar un permiso que el grupo ya tenía lo elimina, y los
+    permisos no tocados nunca se remueven. No se corrige acá: no es un
+    crash, es lógica de negocio que el equipo debe decidir si vale la pena
+    arreglar por separado."""
     grupo = Group.objects.get(id=grupo_id)
     permisos_actuales = [p.name for p in grupo.permissions.all()]
 
@@ -918,10 +869,7 @@ def listar_grupos_queryset():
 
 
 # ---------------------------------------------------------------------------
-# Cleanup post-Fase-5 — cierre de los endpoints del checklist maestro que
-# quedaron en `no-empezado` (ninguna Fase 3/4/5 los cubría explícitamente en
-# su tabla, pese a estar inventariados desde la Fase 0). Bloque 1: auth /
-# social / password / versionamiento.
+# Auth / social / password / versionamiento.
 # ---------------------------------------------------------------------------
 
 def crear_cuenta_registro(data, files):
@@ -1052,12 +1000,7 @@ def crear_cuenta_registro(data, files):
 
 
 def registrar_desde_redes(user, data, files):
-    """Replica exacta de RegistroFromRedes.post (api/views.py:682-710).
-
-    Sin evidencia de llamador real en ninguno de los 4 frontends (grep
-    fresco, cero resultados incluso a nivel de definición de wrapper en los
-    `python-anywhere.service.ts`) — se migra igual por consistencia de
-    namespace, mismo criterio que Register_Proveedor en la Fase 4."""
+    """Sin llamador real confirmado en ningún frontend."""
     from django.contrib.auth.models import Group as _Group, User as _User
 
     usuario = _User.objects.get(email=user)
@@ -1087,25 +1030,20 @@ def registrar_desde_redes(user, data, files):
 
 
 def obtener_solicitante_por_email(email):
-    """Replica de SolicitanteUser.get (api/views.py:1639-1645). Endpoint
-    multi-rol confirmado: Solicitante2022 (login/registro, perfil propio) y
-    Admin2022 (`pendientes.component.ts`, búsqueda de un solicitante por
-    correo) — no estaba tageado como tal, se resuelve acá con el mismo
-    mecanismo de doble-registro que el resto de esta migración."""
+    """Endpoint multi-rol: Solicitante2022 (login/registro, perfil propio)
+    y Admin2022 (`pendientes.component.ts`, búsqueda de un solicitante por
+    correo)."""
     return Solicitante.objects.filter(user_datos__user__email=email)
 
 
 def obtener_solicitante_por_user_datos_id(user_datos_id):
-    """Replica de SolicitanteByUserDatos.get (api/views.py:1648-1654).
-    Confirmado uso exclusivo de Provedor2022 (feature de chat)."""
+    """Confirmado uso exclusivo de Provedor2022 (feature de chat)."""
     return Solicitante.objects.filter(user_datos__id=user_datos_id)
 
 
 def reactivar_cuenta_proveedor(access_security, password):
-    """Replica exacta de ChangePassword.post (api/views.py:1983-2005), Fase
-    de reactivación de cuenta vía `security_access` (el mismo UUID que
-    genera `authenticate_login` cuando un Proveedor está inactivo). Sin
-    evidencia de llamador real en ningún frontend.
+    """Reactivación de cuenta vía `security_access` (el mismo UUID que
+    genera `authenticate_login` cuando un Proveedor está inactivo).
 
     Bug real preexistente, NO corregido (requiere decisión de producto, no
     es un crash evidente sin más contexto): `Proveedor.objects.get(user_datos=
@@ -1114,7 +1052,7 @@ def reactivar_cuenta_proveedor(access_security, password):
     casi nunca (`Proveedor.DoesNotExist` real), a menos que exista un
     Proveedor cuyo `user_datos_id` coincida numéricamente con la cadena de
     texto del nombre (no puede pasar, `user_datos` es un FK numérico). Se
-    preserva tal cual — mismo criterio que otros bugs de este bloque."""
+    preserva tal cual."""
     persona = Datos.objects.get(security_access=access_security)
     proveedor = Proveedor.objects.get(user_datos=persona.nombres)
     persona.user.set_password(password)
@@ -1129,18 +1067,16 @@ def reactivar_cuenta_proveedor(access_security, password):
 
 
 def obtener_datos_por_user_id(user_id):
-    """Replica de Datos_Users.get (api/views.py:2221-2227). Endpoint
+    """Endpoint
     multi-rol confirmado: Solicitante2022 y Provedor2022 lo usan igual
     (feature de chat, para mostrar datos básicos de la contraparte)."""
     return Datos.objects.all().filter(user__id=user_id)
 
 
 def completar_datos_usuario(username, data):
-    """Replica exacta de Complete_Data_User.put (api/views.py:2230-2252).
-    Sin evidencia de llamador real en ningún frontend — opera sobre `Datos`
-    genérico (cedula/ciudad), sin indicio de a qué rol pertenece; se
-    registra bajo ambos namespaces (solicitante/proveedor) por consistencia,
-    mismo criterio que `actualizar_datos_usuario` (Fase 4)."""
+    """Sin llamador real confirmado — opera sobre `Datos` genérico
+    (cedula/ciudad), sin indicio de a qué rol pertenece; se registra bajo
+    ambos namespaces (solicitante/proveedor)."""
     try:
         dato = Datos.objects.get(user__username=username)
     except Exception:
@@ -1155,8 +1091,7 @@ def completar_datos_usuario(username, data):
 
 
 def recuperar_password_existe(user_email):
-    """Replica exacta de RecuperarPassword.get (api/views.py:565-575).
-    Confirmado real solo en Solicitante2022 — Provedor2022 define el mismo
+    """Confirmado real solo en Solicitante2022 — Provedor2022 define el mismo
     wrapper pero su página de recuperación real usa Firebase directo
     (`UserService.sendPasswordResetEmail`), grep confirmado, cero llamadas
     reales a este endpoint desde ningún componente de Provedor2022."""
@@ -1169,7 +1104,7 @@ def recuperar_password_existe(user_email):
 
 
 def validar_codigo_recuperacion(email, codigo):
-    """Replica exacta de ValidarCodigo.get (api/views.py:595-606). Mismo
+    """Mismo
     alcance real que recuperar_password_existe (solo Solicitante2022)."""
     from api.models import Codigos
 
@@ -1182,9 +1117,7 @@ def validar_codigo_recuperacion(email, codigo):
 
 
 def cambiar_password_con_codigo(email, password, codigo):
-    """Replica exacta de CambioPasswordCodigo.get (api/views.py:609-627).
-
-    Sin evidencia de llamador real en NINGÚN frontend (ni siquiera
+    """Sin evidencia de llamador real en NINGÚN frontend (ni siquiera
     Solicitante2022, que sí usa recuperar_password_existe/validar_codigo —
     el flujo real de cambio de contraseña pasa por otro camino, no
     confirmado desde acá). Se migra igual por consistencia, junto a sus dos
@@ -1208,11 +1141,9 @@ def cambiar_password_con_codigo(email, password, codigo):
 
 
 def obtener_admin_por_email(email):
-    """Replica de AdminUser.get (api/views.py:2539-2546). Definido en el
-    service de Admin2022 (`obtener_admin_user`) pero sin ningún llamador
-    real (grep sobre componentes, cero resultados) — mismo hallazgo que
-    `AdminUserPass` de abajo: el login real de Admin2022 pasa por Firebase
-    directo, no por este mecanismo (ver Fase 5, Bloque 4)."""
+    """Definido en el service de Admin2022 (`obtener_admin_user`) pero sin
+    ningún llamador real — el login real de Admin2022 pasa por Firebase
+    directo, no por este mecanismo (mismo caso que `autenticar_admin_user_pass`)."""
     from api.serializers import AdministradorSerializer
 
     user = User.objects.get(email=email)
@@ -1222,14 +1153,12 @@ def obtener_admin_por_email(email):
 
 
 def autenticar_admin_user_pass(username, password, request):
-    """Replica exacta de AdminUserPass.post (api/views.py:2549-2570 aprox.).
-    Sin llamador real (ver obtener_admin_por_email) — es un segundo
-    mecanismo de login de administrador, distinto del extraído en
-    `authenticate_login` (Fase 5, Bloque 1: usa `AuthenticationForm` +
-    `django.contrib.auth.login` directo en vez de la función genérica). Se
-    preserva como una implementación separada, no se consolida con
-    `authenticate_login` — fusionar dos rutas de login sin evidencia de uso
-    real sería inventar comportamiento, no migrar el existente."""
+    """Sin llamador real (ver obtener_admin_por_email) — es un segundo
+    mecanismo de login de administrador, distinto de `authenticate_login`
+    (usa `AuthenticationForm` + `django.contrib.auth.login` directo en vez
+    de la función genérica). Se preserva como una implementación separada,
+    no se consolida con `authenticate_login` — fusionar dos rutas de login
+    sin evidencia de uso real sería inventar comportamiento."""
     from django.contrib.auth import authenticate as authenticate_django
     from django.contrib.auth import login as do_login
     from django.contrib.auth.forms import AuthenticationForm
@@ -1247,11 +1176,8 @@ def autenticar_admin_user_pass(username, password, request):
 
 
 def obtener_proveedor_por_pk(pk):
-    """Replica de Get_Proveedor.get (api/views.py:1330-1336). Sin evidencia
-    de llamador real en ningún frontend ni indicio de a qué rol pertenece
-    — se registra bajo `web/` (lectura pública de un perfil de proveedor
-    por id), mismo criterio que otros endpoints de solo-lectura sin dueño
-    claro de esta migración."""
+    """Sin llamador real confirmado ni indicio de a qué rol pertenece —
+    lectura pública de un perfil de proveedor por id."""
     from api.serializers import ProveedorSerializer
 
     proveedor = Proveedor.objects.get(user_datos__id=pk)
@@ -1259,8 +1185,7 @@ def obtener_proveedor_por_pk(pk):
 
 
 def obtener_proveedor_por_correo(correo):
-    """Replica de Get_ProveedorByUser.get (api/views.py:1339-1345).
-    Confirmado real: Provedor2022 lo usa en el login (`getProveedorByCorreo`,
+    """Confirmado real: Provedor2022 lo usa en el login (`getProveedorByCorreo`,
     login.page.ts) — se llama antes de tener token, por eso queda público
     (IsPublic) en el namespace nuevo, igual que antes."""
     from api.serializers import ProveedorSerializer
@@ -1270,7 +1195,7 @@ def obtener_proveedor_por_correo(correo):
 
 
 def obtener_puntos(email):
-    """Replica exacta de Puntos.get (api/views.py:2824-2835). Confirmado
+    """Confirmado
     real, solo Solicitante2022 (perfil/promociones, siempre con sesión
     activa) — se endurece a IsSolicitante en el namespace nuevo."""
     try:
@@ -1281,18 +1206,15 @@ def obtener_puntos(email):
 
 
 def actualizar_caducidad_proveedor(pk, data):
-    """Replica exacta de ActualizarCaducidad.put (api/views.py:2856-2882).
-    Confirmado real, exclusivo de Admin2022 (`proveedores.component.ts`).
+    """Confirmado real, exclusivo de Admin2022 (`proveedores.component.ts`).
 
     Nota de implementación preservada tal cual: el `pk` de la URL no se usa
     — el id real del proveedor a actualizar viene de `data['id']` en el
-    body. No es un bug de crash (la vista funciona), solo una firma rara;
-    no se toca, mismo criterio que otros hallazgos "no es crash, no se
-    corrige" de este checklist. También preserva el efecto secundario
-    masivo: cada llamada además desactiva y notifica por email a TODOS los
-    proveedores con `fecha_caducidad` vencida, no solo al que se está
-    actualizando — comportamiento preexistente, documentado, no alcance de
-    esta migración de namespace."""
+    body. No es un bug de crash (la vista funciona), solo una firma rara.
+    También preserva un efecto secundario masivo: cada llamada además
+    desactiva y notifica por email a TODOS los proveedores con
+    `fecha_caducidad` vencida, no solo al que se está actualizando —
+    comportamiento preexistente, intencionalmente no tocado."""
     from datetime import date, datetime as _datetime
 
     from api.views import FormatEmail
@@ -1328,10 +1250,8 @@ def actualizar_caducidad_proveedor(pk, data):
 
 
 def registrar_proveedor_manual(data, files):
-    """Replica exacta de ProveedorRegistro.post (api/views.py:2662-2746).
-    Sin evidencia de llamador real en ningún frontend — es un segundo
-    mecanismo de alta de proveedor distinto de `registrar_proveedor`
-    (Fase 4, `Register_Proveedor`) y del router `registro/`
+    """Sin llamador real confirmado — es un segundo mecanismo de alta de
+    proveedor distinto de `registrar_proveedor` y del router `registro/`
     (`crear_cuenta_registro` de arriba). Se preserva como implementación
     separada, no se consolida — mismo criterio que `autenticar_admin_user_pass`."""
     import os as _os
@@ -1409,16 +1329,13 @@ def registrar_proveedor_manual(data, files):
 
 
 def actualizar_caducidad_masiva_proveedores():
-    """Replica exacta de ActualizarCaducidadProveedoresRequest.get
-    (api/views.py:2929-2948). Sin evidencia de llamador real en ningún
-    frontend — probablemente disparado manualmente o por un cron externo a
-    este repo (PythonAnywhere), imposible de confirmar desde acá.
+    """Sin llamador real confirmado en ningún frontend — probablemente
+    disparado manualmente o por un cron externo a este repo (PythonAnywhere).
 
     DELIBERADAMENTE se preserva sin permiso reforzado (`IsPublic`, no
     `IsAdministrador`) al namespacearlo bajo `admin/`: si existe un script
     externo que lo golpea sin autenticación, endurecerlo lo rompería en
-    silencio sin manera de detectarlo desde el repo. Ver
-    docs/refactor/CHECKLIST-inventario-endpoints.md."""
+    silencio sin manera de detectarlo desde el repo."""
     from django.utils import timezone
 
     from api.views import FormatEmail
@@ -1446,13 +1363,12 @@ def actualizar_caducidad_masiva_proveedores():
 
 
 def listar_datos_queryset():
-    """Réplica de DatosUsers.get (api/views.py:1364-1369). Sin evidencia de
+    """Sin evidencia de
     llamador real en ningún frontend — se migra igual por consistencia."""
     return Datos.objects.all().order_by('-id')
 
 
 def eliminar_dato_por_id(dato_id):
-    """Réplica de DatosUsers.delete (api/views.py:1371-1382)."""
     try:
         Datos.objects.get(id=dato_id).delete()
         return {'sucess': True, 'mensaje': 'Eliminacion del Objeto Dato realizado exitosamente.'}
@@ -1461,13 +1377,12 @@ def eliminar_dato_por_id(dato_id):
 
 
 def listar_usuarios_queryset():
-    """Réplica de Usuarios.get (api/views.py:1385-1390). Sin evidencia de
+    """Sin evidencia de
     llamador real en ningún frontend."""
     return User.objects.all().order_by('-id')
 
 
 def eliminar_usuario_por_id(user_id):
-    """Réplica de Usuarios.delete (api/views.py:1392-1403)."""
     try:
         User.objects.get(id=user_id).delete()
         return {'sucess': True, 'mensaje': 'Eliminacion del Objeto User realizado exitosamente.'}
@@ -1476,7 +1391,7 @@ def eliminar_usuario_por_id(user_id):
 
 
 def buscar_proveedores_por_nombre_queryset(nombre):
-    """Réplica de Proveedores_Search_Name (api/views.py:1249-1261). Sin
+    """Sin
     evidencia de llamador real en ningún frontend — se migra igual por
     consistencia con su análogo confirmado FiltroNombres (solicitante)."""
     return Proveedor.objects.all().filter(
@@ -1484,7 +1399,7 @@ def buscar_proveedores_por_nombre_queryset(nombre):
 
 
 def filtrar_proveedores_por_fecha_queryset(fecha_inicio, fecha_fin):
-    """Réplica de Proveedores_Filter_Date (api/views.py:1264-1279). Sin
+    """Sin
     evidencia de llamador real en ningún frontend."""
     fecha_in = datetime.datetime.strptime(fecha_inicio, "%Y-%m-%d")
     fecha_fi = datetime.datetime.strptime(fecha_fin, "%Y-%m-%d")
@@ -1492,14 +1407,14 @@ def filtrar_proveedores_por_fecha_queryset(fecha_inicio, fecha_fin):
 
 
 def buscar_solicitantes_por_nombre_queryset(nombre):
-    """Réplica de FiltroNombres (api/views.py:1469-1481). Confirmado real,
+    """Confirmado real,
     exclusivo de Admin2022."""
     return Solicitante.objects.all().filter(
         Q(user_datos__nombres__icontains=nombre) | Q(user_datos__apellidos__icontains=nombre))
 
 
 def filtrar_solicitantes_por_fecha_queryset(fecha_inicio, fecha_fin):
-    """Réplica de SolicitantesFilter (api/views.py:1452-1466). Confirmado
+    """Confirmado
     real, exclusivo de Admin2022."""
     fecha_in = datetime.datetime.strptime(fecha_inicio, "%Y-%m-%d")
     fecha_fi = datetime.datetime.strptime(fecha_fin, "%Y-%m-%d")
@@ -1507,14 +1422,14 @@ def filtrar_solicitantes_por_fecha_queryset(fecha_inicio, fecha_fin):
 
 
 def buscar_proveedores_pendientes_por_nombre_queryset(nombre):
-    """Réplica de Pendientes_Search_Name (api/views.py:875-887). Confirmado
+    """Confirmado
     real, exclusivo de Admin2022."""
     return Proveedor_Pendiente.objects.all().filter(
         Q(nombres__icontains=nombre) | Q(apellidos__icontains=nombre))
 
 
 def filtrar_proveedores_pendientes_por_fecha_queryset(fecha_inicio, fecha_fin):
-    """Réplica de Pendientes_FilterDate (api/views.py:890-905). Confirmado
+    """Confirmado
     real, exclusivo de Admin2022."""
     fecha_in = datetime.datetime.strptime(fecha_inicio, "%Y-%m-%d")
     fecha_fi = datetime.datetime.strptime(fecha_fin, "%Y-%m-%d")
@@ -1522,8 +1437,7 @@ def filtrar_proveedores_pendientes_por_fecha_queryset(fecha_inicio, fecha_fin):
 
 
 def actualizar_datos_proveedor_pendiente(data):
-    """Réplica exacta de Update_Proveedor_Pendiente.post (api/views.py:665-729).
-    Sin evidencia de llamador real en ningún frontend — se migra igual por
+    """Sin evidencia de llamador real en ningún frontend — se migra igual por
     consistencia."""
     if data.get('tipo_user') != 'Proveedor_Pendiente':
         return {'error': 'El usuario no corresponde a Proveedor', 'success': False}, 200
@@ -1552,8 +1466,7 @@ def actualizar_datos_proveedor_pendiente(data):
 
 
 def crear_proveedor_proveedor_manual(data):
-    """Réplica exacta de Data_Proveedor_Proveedor.post (api/views.py:791-857).
-    Confirmado real, único consumidor es Admin2022
+    """Confirmado real, único consumidor es Admin2022
     (`crear_proveedor_proveedor`, proveedores.component.ts:381).
 
     **Bug real preservado, no corregido**: al final del método el original
@@ -1600,20 +1513,17 @@ def crear_proveedor_proveedor_manual(data):
 
 
 def cerrar_sesion(request, token):
-    """Réplica exacta de Logout.get (api/views.py:639-645). Sin evidencia de
-    llamador real en ningún frontend (Admin2022 define el wrapper pero
+    """Sin llamador real confirmado (Admin2022 define el wrapper pero
     ningún componente lo invoca — su logout real es Firebase `signOut`,
-    mismo patrón que LoginAdmin/AdminUser). Se migra igual por consistencia."""
+    mismo patrón que LoginAdmin/AdminUser)."""
     Token.objects.get(key=token).delete()
     do_logout(request)
 
 
 def obtener_admin_por_username(user):
-    """Réplica exacta de Get_AdminByUser.get (api/views.py:1137-1143).
-    **Nombre de clase engañoso, preservado tal cual**: pese a llamarse
+    """**Nombre engañoso, preservado tal cual**: pese a llamarse
     "AdminByUser", en realidad consulta y devuelve un `Proveedor`, no un
-    `Administrador` — bug de nombres preexistente, no de comportamiento, no
-    se corrige. Confirmado real, exclusivo de Admin2022 (usa una URL
-    absoluta de producción hardcodeada en vez de `API_URL`, no se toca el
-    frontend por eso — ver checklist)."""
+    `Administrador`. Exclusivo de Admin2022, que usa una URL absoluta de
+    producción hardcodeada en vez de `API_URL` — no se toca el frontend
+    por eso."""
     return Proveedor.objects.get(user_datos__user__username=user)

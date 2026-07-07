@@ -1,11 +1,11 @@
 from rest_framework.permissions import BasePermission, AllowAny
 
-from api.models import Datos  # hasta que la Fase 7 mueva el modelo
+from api.models import Datos  # el modelo sigue viviendo en api.models
 
 
 class BaseRolePermission(BasePermission):
     """Permiso de rol estructural: se fija en la vista base (AdminAPIView,
-    etc.), no se llama a mano vista por vista. Ver docs/refactor/01-arquitectura-objetivo.md#5."""
+    etc.), no se llama a mano vista por vista."""
 
     required_role = None  # "Proveedor" | "Solicitante" | "Administrador"
 

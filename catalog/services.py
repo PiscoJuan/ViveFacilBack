@@ -13,12 +13,10 @@ from api.serializers import (
 
 
 def list_profesiones_activas():
-    """Replica de Profesiones.get (api/views.py:2536-2545)."""
     return Profesion.objects.all().filter(estado=1)
 
 
 def list_servicios(todas=False):
-    """Replica de Servicios.get (api/views.py:947-958)."""
     servicios = Servicio.objects.all()
     if not todas:
         servicios = servicios.filter(estado=True)
@@ -26,7 +24,6 @@ def list_servicios(todas=False):
 
 
 def proveedores_activos_por_servicio(servicio_id):
-    """Replica de ProveedoresByProfesion.get (api/views.py:2482-2490)."""
     servicio = Servicio.objects.get(id=servicio_id)
     profesion = Profesion.objects.get(nombre=servicio.nombre)
     return Profesion_Proveedor.objects.all().filter(
@@ -35,10 +32,8 @@ def proveedores_activos_por_servicio(servicio_id):
 
 
 def _notificar_solicitantes(titulo, cuerpo, data_extra):
-    """Réplica del patrón repetido de notificación masiva a Solicitantes en
-    Categorias/Servicios/Profesiones (api/views.py), Fase 5. Import local de
-    `send_notificationF` para evitar el ciclo con `api.views`, mismo patrón
-    que `payments.services.registrar_pago_efectivo`."""
+    """Import local de `send_notificationF` para evitar el ciclo con
+    `api.views`, mismo patrón que `payments.services.registrar_pago_efectivo`."""
     from fcm_django.models import FCMDevice
     from api.views import send_notificationF
 
@@ -49,13 +44,11 @@ def _notificar_solicitantes(titulo, cuerpo, data_extra):
 
 
 def listar_categorias():
-    """Réplica de Categorias.get (api/views.py:716-721), Fase 5."""
     return Categoria.objects.all().filter()
 
 
 def crear_categoria(nombre, descripcion, foto):
-    """Réplica de Categorias.post (api/views.py:786-815), Fase 5.
-    Devuelve (categoria_o_None, data: dict)."""
+    """Devuelve (categoria_o_None, data: dict)."""
     categoria = Categoria.objects.create(
         nombre=nombre, descripcion=descripcion, foto=foto, foto2=foto
     )
@@ -73,8 +66,7 @@ def crear_categoria(nombre, descripcion, foto):
 
 
 def actualizar_categoria(id, data):
-    """Réplica de Categorias.put (api/views.py:723-761), Fase 5.
-    Devuelve (serializer_data_o_errors: dict, es_valido: bool)."""
+    """Devuelve (serializer_data_o_errors: dict, es_valido: bool)."""
     categoria = Categoria.objects.get(id=id)
     serializer = CategoriaSerializer(categoria, data=data, partial=True)
     if not serializer.is_valid():
@@ -96,7 +88,7 @@ def actualizar_categoria(id, data):
 
 
 def eliminar_categoria(id):
-    """Réplica de Categorias.delete (api/views.py:763-784), Fase 5. Borra en
+    """Borra en
     cascada los Servicios de la categoría, igual que el original."""
     categoria = Categoria.objects.get(id=id)
     Servicio.objects.filter(categoria=categoria).delete()
@@ -110,7 +102,7 @@ def eliminar_categoria(id):
 
 
 def crear_servicio(nombre, descripcion, categoria_nombre, foto):
-    """Réplica de Servicios.post (api/views.py:872-910), Fase 5. Crea el
+    """Crea el
     Servicio y, como efecto colateral del original, una Profesion homónima.
     Devuelve (servicio_o_None, data: dict)."""
     data = {}
@@ -134,7 +126,7 @@ def crear_servicio(nombre, descripcion, categoria_nombre, foto):
 
 
 def actualizar_servicio(id, data):
-    """Réplica de Servicios.put (api/views.py:831-848), Fase 5. Mantiene en
+    """Mantiene en
     sincronía la Profesion homónima con nombre/foto/descripcion del
     Servicio, igual que el original."""
     servicio = Servicio.objects.get(id=id)
@@ -155,7 +147,7 @@ def actualizar_servicio(id, data):
 
 
 def desactivar_servicio(id):
-    """Réplica de Servicios.delete (api/views.py:850-870), Fase 5. El
+    """El
     original no borra el registro, solo lo desactiva (`estado = 0`)."""
     servicio = Servicio.objects.get(id=id)
     nombre = servicio.nombre
@@ -169,8 +161,7 @@ def desactivar_servicio(id):
 
 
 def crear_profesion(nombre, descripcion, servicio_nombre, foto):
-    """Réplica de Profesiones.post (api/views.py:1725-1743), Fase 5.
-    Devuelve (data: dict) tal cual el original (siempre 200, éxito o error
+    """Devuelve (data: dict) tal cual el original (siempre 200, éxito o error
     en el body, nunca un status HTTP distinto)."""
     data = {}
     try:
@@ -189,7 +180,6 @@ def crear_profesion(nombre, descripcion, servicio_nombre, foto):
 
 
 def actualizar_profesion(id, servicio_nombre, data):
-    """Réplica de Profesiones.put (api/views.py:1745-1763), Fase 5."""
     profesion = Profesion.objects.get(id=id)
     servicio_nuevo = Servicio.objects.get(nombre=servicio_nombre)
     profesion.servicio.clear()
@@ -202,17 +192,18 @@ def actualizar_profesion(id, servicio_nombre, data):
 
 
 def eliminar_profesion(pk):
-    """Réplica de Profesiones.delete (api/views.py:1765-1769), Fase 5."""
     Profesion.objects.get(id=pk).delete()
 
 
+def obtener_profesion(pk):
+    return Profesion.objects.get(id=pk)
+
+
 def listar_ciudades():
-    """Réplica de Ciudades.get (api/views.py:4462-4470), Fase 5."""
     return Ciudad.objects.all().filter()
 
 
 def crear_ciudad(data):
-    """Réplica de Ciudades.post (api/views.py:4472-4477), Fase 5."""
     serializer = CiudadSerializer(data=data)
     if not serializer.is_valid():
         return serializer.errors, False
@@ -221,15 +212,8 @@ def crear_ciudad(data):
 
 
 def listar_profesiones_proveedor(user):
-    """Replica del GET de Proveedor_Profesiones (api/views.py:2983-2999),
-    Fase 4. Solo el GET se migra — el POST y el PUT (bajo `profesion_prov/
-    <pk>`, usado por Admin, ver docs/refactor/06-fase-4-proveedor.md) se
-    quedan en la clase legacy sin tocar, mismo patrón que `Bancos` en la
-    Fase 2 (verbo dividido entre roles, la migración completa de la parte
-    admin queda para la Fase 5).
-
-    El `|` duplicado del filtro original (mismo filtro combinado consigo
-    mismo) es un no-op inofensivo — se deja igual."""
+    """El `|` duplicado del filtro (mismo filtro combinado consigo mismo)
+    es un no-op inofensivo — se deja igual."""
     proveedor_profesiones = Profesion_Proveedor.objects.filter(
         proveedor__user_datos__user=user
     ) | Profesion_Proveedor.objects.filter(proveedor__user_datos__user=user)
@@ -241,13 +225,90 @@ def listar_profesiones_proveedor(user):
     return data
 
 
+def crear_profesion_proveedor(user, data):
+    """`user` tiene que ser una instancia de `User`, no un username — lo
+    compara por FK exacta contra `user_datos__user` y contra
+    `FCMDevice.user`. El panel admin (que solo tiene el username a mano)
+    entra por `crear_profesion_proveedor_por_username`, que hace ese
+    resuelve-y-delega. Preserva un bug preexistente: `titles`/`bodys` quedan
+    como tuplas de 1 elemento (coma colgante) en vez de strings."""
+    from fcm_django.models import FCMDevice
+
+    from api.views import send_notificationF
+
+    profesion = data.get("profesion")
+    anios = data.get("ano_experiencia")
+    try:
+        profesion_obj = Profesion.objects.get(nombre=profesion)
+    except Profesion.DoesNotExist:
+        return {"success": False, "message": "La profesion con el nombre pasado por parámetro no se ha encontrado en la base de datos."}, None
+
+    try:
+        proveedor = Proveedor.objects.get(user_datos__user=user)
+    except Proveedor.DoesNotExist:
+        return {"success": False, "message": "El correo del proveedor pasado por parámetro no se ha encontrado en la base de datos."}, None
+
+    existe = Profesion_Proveedor.objects.filter(profesion__id=profesion_obj.id, proveedor__id=proveedor.id).first()
+    if existe:
+        return {"success": False, "message": "Ya existe la tabla Profesion_Proveedor con el mismo proveedor y la misma profesión registrado en la base de datos."}, None
+
+    creada = Profesion_Proveedor.objects.create(proveedor=proveedor, profesion=profesion_obj, ano_experiencia=anios)
+
+    lista = Profesion_Proveedor.objects.all().filter(proveedor__id=proveedor.id)
+    proveedor.profesion = ",".join(p.profesion.nombre for p in lista)
+    proveedor.save()
+
+    devices = FCMDevice.objects.filter(active=True, user=user)
+    tokens = list(devices.values_list("registration_id", flat=True))
+    titles = "Tienes una Nueva Profesión: " + profesion,
+    bodys = "¡Dale un vistazo!",
+    send_notificationF(tokens, titles, bodys, {})
+
+    return {"success": True, "message": "Se ha creado la tabla Profesion_Proveedor y se ha registrado en la base de datos correctamente."}, creada
+
+
+def crear_profesion_proveedor_por_username(username, data):
+    """Usado por el panel admin al aceptar una SolicitudProfesion: solo tiene
+    el username del proveedor a mano, no un `User` autenticado como en el
+    flujo de autoservicio (`MisProfesionesProveedorView`)."""
+    from django.contrib.auth.models import User
+
+    try:
+        user = User.objects.get(username=username)
+    except User.DoesNotExist:
+        return {"success": False, "message": "No se ha encontrado un usuario con el username pasado por parámetro."}, None
+    return crear_profesion_proveedor(user, data)
+
+
+def actualizar_profesion_proveedor(pk, data):
+    """Confirmado exclusivo de Admin2022."""
+    profesion_proveedor = Profesion_Proveedor.objects.get(id=pk)
+    serializer = Profesion_ProveedorSerializer(profesion_proveedor, data=data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return serializer.data, True
+    return serializer.errors, False
+
+
+def eliminar_profesion_proveedor(pk):
+    try:
+        profesion = Profesion_Proveedor.objects.get(id=pk)
+    except Profesion_Proveedor.DoesNotExist:
+        return {"success": False, "message": "No se encontró en la base de datos el objeto Profesion_Proveedor con el ID pasado por parámentro."}
+    proveedor = profesion.proveedor
+    profesion.delete()
+    lista = Profesion_Proveedor.objects.all().filter(proveedor__id=proveedor.id)
+    proveedor.profesion = ",".join(p.profesion.nombre for p in lista)
+    proveedor.save()
+    return {"success": True, "message": "Se ha eliminado el objeto Profesion_Proveedor exitosamente."}
+
+
 def listar_solicitudes_profesion():
-    """Réplica de SolicitudProfesionProveedor.get (api/views.py:1413-1423), Fase 5."""
     return SolicitudProfesion.objects.all()
 
 
 def obtener_solicitudes_profesion():
-    """Réplica de ManejoSolicitud.get (api/views.py:1427-1431), Fase 5. Sin
+    """Sin
     evidencia de consumidor en ninguno de los 4 frontends (grep confirmado
     sobre `obtener_solicitudes_profesiones/`) — se migra igual por
     consistencia de namespace, no se borra código sin evidencia externa de
@@ -256,9 +317,14 @@ def obtener_solicitudes_profesion():
 
 
 def crear_solicitud_profesion(correo_proveedor, nombre_profesion, anio_exp, documento):
-    """Réplica de ManejoSolicitud.post (api/views.py:1433-1456), Fase 5. Sin
-    evidencia de consumidor real (`crear_solicitud_profesion/` no aparece en
-    ningún grep de los 4 frontends). Devuelve (data: dict, solicitud_o_None)."""
+    """Consumidor real confirmado: Provedor2022 (`profesion.page.ts`, pide
+    agregar una profesión al perfil con años de experiencia y evidencia en
+    archivo) — llamaba bajo un nombre de wrapper distinto
+    (`postCrearSolicitud`) al de este endpoint, lo que hizo que un grep
+    literal por el nombre de la ruta no lo detectara antes. No valida que
+    `correo_proveedor` coincida con el usuario autenticado (mismo patrón sin
+    ownership-check que el resto de este archivo). Devuelve
+    (data: dict, solicitud_o_None)."""
     data = {}
     try:
         proveedorUser = Proveedor.objects.get(user_datos__user__username=correo_proveedor)
@@ -277,7 +343,6 @@ def crear_solicitud_profesion(correo_proveedor, nombre_profesion, anio_exp, docu
 
 
 def actualizar_solicitud_profesion(pk, estado):
-    """Réplica de ManejoSolicitud.put (api/views.py:1458-1465), Fase 5."""
     solicitud = SolicitudProfesion.objects.get(id=pk)
     solicitud.estado = estado
     solicitud.fecha = datetime.datetime.now()
@@ -286,7 +351,6 @@ def actualizar_solicitud_profesion(pk, estado):
 
 
 def eliminar_solicitud_profesion(pk):
-    """Réplica de ManejoSolicitud.delete (api/views.py:1467-1472), Fase 5."""
     solicitud = SolicitudProfesion.objects.get(id=pk)
     if solicitud.documento is not None:
         solicitud.documento.delete()
@@ -294,31 +358,27 @@ def eliminar_solicitud_profesion(pk):
 
 
 def solicitudes_profesion_por_usuario(user):
-    """Réplica de SolicitudByName.get (api/views.py:1509-1516), Fase 5. Sin
+    """Sin
     evidencia de consumidor en los 4 frontends — `solicitudes-proveedores/<user>`
     no aparece en ningún grep."""
     return SolicitudProfesion.objects.filter(proveedor__user_datos__user__username=user)
 
 
 def obtener_solicitud_profesion(pk):
-    """Réplica de SolicitudDetails.get (api/views.py:1519-1525), Fase 5."""
     return SolicitudProfesion.objects.get(id=pk)
 
 
 def buscar_solicitudes_profesion_por_nombre(nombre):
-    """Réplica de Solicitudes_Search_Name.get (api/views.py:1528-1540), Fase 5."""
     return SolicitudProfesion.objects.filter(
         Q(proveedor__user_datos__nombres__icontains=nombre) | Q(proveedor__user_datos__apellidos__icontains=nombre))
 
 
 def filtrar_solicitudes_profesion_por_fecha(fecha_inicio, fecha_fin):
-    """Réplica de Solicitudes_Filter_Date.get (api/views.py:1543-1558), Fase 5."""
     return SolicitudProfesion.objects.filter(fecha_solicitud__date__range=[fecha_inicio, fecha_fin])
 
 
 def crear_profesiones_faltantes():
-    """Réplica de CrearProfesionesFaltantesView.post (api/views.py:853-890),
-    cleanup post-Fase-5, Bloque 4. Sin evidencia de consumidor real en
+    """Sin evidencia de consumidor real en
     ningún frontend (probable script de mantenimiento manual) — se migra
     igual por consistencia."""
     data = {"profesiones_creadas": [], "errores": []}
@@ -336,20 +396,14 @@ def crear_profesiones_faltantes():
 
 
 def profesiones_por_proveedor(proveedor_id):
-    """Réplica de ProfesionProveedor.get (api/views.py:903-907), cleanup
-    post-Fase-5, Bloque 4. El wrapper `getProfesionProveedor` existe en
-    Admin2022 pero grep fresco sobre componentes confirma **cero
-    llamadores reales** (código muerto, corrige la suposición inicial del
-    checklist) — se migra igual por consistencia y se actualiza el
-    wrapper del frontend de todos modos."""
+    """El wrapper `getProfesionProveedor` existe en Admin2022 pero no lo
+    invoca ningún componente real."""
     return Profesion_Proveedor.objects.all().filter(proveedor__id=proveedor_id)
 
 
 def sincronizar_profesion_proveedor():
-    """Réplica de SincronizarProfesionProveedorView.post (api/views.py:740-791),
-    cleanup post-Fase-5, Bloque 4. Sin evidencia de consumidor real en
-    ningún frontend (grep fresco sobre los 4, cero resultados) — probable
-    script de mantenimiento manual, se migra igual por consistencia."""
+    """Sin consumidor real confirmado en ningún frontend — probable
+    script de mantenimiento manual."""
     data = {"creados": [], "actualizados": [], "errores": []}
     for servicio in Servicio.objects.all():
         try:

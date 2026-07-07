@@ -7,10 +7,6 @@ from core.views import ProveedorAPIView
 
 
 class LoginProveedorView(ProveedorAPIView):
-    """Vista delgada de AuthService para el rol Proveedor — mismo mecanismo
-    que LoginSolicitanteView (Fase 3). Reemplaza el branching manual que
-    hoy vive en `Login.post()` (api/views.py:3504)."""
-
     permission_classes = [IsPublic]
 
     def post(self, request, format=None):
@@ -23,9 +19,6 @@ class LoginProveedorView(ProveedorAPIView):
 
 
 class CambioContraseniaProveedorView(ProveedorAPIView):
-    """Réplica del endpoint multi-rol CambioContrasenia (api/views.py:713),
-    ya extraído a `accounts.services` en la Fase 3."""
-
     permission_classes = [IsPublic]
 
     def post(self, request, format=None):
@@ -36,12 +29,6 @@ class CambioContraseniaProveedorView(ProveedorAPIView):
 
 
 class DispositivoNotificacionProveedorView(ProveedorAPIView):
-    """Réplica del endpoint multi-rol DeviceNotification (api/views.py:424),
-    DELETE (cleanup checklist #23) y POST (cleanup checklist #22, antes
-    servido bajo el path separado `post-token/` con la misma clase legacy
-    — mismo `accounts.services.registrar_dispositivo` que ya usaba el
-    POST legacy, solo se expone acá bajo namespace)."""
-
     def post(self, request, format=None):
         data, http_status = services.registrar_dispositivo(request, request.data.get("token"))
         return Response(data, status=http_status)
@@ -53,10 +40,6 @@ class DispositivoNotificacionProveedorView(ProveedorAPIView):
 
 
 class RegistroProveedorView(ProveedorAPIView):
-    """Réplica de Register_Proveedor (api/views.py:1106). Sin evidencia de
-    llamador real en ningún frontend — se migra igual por consistencia de
-    namespace (ver accounts.services.registrar_proveedor)."""
-
     permission_classes = [IsPublic]  # alta de cuenta nueva, no hay sesión de Proveedor todavía
 
     def post(self, request, format=None):
@@ -73,9 +56,6 @@ class RegistroProveedorView(ProveedorAPIView):
 
 
 class DocumentoProveedorView(ProveedorAPIView):
-    """Réplica de Documentos_proveedor (api/views.py:2285). Sin evidencia de
-    llamador real en ningún frontend."""
-
     def put(self, request, username, format=None):
         data, http_status = services.actualizar_documento_proveedor(
             username, request.data.get("descripcion"), request.data
@@ -84,10 +64,7 @@ class DocumentoProveedorView(ProveedorAPIView):
 
 
 class DatoProveedorView(ProveedorAPIView):
-    """Réplica del PUT de Dato (api/views.py:2668), endpoint multi-rol
-    compartido con Solicitante (ver DatoSolicitanteView en
-    accounts/api/solicitante/views.py). El GET de esa misma clase no se
-    tocó — sin evidencia de llamador real en ningún frontend."""
+    """Endpoint compartido con Solicitante (ver `DatoSolicitanteView`)."""
 
     def put(self, request, user, format=None):
         services.actualizar_datos_usuario(user, request.data, request.FILES)
@@ -109,9 +86,6 @@ class VersionIosProveedorView(ProveedorAPIView):
 
 
 class SolicitanteByUserDatosProveedorView(ProveedorAPIView):
-    """Réplica de SolicitanteByUserDatos.get (api/views.py:1648-1654).
-    Confirmado real, exclusivo de Provedor2022 (feature de chat)."""
-
     def get(self, request, UserDatosId, format=None):
         from api.serializers import SolicitanteSerializer
 
@@ -121,10 +95,8 @@ class SolicitanteByUserDatosProveedorView(ProveedorAPIView):
 
 
 class ChangePasswordProveedorView(ProveedorAPIView):
-    """Réplica de ChangePassword (api/views.py:1976-2005), flujo de
-    reactivación de cuenta de Proveedor vía `security_access`. Sin
-    evidencia de llamador real en ningún frontend. Público (IsPublic):
-    llega por un link de email, no hay sesión previa.
+    """Flujo de reactivación de cuenta de Proveedor vía `security_access`.
+    Público (IsPublic): llega por un link de email, no hay sesión previa.
 
     El GET original (`super.get(request, *args, **kwargs)`) tiene un bug
     real y evidente — `super` sin invocar (`super.get`, no `super().get(...)`)
@@ -155,9 +127,7 @@ class ChangePasswordProveedorView(ProveedorAPIView):
 
 
 class DatosUsuarioProveedorView(ProveedorAPIView):
-    """Réplica de Datos_Users.get (api/views.py:2221-2227), endpoint
-    multi-rol compartido con Solicitante (ver DatosUsuarioSolicitanteView) —
-    feature de chat."""
+    """Endpoint compartido con Solicitante (ver `DatosUsuarioSolicitanteView`) — feature de chat."""
 
     def get(self, request, id, format=None):
         from api.serializers import DatosSerializer
@@ -167,18 +137,15 @@ class DatosUsuarioProveedorView(ProveedorAPIView):
 
 
 class CompleteDataUserProveedorView(ProveedorAPIView):
-    """Réplica de Complete_Data_User.put (api/views.py:2230-2252), endpoint
-    multi-rol sin evidencia de llamador real (ver también
-    CompleteDataUserSolicitanteView)."""
+    """Endpoint compartido con Solicitante (ver `CompleteDataUserSolicitanteView`)."""
 
     def put(self, request, username, format=None):
         return Response(services.completar_datos_usuario(username, request.data))
 
 
 class ProveedorPorCorreoProveedorView(ProveedorAPIView):
-    """Réplica de Get_ProveedorByUser.get (api/views.py:1339-1345).
-    Confirmado real: se usa durante el login (`getProveedorByCorreo`,
-    login.page.ts) — antes de tener token, por eso queda público."""
+    """Se usa durante el login (`getProveedorByCorreo`, login.page.ts) —
+    antes de tener token, por eso queda público."""
 
     permission_classes = [IsPublic]
 
@@ -187,10 +154,9 @@ class ProveedorPorCorreoProveedorView(ProveedorAPIView):
 
 
 class ProveedorRegistroManualView(ProveedorAPIView):
-    """Réplica de ProveedorRegistro (api/views.py:2662-2746). Sin evidencia
-    de llamador real en ningún frontend — segundo mecanismo de alta de
-    proveedor distinto de RegistroProveedorView. Público (IsPublic): alta
-    de cuenta nueva, sin sesión previa."""
+    """Segundo mecanismo de alta de proveedor, distinto de
+    `RegistroProveedorView`. Público (IsPublic): alta de cuenta nueva, sin
+    sesión previa."""
 
     permission_classes = [IsPublic]
 

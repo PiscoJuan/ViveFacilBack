@@ -6,7 +6,7 @@ from core.views import ProveedorAPIView
 
 
 class CuentaProveedorView(ProveedorAPIView):
-    """Réplica de CuentaProveedor (api/views.py:2605). Sin evidencia de
+    """Sin evidencia de
     llamador real en ningún frontend — se migra igual por consistencia de
     namespace."""
 
@@ -16,9 +16,5 @@ class CuentaProveedorView(ProveedorAPIView):
 
 
 class TarjetaUserProveedorView(ProveedorAPIView):
-    """Réplica de TarjetaUser.get (api/views.py:1665), cleanup post-Fase-5
-    Bloque 3 — endpoint multi-rol, Provedor2022 solo usa el GET (lectura),
-    ver TarjetaUserSolicitanteView para el DELETE (exclusivo solicitante)."""
-
     def get(self, request, identifier, format=None):
         return Response(TarjetaSerializer(services.list_tarjetas_por_usuario(identifier), many=True).data)

@@ -13,8 +13,7 @@ from payments import services
 
 
 class PlanesAdminView(AdminAPIView):
-    """Réplica de Planes (api/views.py:4315), CRUD completo, admin-
-    exclusivo (grep confirmado en los 4 frontends)."""
+    """CRUD completo, admin-exclusivo."""
 
     def get(self, request, format=None):
         return Response(PlanSerializer(services.list_planes(), many=True).data)
@@ -36,14 +35,11 @@ class PlanesAdminView(AdminAPIView):
 
 
 class PlanesEstadoAdminView(AdminAPIView):
-    """Réplica de PlanesEstado (api/views.py:4513)."""
-
     def get(self, request, format=None):
         return Response(PlanSerializer(services.list_planes_activos(), many=True).data)
 
 
 class PlanProveedorAdminView(AdminAPIView):
-    """Réplica de PlanProveedorView (api/views.py:4480), CRUD completo."""
 
     def get(self, request, format=None):
         return Response(PlanProveedorSerializer(services.list_planes_proveedor(), many=True).data)
@@ -65,15 +61,11 @@ class PlanProveedorAdminView(AdminAPIView):
 
 
 class PagosEfectivoAdminView(AdminAPIView):
-    """Réplica de PagosEfectivoUser.get (api/views.py), Fase 5 Bloque 3."""
-
     def get(self, request, format=None):
         return Response(PagoEfectivoSerializer(services.list_pagos_efectivo(), many=True).data)
 
 
 class PagosEfectivoPaginadoAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de PagosEfectivoUserP.get (api/views.py), Fase 5 Bloque 3."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, format=None):
@@ -83,9 +75,8 @@ class PagosEfectivoPaginadoAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class PagosTarjetaAdminView(AdminAPIView):
-    """Réplica de PagosTarjetaUser (api/views.py), Fase 5 Bloque 3. Sirve
-    los alias de URL legacy `pago_tarjetas/` (GET) y `tarjeta_pago/` (PUT) —
-    confirmado por grep que cada frontend usa un alias distinto para un
+    """Sirve los alias de URL legacy `pago_tarjetas/` (GET) y
+    `tarjeta_pago/` (PUT) — cada frontend usa un alias distinto para un
     verbo distinto de la misma vista."""
 
     def get(self, request, format=None):
@@ -97,8 +88,6 @@ class PagosTarjetaAdminView(AdminAPIView):
 
 
 class PagosTarjetaPaginadoAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de PagosTarjetaUserP.get (api/views.py), Fase 5 Bloque 3."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, format=None):
@@ -108,8 +97,6 @@ class PagosTarjetaPaginadoAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class PagosEfectivoFechasAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de EfectivosFilter.get (api/views.py), Fase 5 Bloque 3."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, format=None):
@@ -121,8 +108,6 @@ class PagosEfectivoFechasAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class PagosTarjetaFechasAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de TarjetasFilter.get (api/views.py), Fase 5 Bloque 3."""
-
     pagination_class = MyCustomPagination
 
     def get(self, request, format=None):
@@ -164,8 +149,6 @@ class ValorTotalAdminView(AdminAPIView):
 
 
 class ValorTotalProveedoresAdminView(AdminAPIView):
-    """Réplica de ValorTotalProveedores.get (api/views.py), Fase 5 Bloque 3."""
-
     def get(self, request, format=None):
         return Response(services.valor_total_proveedores())
 
@@ -181,9 +164,7 @@ class PagosSolicitudTarjetaAdminView(AdminAPIView):
 
 
 class PlanProveedoresFiltroFechaAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de PlanProveedores_Filter_Date (api/views.py:1100), cleanup
-    post-Fase-5 Bloque 3. Sin evidencia de llamador real en ningún
-    frontend — se migra igual por consistencia."""
+    """Sin llamador real confirmado en ningún frontend."""
 
     pagination_class = MyCustomPagination
 
@@ -196,9 +177,7 @@ class PlanProveedoresFiltroFechaAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class ProveedoresFiltroFechaYNombreAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de ProveedoresDate_Search_Name (api/views.py:1949), cleanup
-    post-Fase-5 Bloque 3. Sin evidencia de llamador real en ningún
-    frontend — se migra igual por consistencia."""
+    """Sin llamador real confirmado en ningún frontend."""
 
     pagination_class = MyCustomPagination
 

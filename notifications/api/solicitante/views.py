@@ -1,12 +1,20 @@
 from rest_framework.response import Response
 
+from api.serializers import NotificacionMasivaSerializer
 from core.views import SolicitanteAPIView
 from notifications import services
 
 
+class NotificacionAnuncioSolicitanteView(SolicitanteAPIView):
+    """Endpoint propio del solicitante para notificacion-anuncio — antes
+    pedía una ruta sin ningún prefijo de rol."""
+
+    def get(self, request, format=None):
+        return Response(NotificacionMasivaSerializer(services.list_notificaciones_masivas(), many=True).data)
+
+
 class NotificacionChatSolicitanteView(SolicitanteAPIView):
-    """Réplica de Notificacion_Chat (api/views.py:1382), cleanup post-Fase-5,
-    Bloque 4. Confirmado por grep exclusivo de Solicitante2022
+    """Confirmado por grep exclusivo de Solicitante2022
     (`chat.service.ts:127`, que además hardcodeaba la URL completa de
     producción en vez de usar `API_URL` — normalizado de paso al migrar,
     tal cual lo anotaba `05-fase-3-solicitante.md`). Antes sin ningún

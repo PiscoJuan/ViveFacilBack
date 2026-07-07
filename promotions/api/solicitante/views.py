@@ -1,13 +1,19 @@
 from rest_framework.response import Response
 
-from api.serializers import Cupon_AplicadoSerializer, CuponCategoriaSerializer
+from api.serializers import Cupon_AplicadoSerializer, CuponCategoriaSerializer, PromocionSerializer
 from core.views import SolicitanteAPIView
 from promotions import services
 
 
-class CuponAplicadoSolicitanteView(SolicitanteAPIView):
-    """Réplica de Get_Cupon_Aplicado (api/views.py:1410)."""
+class PromocionesSolicitanteView(SolicitanteAPIView):
+    """Endpoint propio del solicitante para listar promociones — antes
+    pedía una ruta sin ningún prefijo de rol."""
 
+    def get(self, request, format=None):
+        return Response(PromocionSerializer(services.list_promociones(), many=True).data)
+
+
+class CuponAplicadoSolicitanteView(SolicitanteAPIView):
     def get(self, request, user, format=None):
         serializer = Cupon_AplicadoSerializer(
             services.cupones_aplicados_activos(user), many=True
@@ -16,8 +22,6 @@ class CuponAplicadoSolicitanteView(SolicitanteAPIView):
 
 
 class CuponCategoriaSolicitanteView(SolicitanteAPIView):
-    """Réplica de AllCuponesCategoria (api/views.py:4935)."""
-
     def get(self, request, format=None):
         serializer = CuponCategoriaSerializer(
             services.cupones_categoria_disponibles(request.user.username), many=True
@@ -26,7 +30,7 @@ class CuponCategoriaSolicitanteView(SolicitanteAPIView):
 
 
 class RevisarDescuentoUnicoSolicitanteView(SolicitanteAPIView):
-    """Réplica de RevisarDescuentoUnico (api/views.py:6071). Devuelve un
+    """Devuelve un
     string plano ("descuento"/"no"/"error") — el frontend lo compara
     directo, no envolver en un dict."""
 
@@ -35,15 +39,12 @@ class RevisarDescuentoUnicoSolicitanteView(SolicitanteAPIView):
 
 
 class UsarDescuentoUnicoSolicitanteView(SolicitanteAPIView):
-    """Réplica de UsarDescuentoUnico (api/views.py:6084)."""
-
     def get(self, request, mail, format=None):
         return Response(services.usar_descuento_unico(mail))
 
 
 class CuponAplicadoCrearSolicitanteView(SolicitanteAPIView):
-    """Réplica de Cupones_Aplicados (api/views.py:665), cleanup
-    post-Fase-5, Bloque 4. Confirmado exclusivo de Solicitante2022 (solo el
+    """Confirmado exclusivo de Solicitante2022 (solo el
     POST tiene consumidor real, ver `promotions.services.actualizar_cupon_aplicado`
     para el bug del PUT)."""
 

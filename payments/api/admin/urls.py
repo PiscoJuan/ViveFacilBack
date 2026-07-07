@@ -1,5 +1,6 @@
 from django.urls import path
 
+from payments.api.web.views import BancosWebView
 from payments.api.admin.views import (
     PagosEfectivoAdminView,
     PagosEfectivoFechasAdminView,
@@ -24,6 +25,8 @@ from payments.api.admin.views import (
 )
 
 urlpatterns = [
+    path("bancos/", BancosWebView.as_view()),  # doble-registro de la misma vista: GET público, POST/DELETE IsAdministrador vía get_permissions()
+    path("bancos/<str:id>/", BancosWebView.as_view()),
     path("planes/", PlanesAdminView.as_view()),
     path("planes/<str:id>/", PlanesAdminView.as_view()),
     path("planes-estado/", PlanesEstadoAdminView.as_view()),

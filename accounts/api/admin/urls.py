@@ -3,6 +3,8 @@ from django.urls import path
 from accounts.api.admin.views import (
     AdminDetailsAdminView,
     AdministradoresAdminView,
+    AdministradoresFilterAdminView,
+    AdministradoresUserAdminView,
     ActualizarCaducidadAdminView,
     ActualizarCaducidadProveedoresAdminView,
     AdminUserPassView,
@@ -32,6 +34,8 @@ from accounts.api.admin.views import (
     ProveedoresProveedoresDetailsAdminView,
     ProveedoresRechazadosAdminView,
     ProveedoresRechazadosDetailsAdminView,
+    ProveedorPendienteAdminView,
+    RegistroAdminView,
     RolesPermisosAdminView,
     SolicitantesAdminView,
     SolicitantesFilterAdminView,
@@ -42,8 +46,11 @@ from accounts.api.admin.views import (
 
 urlpatterns = [
     path("login/", LoginAdminView.as_view()),
+    path("registro/", RegistroAdminView.as_view()),
 
     path("administradores/", AdministradoresAdminView.as_view()),
+    path("administradores/fechas/", AdministradoresFilterAdminView.as_view()),  # antes que <str:id>/
+    path("administradores/buscar/<str:user>/", AdministradoresUserAdminView.as_view()),
     path("administradores/<str:id>/", AdministradoresAdminView.as_view()),
     path("administrador/<str:pk>/", AdminDetailsAdminView.as_view()),
 
@@ -58,12 +65,12 @@ urlpatterns = [
     path("proveedores/buscar/<str:user>/", ProveedoresSearchAdminView.as_view()),
     path("proveedores/<str:id>/", ProveedoresAdminView.as_view()),
 
-    # NOTA DE ORDEN (mismo bug ya visto en Fase 3, ver
-    # docs/refactor/05-fase-3-solicitante.md): los paths literales de dos
-    # segmentos (`buscar/<user>/`, `fechas/`, `actualizar-datos/`) van ANTES
-    # que `<str:username>/<str:desc>/` y `<str:pk>/`, que si no los
-    # interceptan primero (Django resuelve en orden de declaración).
+    # Los paths literales de dos segmentos (`buscar/<user>/`, `fechas/`,
+    # `actualizar-datos/`) van ANTES que `<str:username>/<str:desc>/` y
+    # `<str:pk>/`, que si no los interceptan primero (Django resuelve en
+    # orden de declaración).
     path("proveedores-pendientes/", ProveedoresPendientesAdminView.as_view()),
+    path("proveedores-pendientes/crear/", ProveedorPendienteAdminView.as_view()),
     path("proveedores-pendientes/buscar/<str:user>/", PendientesSearchAdminView.as_view()),
     path("proveedores-pendientes/fechas/", PendientesFilterDateAdminView.as_view()),
     path("proveedores-pendientes/actualizar-datos/", UpdateProveedorPendienteAdminView.as_view()),

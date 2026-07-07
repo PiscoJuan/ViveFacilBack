@@ -1,16 +1,20 @@
 from rest_framework.response import Response
 
+from api.serializers import NotificacionMasivaSerializer
 from core.views import ProveedorAPIView
 from notifications import services
 
 
+class NotificacionAnuncioProveedorView(ProveedorAPIView):
+    """Endpoint propio del proveedor para notificacion-anuncio — antes
+    pedía directo a `web/notifications/notificacion-anuncio/`
+    (notifications.api.web.views.NotificacionAnuncioWebView)."""
+
+    def get(self, request, format=None):
+        return Response(NotificacionMasivaSerializer(services.list_notificaciones_masivas(), many=True).data)
+
+
 class NotificacionChatProveedorView(ProveedorAPIView):
-    """Réplica de Notificacion_Chat_Proveedor (api/views.py:3118). Antes sin
-    ningún permission_classes (abierto); la ruta nueva exige IsProveedor.
-    Primera vez que se usa la app `notifications` (Fase 3 había resuelto
-    `DeviceNotification`/`post-token` dentro de `accounts.services` por ser
-    puro CRUD sobre el modelo de `fcm_django`; esto en cambio es lógica de
-    dominio propia — chat — así que sí amerita vivir acá)."""
 
     def post(self, request, format=None):
         data, http_status = services.notificar_chat_proveedor(

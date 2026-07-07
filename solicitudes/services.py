@@ -14,14 +14,11 @@ from api.models import (
 )
 
 # --- Los 9 listados casi-duplicados de "mis solicitudes filtradas por
-# estado" (docs/refactor/05-fase-3-solicitante.md dice explícitamente no
-# colapsarlos en esta fase — queda para una limpieza posterior). Cada
-# función devuelve un queryset sin evaluar, para que la vista decida si
-# pagina o no. ---
+# estado" se dejan sin colapsar a propósito. Cada función devuelve un
+# queryset sin evaluar, para que la vista decida si pagina o no. ---
 
 
 def solicitudes_pendientes_queryset(correo):
-    """Replica de SolicitudesPending/SolicitudesPendingPag (api/views.py:1903-1941)."""
     return Solicitud.objects.all().filter(
         solicitante__user_datos__user__email=correo, adjudicar=False,
         proveedor__isnull=True, termino__isnull=True, fecha_expiracion__gt=timezone.now(),
@@ -29,8 +26,7 @@ def solicitudes_pendientes_queryset(correo):
 
 
 def solicitudes_pasadas_queryset(correo):
-    """Replica de SolicitudesPast (api/views.py:2030-2046, sin paginar,
-    filtra por correo)."""
+    """Variante sin paginar, filtra por correo."""
     return Solicitud.objects.filter(
         Q(solicitante__user_datos__user__email=correo)
         & (Q(termino="finalizado") | Q(termino="cancelado") | Q(fecha_expiracion__lt=timezone.now(), adjudicar=False))
@@ -38,9 +34,8 @@ def solicitudes_pasadas_queryset(correo):
 
 
 def solicitudes_pasadas_pag_queryset(user, ordenar):
-    """Replica de SolicitudesPastPag (api/views.py:1946-1972, paginada,
-    filtra por request.user en vez de correo — endpoint distinto al de
-    arriba pese al nombre parecido, se preserva la diferencia tal cual)."""
+    """Filtra por `user` en vez de correo — endpoint distinto al de arriba
+    pese al nombre parecido, se preserva la diferencia tal cual."""
     orden = "id" if ordenar == "asc" else "-id"
     return Solicitud.objects.all().filter(
         Q(solicitante__user_datos__user=user)
@@ -49,21 +44,18 @@ def solicitudes_pasadas_pag_queryset(user, ordenar):
 
 
 def solicitudes_pagadas_queryset(correo):
-    """Replica de SolicitudesPaid/SolicitudesPaidPag (api/views.py:2051-2087)."""
     return Solicitud.objects.filter(
         solicitante__user_datos__user__email=correo, adjudicar=True, pagada=True, termino="pagado",
     ).order_by("-id")
 
 
 def solicitudes_no_pagadas_queryset(correo):
-    """Replica de SolicitudesNoPaid/SolicitudesNoPaidPag (api/views.py:2092-2128)."""
     return Solicitud.objects.filter(
         solicitante__user_datos__user__email=correo, adjudicar=True, pagada=False, proveedor__isnull=False,
     ).order_by("-id")
 
 
 def solicitudes_en_proceso_queryset(user, ordenar):
-    """Replica de SolicitudesEnProceso (api/views.py:1974-2027)."""
     resultado = Solicitud.objects.filter(solicitante__user_datos__user=user).annotate(
         estado_proceso=Case(
             When(adjudicar=False, proveedor__isnull=True, termino__isnull=True,
@@ -80,9 +72,8 @@ def solicitudes_en_proceso_queryset(user, ordenar):
 
 
 def crear_solicitud(data, files):
-    """Replica de AddSolicitud.post (api/views.py:2200-2353). Devuelve
-    (solicitud_o_None, data: dict). `send_notificationF` se importa local
-    para evitar el ciclo con `api.views`."""
+    """Devuelve (solicitud_o_None, data: dict). `send_notificationF` se
+    importa local para evitar el ciclo con `api.views`."""
     from api.views import send_notificationF
 
     resp = {}
@@ -191,8 +182,7 @@ def crear_solicitud(data, files):
 
 
 def adjudicar_solicitud(solicitud_id, proveedor_user_id, request_data):
-    """Replica de AdjudicarSolicitud.put (api/views.py:1846-1890). Devuelve
-    (solicitud_o_None, data: dict)."""
+    """Devuelve (solicitud_o_None, data: dict)."""
     from api.serializers import SolicitudSerializer
     from api.views import send_notificationF
     from fcm_django.models import FCMDevice
@@ -231,7 +221,6 @@ def adjudicar_solicitud(solicitud_id, proveedor_user_id, request_data):
 
 
 def envio_interesados(solicitud_id):
-    """Replica de Envio_Interesado.get (api/views.py:4054-4077)."""
     from api.serializers import Envio_InteresadosSerializer
 
     envio_interesado = Envio_Interesados.objects.all().filter(solicitud=solicitud_id, interesado=True)
@@ -255,12 +244,10 @@ def envio_interesados(solicitud_id):
     return datos
 
 
-# --- Solicituds (multi-rol, compartido con proveedor — no se borra la ruta
-# legacy en esta fase, ver docs/refactor/05-fase-3-solicitante.md) ---
+# --- Solicituds: multi-rol, compartido con proveedor ---
 
 
 def listar_todas_solicitudes():
-    """Replica de Solicituds.get (api/views.py:2134-2139)."""
     from api.serializers import SolicitudSerializer
 
     solicitud = Solicitud.objects.all().filter()
@@ -268,7 +255,6 @@ def listar_todas_solicitudes():
 
 
 def solicitud_por_servicio_pendientes(user, id_servicio):
-    """Réplica de Solicitud_Servicio_User.get (api/views.py:3013-3024)."""
     envio_interesados = Envio_Interesados.objects.filter(
         solicitud__servicio=id_servicio, solicitud__estado=True,
         proveedor__user_datos__user=user, interesado=False,
@@ -277,7 +263,6 @@ def solicitud_por_servicio_pendientes(user, id_servicio):
 
 
 def obtener_solicitud_por_id(solicitud_id):
-    """Réplica de SolicitudID.get (api/views.py:1669-1674)."""
     from api.serializers import SolicitudSerializer
 
     solicitud = Solicitud.objects.get(id=solicitud_id)
@@ -285,7 +270,6 @@ def obtener_solicitud_por_id(solicitud_id):
 
 
 def envio_interesado_lectura(solicitud_id):
-    """Réplica de Envio.get (api/views.py:3028-3032)."""
     from api.serializers import Envio_InteresadosSerializer
 
     envio_interesado = Envio_Interesados.objects.all().filter(solicitud=solicitud_id, interesado=False)
@@ -293,7 +277,7 @@ def envio_interesado_lectura(solicitud_id):
 
 
 def actualizar_envio_interesado(solicitud_id, user_proveedor, request_data):
-    """Réplica de Envio.put (api/views.py:3034-3072). Devuelve (data, http_status)."""
+    """Devuelve (data, http_status)."""
     from api.serializers import Envio_InteresadosSerializer
     from api.views import send_notificationF
     from fcm_django.models import FCMDevice
@@ -339,12 +323,10 @@ def _interesados_base_queryset(id_proveedor_user_datos):
 
 
 def interesados_pag_queryset(id_proveedor_user_datos):
-    """Réplica de Proveedores_Interesados_Pag (api/views.py:3240-3257)."""
     return _interesados_base_queryset(id_proveedor_user_datos).order_by("-fecha_creacion")
 
 
 def interesados_en_proceso_pag_queryset(id_proveedor_user_datos, ordenar):
-    """Réplica de Proveedores_Interesados_Proceso_Pag (api/views.py:3260-3290)."""
     base = _interesados_base_queryset(id_proveedor_user_datos)
     now = timezone.now()
     pasadas_q = Q(solicitud__termino__in=["finalizado", "cancelado"]) | Q(
@@ -354,9 +336,6 @@ def interesados_en_proceso_pag_queryset(id_proveedor_user_datos, ordenar):
 
 
 def interesados_pasadas_pag_queryset(id_proveedor_user_datos, ordenar):
-    """Réplica de Proveedores_Interesados_Pasadas_Pag (api/views.py:3292-3322).
-    El original tenía `uid_er = request.user.pk` asignado y nunca usado —
-    se omite acá, no tiene ningún efecto observable."""
     base = _interesados_base_queryset(id_proveedor_user_datos)
     now = timezone.now()
     qs = base.filter(
@@ -367,8 +346,7 @@ def interesados_pasadas_pag_queryset(id_proveedor_user_datos, ordenar):
 
 
 def actualizar_solicitud(solicitud_id, request_data):
-    """Replica exacta de Solicituds.put (api/views.py:2141-2197). Devuelve
-    (data: dict, http_status: int)."""
+    """Devuelve (data: dict, http_status: int)."""
     from api.serializers import SolicitudSerializer
     from api.views import send_notificationF
     from fcm_django.models import FCMDevice
@@ -428,10 +406,6 @@ def actualizar_solicitud(solicitud_id, request_data):
 
 
 def historial_solicitudes_por_email(user_email):
-    """Réplica exacta de Solicitudes.get (api/views.py:801-809). Endpoint
-    multi-rol confirmado por grep fresco: Solicitante2022
-    (`getSolicitudesHistorial`) y Provedor2022 (ídem) lo llaman igual,
-    ambos GET simple filtrado por `solicitante__user_datos__user__email`."""
     from api.serializers import SolicitudSerializer
 
     solicitudes = Solicitud.objects.all().filter(solicitante__user_datos__user__email=user_email)
@@ -439,11 +413,6 @@ def historial_solicitudes_por_email(user_email):
 
 
 def solicitud_adjudicada(solicitud_id):
-    """Réplica exacta de SolicitudAdjudicada.get (api/views.py:750-756).
-    Endpoint multi-rol confirmado por grep fresco: Solicitante2022
-    (`detalles-solicitud.page.ts`, `pagar.page.ts`) y Provedor2022
-    (`detalles-historial.page.ts`) lo llaman igual — el checklist original
-    lo daba solo por confirmado en proveedor, corregido acá."""
     from api.serializers import Envio_InteresadosSerializer
 
     solicitud = Solicitud.objects.get(id=solicitud_id)
@@ -452,8 +421,6 @@ def solicitud_adjudicada(solicitud_id):
 
 
 def interesados_por_fecha(id_proveedor_user_datos, fecha_inicio, fecha_final):
-    """Réplica exacta de Proveedores_InteresadosFecha.post (api/views.py:1453-1459).
-    Confirmado exclusivo de Provedor2022 (cleanup post-Fase-5, Bloque 3)."""
     from api.serializers import Envio_InteresadosSerializer
 
     envio_interesado = Envio_Interesados.objects.all().filter(
@@ -464,26 +431,18 @@ def interesados_por_fecha(id_proveedor_user_datos, fecha_inicio, fecha_final):
 
 
 def interesados_pag_efectivo_queryset(id_proveedor_user_datos):
-    """Réplica de Proveedores_Interesados_Efectivo_Pag.get (api/views.py:1464-1481).
-    Confirmado exclusivo de Provedor2022 (checklist original decía "probable
-    admin/reportería" — corregido, cleanup post-Fase-5 Bloque 3)."""
     return Envio_Interesados.objects.all().filter(
         proveedor__user_datos_id=id_proveedor_user_datos, interesado=True, solicitud__tipo_pago__nombre='Efectivo'
     ).order_by('-fecha_creacion')
 
 
 def interesados_pag_tarjeta_queryset(id_proveedor_user_datos):
-    """Réplica de Proveedores_Interesados_Tarjeta_Pag.get (api/views.py:1484-1501).
-    Confirmado exclusivo de Provedor2022 (cleanup post-Fase-5, Bloque 3)."""
     return Envio_Interesados.objects.all().filter(
         proveedor__user_datos_id=id_proveedor_user_datos, interesado=True, solicitud__tipo_pago__nombre='Tarjeta'
     ).order_by('-fecha_creacion')
 
 
 def solicitudes_pagadas_por_proveedor(id_proveedor_user_datos):
-    """Réplica exacta de SolicitudesPagadas.get (api/views.py:1470-1475).
-    Sin evidencia de llamador real en ningún frontend (grep fresco) — se
-    migra igual por consistencia de namespace (cleanup post-Fase-5, Bloque 3)."""
     from api.serializers import Envio_InteresadosSerializer
 
     envio_interesado = Envio_Interesados.objects.all().filter(

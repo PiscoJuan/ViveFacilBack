@@ -20,15 +20,13 @@ from solicitudes.api.solicitante.views import (
 )
 
 # IMPORTANTE: los paths literales de un solo segmento (crear/, en-proceso/,
-# pasadas-pag/) tienen que ir ANTES que `<str:solicitud_ID>`, si no ese
-# catch-all de un segmento los intercepta primero y devuelve 405 (bug real
-# encontrado en la verificación en vivo de esta fase — Django resuelve
-# urlpatterns en orden).
+# pasadas-pag/) tienen que ir ANTES que `<str:solicitud_ID>`: Django resuelve
+# urlpatterns en orden, y ese catch-all de un segmento los interceptaría
+# primero, devolviendo 405.
 #
 # Los parámetros de path NO llevan `/` final a propósito: el frontend
 # (ViveFacil_Solicitante2022) arma estas URLs con concatenación de string
-# (`baseUrl + id`), sin slash final — igual que el estilo del `api/urls.py`
-# legacy.
+# (`baseUrl + id`), sin slash final.
 urlpatterns = [
     path("pendientes/<str:correo>", SolicitudesPendientesSolicitanteView.as_view()),
     path("pendientes-pag/<str:correo>", SolicitudesPendientesPagSolicitanteView.as_view()),

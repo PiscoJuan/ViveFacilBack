@@ -11,24 +11,31 @@ from api.serializers import PagoTarjetaSerializer, PlanProveedorSerializer, Plan
 
 
 def list_bancos():
-    """Replica de Bancos.get (api/views.py:6335-6347)."""
     return Banco.objects.all()
 
 
+def crear_banco(nombre, estado):
+    return Banco.objects.create(nombre=nombre, estado=estado)
+
+
+def eliminar_banco(id):
+    """Deja que `Banco.DoesNotExist` se propague — la vista la captura para
+    devolver el 404 original."""
+    Banco.objects.get(pk=id).delete()
+
+
 def listar_cuentas_por_proveedor(proveedor_id):
-    """Replica de CuentaProveedor.get (api/views.py:2605-2611), Fase 4. Sin
+    """Sin
     evidencia de llamador real en ningún frontend (grep sobre los 4 apps) —
     se migra igual por consistencia de namespace."""
     return Cuenta.objects.all().filter(proveedor=proveedor_id)
 
 
 def list_planes():
-    """Réplica de Planes.get (api/views.py:4315-4320), Fase 5."""
     return Plan.objects.all().filter()
 
 
 def crear_plan(data):
-    """Réplica de Planes.post (api/views.py:4322-4329), Fase 5."""
     serializer = PlanSerializer(data=data)
     if not serializer.is_valid():
         return serializer.errors, False
@@ -37,7 +44,7 @@ def crear_plan(data):
 
 
 def actualizar_plan(data):
-    """Réplica de Planes.put (api/views.py:4331-4338), Fase 5. El id viene
+    """El id viene
     del body (`request.data.get('id')`), no de la URL, tal cual el original."""
     plan = Plan.objects.get(id=data.get("id"))
     serializer = PlanSerializer(plan, data=data, partial=True)
@@ -48,7 +55,6 @@ def actualizar_plan(data):
 
 
 def eliminar_plan(id):
-    """Réplica de Planes.delete (api/views.py:4340-4344), Fase 5."""
     plan = Plan.objects.get(id=id)
     data = PlanSerializer(plan).data
     plan.delete()
@@ -56,17 +62,14 @@ def eliminar_plan(id):
 
 
 def list_planes_activos():
-    """Réplica de PlanesEstado.get (api/views.py:4513-4518), Fase 5."""
     return Plan.objects.all().filter(estado=True)
 
 
 def list_planes_proveedor():
-    """Réplica de PlanProveedorView.get (api/views.py:4480-4485), Fase 5."""
     return PlanProveedor.objects.all().filter()
 
 
 def crear_plan_proveedor(data):
-    """Réplica de PlanProveedorView.post (api/views.py:4487-4494), Fase 5."""
     serializer = PlanProveedorSerializer(data=data)
     if not serializer.is_valid():
         return serializer.errors, False
@@ -75,8 +78,7 @@ def crear_plan_proveedor(data):
 
 
 def actualizar_plan_proveedor(data):
-    """Réplica de PlanProveedorView.put (api/views.py:4496-4504), Fase 5.
-    El id viene del body, no de la URL, tal cual el original."""
+    """El id viene del body, no de la URL, tal cual el original."""
     plan_proveedor = PlanProveedor.objects.get(id=data.get("id"))
     serializer = PlanProveedorSerializer(plan_proveedor, data=data, partial=True)
     if not serializer.is_valid():
@@ -86,7 +88,6 @@ def actualizar_plan_proveedor(data):
 
 
 def eliminar_plan_proveedor(id):
-    """Réplica de PlanProveedorView.delete (api/views.py:4506-4510), Fase 5."""
     plan_proveedor = PlanProveedor.objects.get(id=id)
     data = PlanProveedorSerializer(plan_proveedor).data
     plan_proveedor.delete()
@@ -94,8 +95,7 @@ def eliminar_plan_proveedor(id):
 
 
 def registrar_pago_efectivo(data):
-    """Replica exacta de PagosEfectivo.post (api/views.py:5029-5100).
-    Devuelve (pago_efectivo_o_None, data: dict).
+    """Devuelve (pago_efectivo_o_None, data: dict).
 
     `send_notificationF` se importa localmente para evitar el ciclo con
     `api.views` (mismo patrón que `accounts.services.crear_proveedor_pendiente`)."""
@@ -166,18 +166,15 @@ def registrar_pago_efectivo(data):
 
 
 def list_pagos_efectivo():
-    """Réplica de PagosEfectivoUser.get (api/views.py), Fase 5 Bloque 3."""
     return PagoEfectivo.objects.all().filter()
 
 
 def list_pagos_tarjeta():
-    """Réplica del GET de PagosTarjetaUser (api/views.py), Fase 5 Bloque 3."""
     return PagoTarjeta.objects.all().filter()
 
 
 def actualizar_pago_tarjeta(id, estado):
-    """Réplica del PUT de PagosTarjetaUser (api/views.py). El `id` viene por
-    query param, tal cual el original — llamado en producción vía el alias
+    """El `id` viene por query param — llamado en producción vía el alias
     de URL `tarjeta_pago/?id=...` (el alias `pago_tarjetas/` en cambio solo
     se usa para el GET; ambos apuntan a la misma vista)."""
     pago = PagoTarjeta.objects.get(id=id)
@@ -186,52 +183,43 @@ def actualizar_pago_tarjeta(id, estado):
 
 
 def filtrar_pagos_efectivo_por_fecha(fecha_inicio, fecha_fin):
-    """Réplica de EfectivosFilter.get (api/views.py), Fase 5 Bloque 3."""
     return PagoEfectivo.objects.all().filter(fecha_creacion__date__range=[fecha_inicio, fecha_fin])
 
 
 def filtrar_pagos_tarjeta_por_fecha(fecha_inicio, fecha_fin):
-    """Réplica de TarjetasFilter.get (api/views.py), Fase 5 Bloque 3."""
     return PagoTarjeta.objects.all().filter(fecha_creacion__date__range=[fecha_inicio, fecha_fin])
 
 
 def valor_total_efectivo():
-    """Réplica de ValorTotalEfectivo.get (api/views.py), Fase 5 Bloque 3."""
     return PagoEfectivo.objects.aggregate(Sum('valor'))
 
 
 def valor_total_tarjeta():
-    """Réplica de ValorTotalTarjeta.get (api/views.py), Fase 5 Bloque 3."""
     return PagoTarjeta.objects.aggregate(Sum('valor'))
 
 
 def valor_total_pay_tarjeta():
-    """Réplica de ValorTotalPayTarjeta.get (api/views.py), Fase 5 Bloque 3."""
     return PagoTarjeta.objects.aggregate(Sum('cargo_paymentez'))
 
 
 def valor_total_banc_tarjeta():
-    """Réplica de ValorTotalBancTarjeta.get (api/views.py), Fase 5 Bloque 3."""
     return PagoTarjeta.objects.aggregate(Sum('cargo_banco'))
 
 
 def valor_total_sis_tarjeta():
-    """Réplica de ValorTotalSisTarjeta.get (api/views.py), Fase 5 Bloque 3."""
     return PagoTarjeta.objects.aggregate(Sum('cargo_sistema'))
 
 
 def valor_total():
-    """Réplica de ValorTotal.get (api/views.py), Fase 5 Bloque 3."""
     total_efectivo = PagoEfectivo.objects.aggregate(total=Sum('valor'))['total'] or 0
     total_tarjeta = PagoTarjeta.objects.aggregate(total=Sum('valor'))['total'] or 0
     return {'total': total_efectivo + total_tarjeta}
 
 
 def valor_total_proveedores():
-    """Réplica exacta de ValorTotalProveedores.get (api/views.py), Fase 5
-    Bloque 3. Nombre engañoso preservado tal cual: `totalProveedores` en
-    realidad cuenta pagos en efectivo (`PagoEfectivo`), no proveedores — no
-    se corrige el nombre del campo de respuesta para no romper el frontend,
+    """Nombre engañoso preservado tal cual: `totalProveedores` en realidad
+    cuenta pagos en efectivo (`PagoEfectivo`), no proveedores — no se
+    corrige el nombre del campo de respuesta para no romper el frontend,
     que ya lo consume así."""
     return {
         "totalPendientes": Proveedor.objects.count(),
@@ -240,26 +228,20 @@ def valor_total_proveedores():
 
 
 def list_pagos_solicitud_efectivo(pago_id):
-    """Réplica de PagosSolicitudesEfectivo.get (api/views.py), Fase 5 Bloque 3."""
     return PagoSolicitud.objects.all().filter(pago_efectivo=pago_id)
 
 
 def list_pagos_solicitud_tarjeta(pago_id):
-    """Réplica de PagosSolicitudesTarjeta.get (api/views.py), Fase 5 Bloque 3."""
     return PagoSolicitud.objects.all().filter(pago_tarjeta=pago_id)
 
 
 def list_tarjetas_todas():
-    """Réplica exacta de Tarjetas.get (api/views.py:1694-1700). Sin evidencia
-    de llamador real en ningún frontend (grep fresco) — devuelve TODAS las
-    tarjetas sin filtrar por usuario, preexistente, se migra igual por
-    consistencia de namespace, no se corrige (requeriría decidir qué filtro
-    faltaba, decisión de producto)."""
+    """Sin llamador real confirmado — devuelve TODAS las tarjetas sin
+    filtrar por usuario."""
     return Tarjeta.objects.all()
 
 
 def crear_tarjeta(data):
-    """Réplica exacta de Tarjetas.post (api/views.py:1702-1734)."""
     try:
         solicitante = Solicitante.objects.get(user_datos__user__username=data.get('user'))
     except Exception:
@@ -276,14 +258,14 @@ def crear_tarjeta(data):
 
 
 def list_tarjetas_por_usuario(identifier):
-    """Réplica exacta de TarjetaUser.get (api/views.py:1667-1672). Endpoint
+    """Endpoint
     multi-rol confirmado por grep fresco: Solicitante2022 y Provedor2022
     (lectura) lo llaman igual."""
     return Tarjeta.objects.all().filter(solicitante__user_datos__user__username=identifier)
 
 
 def eliminar_tarjeta(identifier):
-    """Réplica exacta de TarjetaUser.delete (api/views.py:1674-1691). Sin
+    """Sin
     evidencia de llamador real en Provedor2022 (grep fresco confirma solo
     Solicitante2022 lo usa)."""
     try:
@@ -298,11 +280,9 @@ def eliminar_tarjeta(identifier):
 
 
 def registrar_pago_tarjeta(data):
-    """Réplica exacta de PagosTarjeta.post (api/views.py:1777-1855). Endpoint
-    real de pago con tarjeta de Solicitante2022, distinto de la familia
-    admin `PagosTarjetaUser`/`pago_tarjetas`/`tarjeta_pago` (Fase 5 Bloque 3)
-    — confirmado por comentario preexistente en api/views.py y por grep
-    fresco (cleanup post-Fase-5, Bloque 3). Devuelve (pago_tarjeta_o_None, data)."""
+    """Endpoint real de pago con tarjeta de Solicitante2022, distinto de
+    la familia admin `PagosTarjetaAdminView`/`pago_tarjetas`/`tarjeta_pago`.
+    Devuelve (pago_tarjeta_o_None, data)."""
     from api.views import send_notificationF
 
     resp = {"success": False}
@@ -360,10 +340,9 @@ def registrar_pago_tarjeta(data):
 
 
 def enviar_email_factura(data):
-    """Réplica exacta de EmailFactura.post (api/views.py:525-563). Confirmado
-    exclusivo de Solicitante2022 (cleanup post-Fase-5, Bloque 3). Se importa
-    `FormatEmail`/`threading`/`uuid` localmente para evitar el ciclo con
-    `api.views` (mismo patrón que `registrar_pago_efectivo`)."""
+    """Exclusivo de Solicitante2022. Importa `FormatEmail`/`threading`/`uuid`
+    localmente para evitar el ciclo con `api.views` (mismo patrón que
+    `registrar_pago_efectivo`)."""
     import threading
     import uuid
 
@@ -398,18 +377,14 @@ def enviar_email_factura(data):
 
 
 def proveedores_por_fecha_plan(fecha_inicio, fecha_fin):
-    """Réplica exacta de PlanProveedores_Filter_Date.get (api/views.py:1100-1115).
-    Sin evidencia de llamador real en ningún frontend (grep fresco) — se
-    migra igual por consistencia de namespace (cleanup post-Fase-5, Bloque 3)."""
+    """Sin llamador real confirmado en ningún frontend."""
     fecha_in = datetime.datetime.strptime(fecha_inicio, "%Y-%m-%d")
     fecha_fi = datetime.datetime.strptime(fecha_fin, "%Y-%m-%d")
     return Proveedor.objects.all().filter(planproveedor__fecha_expiracion__date__range=[fecha_in, fecha_fi])
 
 
 def proveedores_por_fecha_y_nombre(fecha_inicio, fecha_fin, user):
-    """Réplica exacta de ProveedoresDate_Search_Name.get (api/views.py:1949-1966).
-    Sin evidencia de llamador real en ningún frontend — se migra igual por
-    consistencia de namespace (cleanup post-Fase-5, Bloque 3)."""
+    """Sin llamador real confirmado en ningún frontend."""
     fecha_in = datetime.datetime.strptime(fecha_inicio, "%Y-%m-%d")
     fecha_fi = datetime.datetime.strptime(fecha_fin, "%Y-%m-%d")
     return Proveedor.objects.all().filter(

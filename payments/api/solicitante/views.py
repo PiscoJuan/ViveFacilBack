@@ -6,8 +6,6 @@ from payments import services
 
 
 class PagoEfectivoSolicitanteView(SolicitanteAPIView):
-    """Réplica de PagosEfectivo (api/views.py:5029)."""
-
     def post(self, request, format=None):
         pago_efectivo, data = services.registrar_pago_efectivo(request.data)
         if pago_efectivo is not None:
@@ -16,11 +14,6 @@ class PagoEfectivoSolicitanteView(SolicitanteAPIView):
 
 
 class PagoTarjetaSolicitanteView(SolicitanteAPIView):
-    """Réplica de PagosTarjeta (api/views.py:1777), cleanup post-Fase-5
-    Bloque 3 — confirmado real de Solicitante2022 (pago con tarjeta),
-    distinto de la familia admin `pago_tarjetas/`/`tarjeta_pago/`
-    (`PagosTarjetaUser`, Fase 5 Bloque 3)."""
-
     def post(self, request, format=None):
         pago_tarjeta, data = services.registrar_pago_tarjeta(request.data)
         if pago_tarjeta is not None:
@@ -29,16 +22,14 @@ class PagoTarjetaSolicitanteView(SolicitanteAPIView):
 
 
 class EmailFacturaSolicitanteView(SolicitanteAPIView):
-    """Réplica de EmailFactura (api/views.py:525), cleanup post-Fase-5
-    Bloque 3 — confirmado exclusivo de Solicitante2022 (`pagar.page.ts`)."""
+    """page.ts`)."""
 
     def post(self, request, format=None):
         return Response(services.enviar_email_factura(request.data))
 
 
 class TarjetaSolicitanteView(SolicitanteAPIView):
-    """Réplica de Tarjetas (api/views.py:1694), cleanup post-Fase-5 Bloque 3.
-    El GET (`list_tarjetas_todas`, devuelve TODAS las tarjetas sin filtrar)
+    """El GET (`list_tarjetas_todas`, devuelve TODAS las tarjetas sin filtrar)
     no tiene evidencia de llamador real en ningún frontend — preexistente,
     se migra igual por consistencia, no se corrige. El POST (crear tarjeta)
     sí está confirmado real, exclusivo de Solicitante2022."""
@@ -51,8 +42,7 @@ class TarjetaSolicitanteView(SolicitanteAPIView):
 
 
 class TarjetaUserSolicitanteView(SolicitanteAPIView):
-    """Réplica de TarjetaUser (api/views.py:1665), cleanup post-Fase-5
-    Bloque 3. El GET (por username) es multi-rol, confirmado también en
+    """El GET (por username) es multi-rol, confirmado también en
     Provedor2022 (lectura) — ver TarjetaUserProveedorView. El DELETE (por id
     de tarjeta) está confirmado exclusivo de Solicitante2022."""
 

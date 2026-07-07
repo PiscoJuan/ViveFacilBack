@@ -4,11 +4,13 @@ from promotions.api.solicitante.views import (
     CuponAplicadoCrearSolicitanteView,
     CuponAplicadoSolicitanteView,
     CuponCategoriaSolicitanteView,
+    PromocionesSolicitanteView,
     RevisarDescuentoUnicoSolicitanteView,
     UsarDescuentoUnicoSolicitanteView,
 )
 
 urlpatterns = [
+    path("promociones/", PromocionesSolicitanteView.as_view()),
     path("cupon-aplicado/<str:user>", CuponAplicadoSolicitanteView.as_view()),
     path("cupon-aplicado/", CuponAplicadoCrearSolicitanteView.as_view()),
     path("cupon-categorias/", CuponCategoriaSolicitanteView.as_view()),

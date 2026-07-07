@@ -14,12 +14,8 @@ from core.views import SolicitanteAPIView
 
 
 class LoginSolicitanteView(SolicitanteAPIView):
-    """Vista delgada de AuthService para el rol Solicitante — reemplaza el
-    branching manual `if tipo == 'Proveedor'/'Solicitante'` que hoy vive en
-    `Login.post()` (api/views.py:4113). Ver docs/refactor/05-fase-3-solicitante.md.
-
-    Un login no puede exigir estar ya autenticado, así que sobreescribe el
-    permiso heredado de SolicitanteAPIView (IsSolicitante) por IsPublic —
+    """Un login no puede exigir estar ya autenticado, así que sobreescribe
+    el permiso heredado de SolicitanteAPIView (IsSolicitante) por IsPublic —
     declarando explícitamente que es público a propósito, no un descuido
     (ver core/checks.py, que acepta IsPublic bajo cualquier namespace)."""
 
@@ -35,11 +31,9 @@ class LoginSolicitanteView(SolicitanteAPIView):
 
 
 class CambioContraseniaSolicitanteView(SolicitanteAPIView):
-    """Réplica del endpoint multi-rol CambioContrasenia (api/views.py:798).
-    IMPORTANTE: exige token válido de Firebase, no requiere estar ya
-    logueado como Solicitante en este backend — igual que Login, es un
-    endpoint de recuperación de acceso. Se registra público (IsPublic),
-    igual que la ruta legacy compartida con proveedor."""
+    """Exige token válido de Firebase, no requiere estar ya logueado como
+    Solicitante en este backend — igual que Login, es un endpoint de
+    recuperación de acceso. Público (IsPublic), compartido con proveedor."""
 
     permission_classes = [IsPublic]
 
@@ -51,12 +45,6 @@ class CambioContraseniaSolicitanteView(SolicitanteAPIView):
 
 
 class DispositivoNotificacionSolicitanteView(SolicitanteAPIView):
-    """Réplica del endpoint multi-rol DeviceNotification (api/views.py:424),
-    DELETE (cleanup checklist #23) y POST (cleanup checklist #22, antes
-    servido bajo el path separado `post-token/` con la misma clase legacy
-    — mismo `accounts.services.registrar_dispositivo` que ya usaba el
-    POST legacy, solo se expone acá bajo namespace)."""
-
     def post(self, request, format=None):
         data, http_status = services.registrar_dispositivo(request, request.data.get("token"))
         return Response(data, status=http_status)
@@ -68,10 +56,7 @@ class DispositivoNotificacionSolicitanteView(SolicitanteAPIView):
 
 
 class DatoSolicitanteView(SolicitanteAPIView):
-    """Réplica del PUT de Dato (api/views.py:2668), Fase 4. Endpoint
-    multi-rol compartido con Proveedor (ver DatoProveedorView en
-    accounts/api/proveedor/views.py) — no se había detectado como
-    multi-rol en esta misma fase (Fase 3), se resuelve acá."""
+    """Endpoint compartido con Proveedor (ver `DatoProveedorView`)."""
 
     def put(self, request, user, format=None):
         services.actualizar_datos_usuario(user, request.data, request.FILES)
@@ -79,9 +64,9 @@ class DatoSolicitanteView(SolicitanteAPIView):
 
 
 class TarjetaCvcSolicitanteView(SolicitanteAPIView):
-    """Réplica de CardsAuth (api/views.py:230-297). Solo lo consume
-    ViveFacil_Solicitante2022 (paymentez.service.ts) — no es multi-rol pese
-    a estar en el mismo archivo que otros endpoints de accounts."""
+    """Solo lo consume ViveFacil_Solicitante2022 (paymentez.service.ts) —
+    no es multi-rol pese a estar en el mismo archivo que otros endpoints
+    de accounts."""
 
     def get(self, request, format=None):
         token = request.GET.get("token")
@@ -100,11 +85,8 @@ class TarjetaCvcSolicitanteView(SolicitanteAPIView):
 
 
 class RegistroRedesSolicitanteView(SolicitanteAPIView):
-    """Réplica de RegistroFromRedes (api/views.py:682-710). Sin evidencia de
-    llamador real en ningún frontend (grep fresco, cero resultados incluso
-    a nivel de definición de wrapper) — se migra igual por consistencia.
-    Público (IsPublic): es parte del flujo de registro vía red social, no
-    puede exigir sesión previa."""
+    """Público (IsPublic): es parte del flujo de registro vía red social,
+    no puede exigir sesión previa."""
 
     permission_classes = [IsPublic]
 
@@ -114,8 +96,7 @@ class RegistroRedesSolicitanteView(SolicitanteAPIView):
 
 
 class FacebookLoginSolicitanteView(SocialLoginView):
-    """Réplica de FacebookLogin (api/views.py:853-855). Confirmado real,
-    exclusivo de Solicitante2022 (login.page.ts). Público (IsPublic): es
+    """Exclusivo de Solicitante2022 (login.page.ts). Público (IsPublic): es
     login, no puede exigir sesión previa."""
 
     adapter_class = FacebookOAuth2Adapter
@@ -123,16 +104,15 @@ class FacebookLoginSolicitanteView(SocialLoginView):
 
 
 class GoogleLoginSolicitanteView(SocialLoginView):
-    """Réplica de GoogleLogin (api/views.py:857-858). Ídem FacebookLogin."""
+    """Ídem FacebookLoginSolicitanteView."""
 
     adapter_class = GoogleOAuth2Adapter
     permission_classes = [IsPublic]
 
 
 class SolicitanteUserSolicitanteView(SolicitanteAPIView):
-    """Réplica de SolicitanteUser.get (api/views.py:1639-1645), endpoint
-    multi-rol (ver también SolicitanteUserAdminView en
-    accounts/api/admin/views.py) — usado en login/registro/perfil propio."""
+    """Endpoint compartido con Admin (ver `SolicitanteUserAdminView`) —
+    usado en login/registro/perfil propio."""
 
     def get(self, request, user, format=None):
         serializer = SolicitanteSerializer(services.obtener_solicitante_por_email(user), many=True)
@@ -140,8 +120,7 @@ class SolicitanteUserSolicitanteView(SolicitanteAPIView):
 
 
 class DatosUsuarioSolicitanteView(SolicitanteAPIView):
-    """Réplica de Datos_Users.get (api/views.py:2221-2227), endpoint
-    multi-rol compartido con Proveedor (ver DatosUsuarioProveedorView) —
+    """Endpoint compartido con Proveedor (ver `DatosUsuarioProveedorView`) —
     feature de chat, mostrar datos básicos de la contraparte."""
 
     def get(self, request, id, format=None):
@@ -152,19 +131,16 @@ class DatosUsuarioSolicitanteView(SolicitanteAPIView):
 
 
 class CompleteDataUserSolicitanteView(SolicitanteAPIView):
-    """Réplica de Complete_Data_User.put (api/views.py:2230-2252), endpoint
-    multi-rol sin evidencia de llamador real (ver también
-    CompleteDataUserProveedorView en accounts/api/proveedor/views.py)."""
+    """Endpoint compartido con Proveedor (ver `CompleteDataUserProveedorView`)."""
 
     def put(self, request, username, format=None):
         return Response(services.completar_datos_usuario(username, request.data))
 
 
 class RecuperarPasswordSolicitanteView(SolicitanteAPIView):
-    """Réplica de RecuperarPassword.get (api/views.py:565-575). Confirmado
-    real, exclusivo de Solicitante2022 (recuperar-contrasenia.page.ts) —
-    Provedor2022 define el mismo wrapper pero su recuperación real usa
-    Firebase directo (grep confirmado). Público (IsPublic): pre-login."""
+    """Exclusivo de Solicitante2022 (recuperar-contrasenia.page.ts) —
+    Provedor2022 tiene un wrapper equivalente pero su recuperación real usa
+    Firebase directo. Público (IsPublic): pre-login."""
 
     permission_classes = [IsPublic]
 
@@ -173,8 +149,7 @@ class RecuperarPasswordSolicitanteView(SolicitanteAPIView):
 
 
 class ValidarCodigoSolicitanteView(SolicitanteAPIView):
-    """Réplica de ValidarCodigo.get (api/views.py:595-606). Mismo alcance
-    real que RecuperarPasswordSolicitanteView."""
+    """Mismo alcance real que RecuperarPasswordSolicitanteView."""
 
     permission_classes = [IsPublic]
 
@@ -183,10 +158,7 @@ class ValidarCodigoSolicitanteView(SolicitanteAPIView):
 
 
 class CambioPasswordCodigoSolicitanteView(SolicitanteAPIView):
-    """Réplica de CambioPasswordCodigo.get (api/views.py:609-627). Sin
-    evidencia de llamador real ni siquiera en Solicitante2022 (que sí usa
-    las dos vistas anteriores del mismo flujo) — se migra igual por
-    consistencia. Público (IsPublic): pre-login."""
+    """Público (IsPublic): pre-login."""
 
     permission_classes = [IsPublic]
 
@@ -195,19 +167,13 @@ class CambioPasswordCodigoSolicitanteView(SolicitanteAPIView):
 
 
 class PuntosSolicitanteView(SolicitanteAPIView):
-    """Réplica de Puntos.get (api/views.py:2824-2835). Confirmado real,
-    exclusivo de Solicitante2022 (perfil/promociones) — endurecimiento real,
-    antes sin permission_classes (público)."""
-
     def get(self, request, email, format=None):
         return Response(services.obtener_puntos(email))
 
 
 class VersionAndroidSolicitanteView(SolicitanteAPIView):
-    """Réplica de VerionAndroidSolicitante (api/views.py:2918-2920), typo
-    "Verion" original. Confirmado real (app.component.ts, se consulta al
-    lanzar la app). Público (IsPublic), mismo criterio que su análogo de
-    proveedor (VersionAndroidProveedorView)."""
+    """Público (IsPublic), mismo criterio que su análogo de proveedor
+    (VersionAndroidProveedorView)."""
 
     permission_classes = [IsPublic]
 
@@ -216,9 +182,20 @@ class VersionAndroidSolicitanteView(SolicitanteAPIView):
 
 
 class VersionIosSolicitanteView(SolicitanteAPIView):
-    """Réplica de VerionIosSolicitante (api/views.py:2922-2924). Ídem."""
+    """Ídem VersionAndroidSolicitanteView."""
 
     permission_classes = [IsPublic]
 
     def get(self, request):
         return Response(VERSION_IOS_SOLICITANTE)
+
+
+class RegistroSolicitanteView(SolicitanteAPIView):
+    """Alta real de Solicitante — misma lógica que
+    `accounts.api.web.views.RegistroWebView` (un `ModelViewSet` por router,
+    no una vista simple), llamada acá directo sin pasar por el router."""
+
+    permission_classes = [IsPublic]
+
+    def post(self, request, format=None):
+        return Response(services.crear_cuenta_registro(request.POST, request.FILES))

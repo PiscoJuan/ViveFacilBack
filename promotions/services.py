@@ -5,12 +5,10 @@ from api.serializers import CuponSerializer, PromocionSerializer
 
 
 def cupones_aplicados_activos(user):
-    """Replica de Get_Cupon_Aplicado.get (api/views.py:1410-1414)."""
     return Cupon_Aplicado.objects.all().filter(user=user, estado=True)
 
 
 def cupones_categoria_disponibles(usuario):
-    """Replica de AllCuponesCategoria.get (api/views.py:4935-4945)."""
     hoy = datetime.datetime.today()
     cupones = CuponCategoria.objects.all().filter(cupon__fecha_expiracion__gte=hoy)
     cupones = cupones.filter(cupon__fecha_iniciacion__lte=hoy)
@@ -24,8 +22,7 @@ def cupones_categoria_disponibles(usuario):
 
 
 def revisar_descuento_unico(user):
-    """Replica de RevisarDescuentoUnico.get (api/views.py:6071-6082).
-    Devuelve uno de: "descuento" | "no" | "error"."""
+    """Devuelve uno de: "descuento" | "no" | "error"."""
     try:
         usuario = Datos.objects.get(user=user)
         return "descuento" if usuario.descuento == 1 else "no"
@@ -34,8 +31,7 @@ def revisar_descuento_unico(user):
 
 
 def usar_descuento_unico(mail):
-    """Replica de UsarDescuentoUnico.get (api/views.py:6084-6095).
-    Devuelve uno de: "usado" | "error"."""
+    """Devuelve uno de: "usado" | "error"."""
     try:
         usuario = Datos.objects.get(user__email=mail)
         if usuario.descuento == 1:
@@ -48,8 +44,6 @@ def usar_descuento_unico(mail):
 
 
 def _notificar_solicitantes(titulo, cuerpo, data_extra):
-    """Réplica del patrón de notificación masiva a Solicitantes en
-    Promociones/Cupones (api/views.py), Fase 5."""
     from fcm_django.models import FCMDevice
     from api.views import send_notificationF
 
@@ -60,15 +54,14 @@ def _notificar_solicitantes(titulo, cuerpo, data_extra):
 
 
 def list_promociones():
-    """Réplica de Promociones.get (api/views.py:3639-3646), Fase 5. El
+    """El
     `order_by('-pk')` es el comportamiento real (el filtro por fecha
     comentado en el original nunca se aplicó)."""
     return Promocion.objects.all().order_by("-pk")
 
 
 def crear_promocion(data, categorias_nombres):
-    """Réplica de Promociones.post (api/views.py:3653-3703), Fase 5.
-    Devuelve (promocion_o_None, data: dict)."""
+    """Devuelve (promocion_o_None, data: dict)."""
     resp = {"success": False}
     try:
         promocion = Promocion.objects.create(
@@ -102,7 +95,7 @@ def crear_promocion(data, categorias_nombres):
 
 
 def actualizar_promocion(data, categorias_nombres):
-    """Réplica de Promociones.put (api/views.py:3705-3773), Fase 5. Busca
+    """Busca
     por `codigo` (viene del body), no por el `id` de la URL — tal cual el
     original (el `id` de la URL nunca se usa)."""
     resp = {"success": False}
@@ -148,29 +141,24 @@ def actualizar_promocion(data, categorias_nombres):
 
 
 def eliminar_promocion(id):
-    """Réplica de Promociones.delete (api/views.py:3648-3651), Fase 5."""
     Promocion.objects.get(id=id).delete()
 
 
 def obtener_promocion(pk):
-    """Réplica de Promocion_Details.get (api/views.py:3778-3782), Fase 5."""
     return Promocion.objects.get(id=pk)
 
 
 def actualizar_estado_promocion(id, estado):
-    """Réplica de Promocion_Details.put (api/views.py:3784-3789), Fase 5."""
     promocion = Promocion.objects.get(id=id)
     promocion.estado = estado
     promocion.save()
 
 
 def list_cupones():
-    """Réplica de Cupones.get (api/views.py:3792-3799), Fase 5."""
     return Cupon.objects.all().order_by("-pk")
 
 
 def crear_cupon(data, categorias_nombres):
-    """Réplica de Cupones.post (api/views.py:3806-3857), Fase 5."""
     resp = {"success": False}
     try:
         cupon = Cupon.objects.create(
@@ -204,7 +192,7 @@ def crear_cupon(data, categorias_nombres):
 
 
 def actualizar_cupon(data, categorias_nombres):
-    """Réplica de Cupones.put (api/views.py:3859-3923), Fase 5. Busca por
+    """Busca por
     `codigo` (body), no por el `id` de la URL, tal cual el original.
     `tipo_categoria` acá es singular (a diferencia de Promociones, que
     sincroniza una lista completa) — réplica exacta de la asimetría real
@@ -252,25 +240,21 @@ def actualizar_cupon(data, categorias_nombres):
 
 
 def eliminar_cupon(id):
-    """Réplica de Cupones.delete (api/views.py:3801-3804), Fase 5."""
     Cupon.objects.get(id=id).delete()
 
 
 def obtener_cupon(pk):
-    """Réplica de Cupon_Details.get (api/views.py:3928-3932), Fase 5."""
     return Cupon.objects.get(id=pk)
 
 
 def actualizar_estado_cupon(id, estado):
-    """Réplica de Cupon_Details.put (api/views.py:3934-3939), Fase 5."""
     cupon = Cupon.objects.get(id=id)
     cupon.estado = estado
     cupon.save()
 
 
 def crear_cupon_aplicado(user, cupon_id, estado):
-    """Réplica de Cupones_Aplicados.post (api/views.py:665-705), cleanup
-    post-Fase-5, Bloque 4. Devuelve el dict de respuesta tal cual el
+    """Devuelve el dict de respuesta tal cual el
     original (incluye 'creado'/'valid'/'error' según el camino)."""
     data = {}
     try:
@@ -304,8 +288,7 @@ def crear_cupon_aplicado(user, cupon_id, estado):
 
 
 def actualizar_cupon_aplicado(user, cupon_id, estado):
-    """Réplica de Cupones_Aplicados.put (api/views.py:707-718), cleanup
-    post-Fase-5, Bloque 4. Sin evidencia de consumidor real en ningún
+    """Sin evidencia de consumidor real en ningún
     frontend (solo el POST se llama en la práctica). **Bug real corregido
     al mover el código**: el original hacía `cupon_aplic.estado = ...` y
     `cupon_aplic.save()` sobre un QuerySet (resultado de `.filter(...)`),
@@ -321,9 +304,35 @@ def actualizar_cupon_aplicado(user, cupon_id, estado):
     return False
 
 
+def obtener_cupon(pk):
+    """Confirmado real: Solicitante2022 y Admin2022."""
+    return Cupon.objects.get(id=pk)
+
+
+def actualizar_cantidad_cupon(pk, cantidad):
+    """Sin consumidor real confirmado en ningún frontend."""
+    cupon = Cupon.objects.get(id=pk)
+    cupon.cantidad = cantidad
+    cupon.save()
+
+
+def promociones_por_categoria(promocion_codigo):
+    """Sin consumidor real confirmado en ningún frontend."""
+    return PromocionCategoria.objects.all().filter(promocion__codigo=promocion_codigo)
+
+
+def all_promociones_categoria():
+    """Sin consumidor real confirmado en ningún frontend."""
+    return PromocionCategoria.objects.all()
+
+
+def cupones_por_categoria(cupon_codigo):
+    """Sin consumidor real confirmado en ningún frontend."""
+    return CuponCategoria.objects.all().filter(cupon__codigo=cupon_codigo)
+
+
 def confirmar_descuento(mail):
-    """Replica exacta de ConfirmarDescuento (api/views.py:6235-6248).
-    Devuelve uno de: "descuento" | "reclamado" | "usado" | "no_existe"."""
+    """Devuelve uno de: "descuento" | "reclamado" | "usado" | "no_existe"."""
     try:
         usuario = Datos.objects.get(user__email=mail)
         if usuario.descuento == 0:

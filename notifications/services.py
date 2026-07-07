@@ -5,12 +5,9 @@ from django.contrib.auth.models import User
 
 
 def _notificar_proveedores_segmentado(notif):
-    """Réplica exacta de la lógica de segmentación duplicada en
-    Notificaciones_Details.post y SendNotificacion_Details.post
-    (api/views.py) — mismo código operando sobre `Notificacion` o
-    `NotificacionMasiva`, unificado acá en vez de mantener dos copias
-    (Fase 5, Bloque 3). Los `print()` de debug del original se omiten,
-    igual que en `notificar_chat_proveedor`."""
+    """Mismo código operando sobre `Notificacion` o `NotificacionMasiva`,
+    unificado acá en vez de mantener dos copias. Los `print()` de debug
+    del original se omiten, igual que en `notificar_chat_proveedor`."""
     from api.views import send_notificationF
     from fcm_django.models import FCMDevice
 
@@ -30,13 +27,11 @@ def _notificar_proveedores_segmentado(notif):
 
 
 def list_notificaciones():
-    """Réplica del queryset de Notificaciones.get (api/views.py), Fase 5 Bloque 3."""
     return Notificacion.objects.all()
 
 
 def crear_notificacion(data, files):
-    """Réplica exacta de Notificaciones.post (api/views.py). Devuelve
-    (notificacion_o_None, data: dict)."""
+    """Devuelve (notificacion_o_None, data: dict)."""
     from api.views import send_notificationF
     from fcm_django.models import FCMDevice
 
@@ -67,15 +62,13 @@ def crear_notificacion(data, files):
 
 
 def actualizar_notificacion(id, data):
-    """Réplica de Notificaciones.put (api/views.py). Puede propagar
-    Notificacion.DoesNotExist — la vista lo traduce a 404, tal cual el original."""
+    """Puede propagar Notificacion.DoesNotExist — la vista lo traduce a 404."""
     notificacion = Notificacion.objects.get(id=int(id))
     return notificacion
 
 
 def eliminar_notificacion(id):
-    """Réplica exacta de Notificaciones.delete (api/views.py). Devuelve
-    (success: bool, message: str)."""
+    """Devuelve (success: bool, message: str)."""
     from api.views import send_notificationF
     from fcm_django.models import FCMDevice
 
@@ -94,35 +87,30 @@ def eliminar_notificacion(id):
 
 
 def obtener_notificacion(pk):
-    """Réplica de Notificaciones_Details.get (api/views.py) — nunca estuvo
-    wireada a ninguna URL con `pk` real (dead branch, ver checklist), se
+    """Nunca estuvo wireada a ninguna URL con `pk` real (dead branch), se
     mantiene por si se decide exponerla más adelante."""
     return Notificacion.objects.get(id=pk)
 
 
 def actualizar_estado_notificacion(id, estado):
-    """Réplica de Notificaciones_Details.put (api/views.py)."""
     notificacion = Notificacion.objects.get(id=id)
     notificacion.estado = estado
     notificacion.save()
 
 
 def enviar_notificacion_segmentada(pk):
-    """Réplica de Notificaciones_Details.post (api/views.py)."""
     notificacion = Notificacion.objects.get(id=pk)
     _notificar_proveedores_segmentado(notificacion)
 
 
 def list_notificaciones_masivas():
-    """Réplica del GET de SendNotificacion (api/views.py) — compartido con
-    Provedor2022 y Solicitante2022 (grep confirmado), se queda expuesto sin
-    rol específico."""
+    """Compartido con Provedor2022 y Solicitante2022, se queda expuesto
+    sin rol específico."""
     return NotificacionMasiva.objects.all()
 
 
 def crear_notificacion_masiva(data, files):
-    """Réplica exacta del POST de SendNotificacion (api/views.py). Devuelve
-    (notificacion_o_None, data: dict)."""
+    """Devuelve (notificacion_o_None, data: dict)."""
     from api.views import send_notificationF
     from fcm_django.models import FCMDevice
 
@@ -152,14 +140,13 @@ def crear_notificacion_masiva(data, files):
 
 
 def actualizar_notificacion_masiva(id, data):
-    """Réplica del PUT de SendNotificacion (api/views.py). Puede propagar
-    NotificacionMasiva.DoesNotExist — la vista lo traduce a 404."""
+    """Puede propagar NotificacionMasiva.DoesNotExist — la vista lo
+    traduce a 404."""
     return NotificacionMasiva.objects.get(id=int(id))
 
 
 def eliminar_notificacion_masiva(id):
-    """Réplica exacta del DELETE de SendNotificacion (api/views.py).
-    Devuelve (success: bool, message: str)."""
+    """Devuelve (success: bool, message: str)."""
     from api.views import send_notificationF
     from fcm_django.models import FCMDevice
 
@@ -178,27 +165,23 @@ def eliminar_notificacion_masiva(id):
 
 
 def obtener_notificacion_masiva(pk):
-    """Réplica de SendNotificacion_Details.get (api/views.py) — nunca
-    estuvo wireada a ninguna URL con `pk` real (dead branch)."""
+    """Nunca estuvo wireada a ninguna URL con `pk` real (dead branch)."""
     return NotificacionMasiva.objects.get(id=pk)
 
 
 def actualizar_estado_notificacion_masiva(id, estado):
-    """Réplica de SendNotificacion_Details.put (api/views.py)."""
     notificacion = NotificacionMasiva.objects.get(id=id)
     notificacion.estado = estado
     notificacion.save()
 
 
 def enviar_notificacion_masiva_segmentada(pk):
-    """Réplica de SendNotificacion_Details.post (api/views.py)."""
     notificacion = NotificacionMasiva.objects.get(id=pk)
     _notificar_proveedores_segmentado(notificacion)
 
 
 def enviar_email_bienvenida(email, password, tipo):
-    """Réplica de Email.post (api/views.py:486-522), cleanup post-Fase-5,
-    Bloque 4. Devuelve dict de respuesta tal cual el original (incluye
+    """Devuelve dict de respuesta tal cual el original (incluye
     'clave' == security_access en el camino de éxito)."""
     import threading
 
@@ -227,8 +210,6 @@ def enviar_email_bienvenida(email, password, tipo):
 
 
 def enviar_correo_solicitud(email, profesion, rechazada):
-    """Réplica de CorreoSolicitud.post (api/views.py:1050-1081), cleanup
-    post-Fase-5, Bloque 4."""
     import threading
 
     from api.views import FormatEmail
@@ -253,8 +234,6 @@ def enviar_correo_solicitud(email, profesion, rechazada):
 
 
 def enviar_alerta(user_email, asunto, texto):
-    """Réplica de EnviarAlerta.get (api/views.py:570-584), cleanup
-    post-Fase-5, Bloque 4."""
     import threading
 
     from django.contrib.auth.models import User as AuthUser
@@ -275,8 +254,7 @@ def enviar_alerta(user_email, asunto, texto):
 
 
 def notificar_chat_solicitante(remitente_id, es_solicitante, mensaje, user_id, url):
-    """Réplica de Notificacion_Chat.post (api/views.py:1382-1407), cleanup
-    post-Fase-5, Bloque 4. **Bug real preservado, no corregido**: en la
+    """**Bug real preservado, no corregido**: en la
     rama `es_solicitante` falso, el original referencia `tokens` sin
     haberla asignado nunca en esa rama (`NameError` garantizado) — se
     replica tal cual. No se corrige porque el único consumidor real
@@ -309,9 +287,7 @@ def notificar_chat_solicitante(remitente_id, es_solicitante, mensaje, user_id, u
 
 
 def notificar_general(user, message, title):
-    """Réplica de Notificacion_General.post (api/views.py:1413-1425),
-    cleanup post-Fase-5, Bloque 4. Sin evidencia de consumidor real en
-    ningún frontend — se migra igual por consistencia."""
+    """Sin consumidor real confirmado en ningún frontend."""
     from api.views import send_notificationF
     from fcm_django.models import FCMDevice
 
@@ -324,8 +300,7 @@ def notificar_general(user, message, title):
 
 
 def notificar_chat_proveedor(remitente_id, get_usuario_id, mensaje, url):
-    """Réplica de Notificacion_Chat_Proveedor.post (api/views.py:3118-3185).
-    Devuelve (data, http_status). Los `print()` de debug del original se
+    """Devuelve (data, http_status). Los `print()` de debug del original se
     omiten (no forman parte del contrato de la API); el resto de la lógica,
     incluidos los mensajes de error, se preserva tal cual."""
     from api.views import send_notificationF

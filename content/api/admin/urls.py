@@ -5,8 +5,10 @@ from content.api.admin.views import (
     CargosAdminView,
     InsigniaDetailsAdminView,
     InsigniasAdminView,
+    InsigniasListAdminView,
     MedallaEstadoAdminView,
     MedallasAdminView,
+    PoliticasAdminView,
     PublicidadesAdminView,
     PublicidadesBuscarAdminView,
     ReadSuggestionsAdminView,
@@ -15,7 +17,10 @@ from content.api.admin.views import (
 )
 
 urlpatterns = [
+    path("insignias/", InsigniasListAdminView.as_view()),
     path("insignias/<str:id>/", InsigniasAdminView.as_view()),
+    path("politicas/", PoliticasAdminView.as_view()),
+    path("politicas/<str:identifier>/", PoliticasAdminView.as_view()),
     path("insignias/detalle/<str:pk>/", InsigniaDetailsAdminView.as_view()),
     path("insignias/estado/", InsigniaDetailsAdminView.as_view()),
     path("medallas/", MedallasAdminView.as_view()),

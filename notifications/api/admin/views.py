@@ -8,9 +8,42 @@ from core.views import AdminAPIView
 from notifications import services
 
 
+class NotificacionAnuncioAdminView(AdminAPIView):
+    """Ruta base `admin/notifications/notificacion-anuncio/`
+    (GET+POST+PUT+DELETE) — antes Admin2022 la pedía en
+    `web/notifications/notificacion-anuncio/` (misma lógica que
+    notifications.api.web.views.NotificacionAnuncioWebView; distinta de
+    NotificacionAnuncioDetalleAdminView, que solo cubre `estado/`+`envio/`)."""
+
+    def get(self, request, format=None):
+        return Response(NotificacionMasivaSerializer(services.list_notificaciones_masivas(), many=True).data)
+
+    def post(self, request, format=None):
+        notificacion, data = services.crear_notificacion_masiva(request.data, request.FILES)
+        if notificacion is not None:
+            data['notificacion_masiva'] = NotificacionMasivaSerializer(notificacion).data
+        return Response(data)
+
+    def put(self, request, id, format=None):
+        try:
+            notificacion = services.actualizar_notificacion_masiva(id, request.data)
+            serializer = NotificacionMasivaSerializer(notificacion, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except NotificacionMasiva.DoesNotExist:
+            return Response({"error": "Notificación no encontrada."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, id):
+        success, message = services.eliminar_notificacion_masiva(id)
+        return Response({"success": success, "message": message})
+
+
 class NotificacionesAdminView(AdminAPIView, MyPaginationMixin):
-    """Réplica de Notificaciones (api/views.py), Fase 5 Bloque 3. Admin-
-    exclusivo confirmado (grep: ningún otro frontend llama `notificaciones/`)."""
+    """Admin-exclusivo: ningún otro frontend llama `notificaciones/`."""
 
     pagination_class = MyCustomPagination
 
@@ -47,10 +80,9 @@ class NotificacionesAdminView(AdminAPIView, MyPaginationMixin):
 
 
 class NotificacionesDetalleAdminView(AdminAPIView):
-    """Réplica de Notificaciones_Details (api/views.py). Sirve
-    `notificaciones_estado/` (PUT) y `notificaciones-envio/` (POST), ambas
-    sin `pk` en la URL — el `id` viene por query param en ambas, tal cual
-    el original."""
+    """Sirve `notificaciones_estado/` (PUT) y `notificaciones-envio/`
+    (POST), ambas sin `pk` en la URL — el `id` viene por query param en
+    ambas."""
 
     def put(self, request, format=None):
         services.actualizar_estado_notificacion(request.GET.get('id'), request.data.get('estado'))
@@ -65,8 +97,7 @@ class NotificacionesDetalleAdminView(AdminAPIView):
 
 
 class EmailBienvenidaAdminView(AdminAPIView):
-    """Réplica de Email (api/views.py:486), cleanup post-Fase-5, Bloque 4.
-    Confirmado exclusivo de Admin2022 (`python-anywhere.service.ts:855`)."""
+    """Confirmado exclusivo de Admin2022 (`python-anywhere.service.ts:855`)."""
 
     def post(self, request, format=None):
         return Response(services.enviar_email_bienvenida(
@@ -75,8 +106,7 @@ class EmailBienvenidaAdminView(AdminAPIView):
 
 
 class CorreoSolicitudAdminView(AdminAPIView):
-    """Réplica de CorreoSolicitud (api/views.py:1050), cleanup post-Fase-5,
-    Bloque 4. Confirmado exclusivo de Admin2022
+    """Confirmado exclusivo de Admin2022
     (`python-anywhere.service.ts:1913`)."""
 
     def post(self, request, format=None):
@@ -86,8 +116,7 @@ class CorreoSolicitudAdminView(AdminAPIView):
 
 
 class EnviarAlertaAdminView(AdminAPIView):
-    """Réplica de EnviarAlerta (api/views.py:570), cleanup post-Fase-5,
-    Bloque 4. Confirmado exclusivo de Admin2022
+    """Confirmado exclusivo de Admin2022
     (`python-anywhere.service.ts:1363`). El original expone esto como GET
     con efecto secundario (envía un correo) — se preserva tal cual, no se
     convierte a POST."""
@@ -97,11 +126,8 @@ class EnviarAlertaAdminView(AdminAPIView):
 
 
 class NotificacionGeneralAdminView(AdminAPIView):
-    """Réplica de Notificacion_General (api/views.py:1413), cleanup
-    post-Fase-5, Bloque 4. Sin evidencia de consumidor real en ningún
-    frontend (grep fresco sobre los 4, cero resultados) — se registra bajo
-    `admin/` por descarte, mismo criterio que `Get_Proveedor` en el
-    Bloque 1 de este cleanup."""
+    """Sin consumidor real confirmado en ningún frontend — se registra
+    bajo `admin/` por descarte."""
 
     def post(self, request, format=None):
         return Response(services.notificar_general(
@@ -110,9 +136,9 @@ class NotificacionGeneralAdminView(AdminAPIView):
 
 
 class NotificacionAnuncioDetalleAdminView(AdminAPIView):
-    """Réplica de SendNotificacion_Details (api/views.py). Sirve
-    `notificacion-anuncio-estado/` (PUT) y `notificacion-anuncio-envio/`
-    (POST), mismo patrón sin `pk` en la URL que NotificacionesDetalleAdminView."""
+    """Sirve `notificacion-anuncio-estado/` (PUT) y
+    `notificacion-anuncio-envio/` (POST), mismo patrón sin `pk` en la URL
+    que NotificacionesDetalleAdminView."""
 
     def put(self, request, format=None):
         services.actualizar_estado_notificacion_masiva(request.GET.get('id'), request.data.get('estado'))
