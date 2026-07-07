@@ -72,9 +72,8 @@ def solicitudes_en_proceso_queryset(user, ordenar):
 
 
 def crear_solicitud(data, files):
-    """Devuelve (solicitud_o_None, data: dict). `send_notificationF` se
-    importa local para evitar el ciclo con `api.views`."""
-    from api.views import send_notificationF
+    """Devuelve (solicitud_o_None, data: dict)."""
+    from core.firebase import send_notificationF
 
     resp = {}
     desc = data.get("descripcion")
@@ -184,7 +183,7 @@ def crear_solicitud(data, files):
 def adjudicar_solicitud(solicitud_id, proveedor_user_id, request_data):
     """Devuelve (solicitud_o_None, data: dict)."""
     from api.serializers import SolicitudSerializer
-    from api.views import send_notificationF
+    from core.firebase import send_notificationF
     from fcm_django.models import FCMDevice
 
     data = {}
@@ -279,7 +278,7 @@ def envio_interesado_lectura(solicitud_id):
 def actualizar_envio_interesado(solicitud_id, user_proveedor, request_data):
     """Devuelve (data, http_status)."""
     from api.serializers import Envio_InteresadosSerializer
-    from api.views import send_notificationF
+    from core.firebase import send_notificationF
     from fcm_django.models import FCMDevice
 
     solicitud = Solicitud.objects.get(id=solicitud_id)
@@ -348,7 +347,7 @@ def interesados_pasadas_pag_queryset(id_proveedor_user_datos, ordenar):
 def actualizar_solicitud(solicitud_id, request_data):
     """Devuelve (data: dict, http_status: int)."""
     from api.serializers import SolicitudSerializer
-    from api.views import send_notificationF
+    from core.firebase import send_notificationF
     from fcm_django.models import FCMDevice
 
     data = {}

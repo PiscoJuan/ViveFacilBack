@@ -71,7 +71,7 @@ def crear_proveedor_pendiente(data, files):
         documento_creado = PendienteDocuments.objects.create(document=doc)
         proveedor_pend.documentsPendientes.add(documento_creado)
 
-    from api.views import FormatEmail  # import local: evita ciclo con api.views
+    from core.email import FormatEmail
 
     format_email = FormatEmail()
     nombre_completo = f"{data.get('nombres')} {data.get('apellidos')}"
@@ -241,7 +241,7 @@ def registrar_proveedor(email, tipo, nombres, apellidos, telefono, genero, foto)
     confirma por qué no hay evidencia de llamador real en ningún frontend."""
     from django.contrib.auth.models import Group, User
 
-    from api.views import FormatEmail
+    from core.email import FormatEmail
 
     if User.objects.filter(username=email).exists():
         return {"error": "Usuario ya existente!."}, 200
@@ -623,7 +623,7 @@ def pendiente_rechazar(pk, razon):
     """El `threading.Thread(...)` de abajo se crea sin `.start()` — el
     email se manda igual, de forma síncrona, al construir el Thread. Se
     deja igual a propósito."""
-    from api.views import FormatEmail
+    from core.email import FormatEmail
 
     pendiente = Proveedor_Pendiente.objects.get(id=pk)
     pendiente.estado = 1
@@ -923,7 +923,7 @@ def crear_cuenta_registro(data, files):
                 Solicitante.objects.create(user_datos=dato, bool_registro_completo=True)
                 _Group.objects.get(name='Solicitante').user_set.add(usuario)
 
-                from api.views import FormatEmail
+                from core.email import FormatEmail
                 format_email = FormatEmail()
                 _threading.Thread(
                     target=format_email.send_email,
@@ -973,7 +973,7 @@ def crear_cuenta_registro(data, files):
                 proveedor_user.user_datos.save()
 
                 asunto = "Solicitud Aceptada"
-                from api.views import FormatEmail
+                from core.email import FormatEmail
                 format_email = FormatEmail()
                 _threading.Thread(
                     target=format_email.send_email,
@@ -1217,7 +1217,7 @@ def actualizar_caducidad_proveedor(pk, data):
     comportamiento preexistente, intencionalmente no tocado."""
     from datetime import date, datetime as _datetime
 
-    from api.views import FormatEmail
+    from core.email import FormatEmail
 
     proveedor = Proveedor.objects.get(id=data.get('id'))
     numero = data.get('input')
@@ -1338,7 +1338,7 @@ def actualizar_caducidad_masiva_proveedores():
     silencio sin manera de detectarlo desde el repo."""
     from django.utils import timezone
 
-    from api.views import FormatEmail
+    from core.email import FormatEmail
 
     resultados = []
     format_email = FormatEmail()

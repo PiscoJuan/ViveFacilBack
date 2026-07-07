@@ -8,7 +8,7 @@ def _notificar_proveedores_segmentado(notif):
     """Mismo código operando sobre `Notificacion` o `NotificacionMasiva`,
     unificado acá en vez de mantener dos copias. Los `print()` de debug
     del original se omiten, igual que en `notificar_chat_proveedor`."""
-    from api.views import send_notificationF
+    from core.firebase import send_notificationF
     from fcm_django.models import FCMDevice
 
     tipo_proveedor = notif.tipo_proveedores
@@ -32,7 +32,7 @@ def list_notificaciones():
 
 def crear_notificacion(data, files):
     """Devuelve (notificacion_o_None, data: dict)."""
-    from api.views import send_notificationF
+    from core.firebase import send_notificationF
     from fcm_django.models import FCMDevice
 
     notificacion = Notificacion.objects.create(
@@ -69,7 +69,7 @@ def actualizar_notificacion(id, data):
 
 def eliminar_notificacion(id):
     """Devuelve (success: bool, message: str)."""
-    from api.views import send_notificationF
+    from core.firebase import send_notificationF
     from fcm_django.models import FCMDevice
 
     try:
@@ -111,7 +111,7 @@ def list_notificaciones_masivas():
 
 def crear_notificacion_masiva(data, files):
     """Devuelve (notificacion_o_None, data: dict)."""
-    from api.views import send_notificationF
+    from core.firebase import send_notificationF
     from fcm_django.models import FCMDevice
 
     notificacion = NotificacionMasiva.objects.create(
@@ -147,7 +147,7 @@ def actualizar_notificacion_masiva(id, data):
 
 def eliminar_notificacion_masiva(id):
     """Devuelve (success: bool, message: str)."""
-    from api.views import send_notificationF
+    from core.firebase import send_notificationF
     from fcm_django.models import FCMDevice
 
     try:
@@ -185,7 +185,7 @@ def enviar_email_bienvenida(email, password, tipo):
     'clave' == security_access en el camino de éxito)."""
     import threading
 
-    from api.views import FormatEmail
+    from core.email import FormatEmail
 
     data = {}
     format_email = FormatEmail()
@@ -212,7 +212,7 @@ def enviar_email_bienvenida(email, password, tipo):
 def enviar_correo_solicitud(email, profesion, rechazada):
     import threading
 
-    from api.views import FormatEmail
+    from core.email import FormatEmail
 
     data = {}
     format_email = FormatEmail()
@@ -238,7 +238,7 @@ def enviar_alerta(user_email, asunto, texto):
 
     from django.contrib.auth.models import User as AuthUser
 
-    from api.views import FormatEmail
+    from core.email import FormatEmail
 
     data = {'success': False}
     usuario = AuthUser.objects.filter(email=user_email)
@@ -262,7 +262,7 @@ def notificar_chat_solicitante(remitente_id, es_solicitante, mensaje, user_id, u
     siempre manda `isSolicitante: true`, así que esa rama nunca se
     ejecuta en producción; arreglarla implicaría adivinar comportamiento
     nuevo para el lado proveedor del chat, fuera de alcance acá."""
-    from api.views import send_notificationF
+    from core.firebase import send_notificationF
     from fcm_django.models import FCMDevice
 
     remitente_nombre = Datos.objects.get(id=remitente_id)
@@ -288,7 +288,7 @@ def notificar_chat_solicitante(remitente_id, es_solicitante, mensaje, user_id, u
 
 def notificar_general(user, message, title):
     """Sin consumidor real confirmado en ningún frontend."""
-    from api.views import send_notificationF
+    from core.firebase import send_notificationF
     from fcm_django.models import FCMDevice
 
     devices = FCMDevice.objects.filter(active=True, user_id=user)
@@ -303,7 +303,7 @@ def notificar_chat_proveedor(remitente_id, get_usuario_id, mensaje, url):
     """Devuelve (data, http_status). Los `print()` de debug del original se
     omiten (no forman parte del contrato de la API); el resto de la lógica,
     incluidos los mensajes de error, se preserva tal cual."""
-    from api.views import send_notificationF
+    from core.firebase import send_notificationF
     from fcm_django.models import FCMDevice
 
     try:

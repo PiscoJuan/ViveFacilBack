@@ -95,11 +95,8 @@ def eliminar_plan_proveedor(id):
 
 
 def registrar_pago_efectivo(data):
-    """Devuelve (pago_efectivo_o_None, data: dict).
-
-    `send_notificationF` se importa localmente para evitar el ciclo con
-    `api.views` (mismo patrón que `accounts.services.crear_proveedor_pendiente`)."""
-    from api.views import send_notificationF
+    """Devuelve (pago_efectivo_o_None, data: dict)."""
+    from core.firebase import send_notificationF
 
     resp = {"success": False}
     user = data.get("username")
@@ -283,7 +280,7 @@ def registrar_pago_tarjeta(data):
     """Endpoint real de pago con tarjeta de Solicitante2022, distinto de
     la familia admin `PagosTarjetaAdminView`/`pago_tarjetas`/`tarjeta_pago`.
     Devuelve (pago_tarjeta_o_None, data)."""
-    from api.views import send_notificationF
+    from core.firebase import send_notificationF
 
     resp = {"success": False}
     try:
@@ -340,13 +337,11 @@ def registrar_pago_tarjeta(data):
 
 
 def enviar_email_factura(data):
-    """Exclusivo de Solicitante2022. Importa `FormatEmail`/`threading`/`uuid`
-    localmente para evitar el ciclo con `api.views` (mismo patrón que
-    `registrar_pago_efectivo`)."""
+    """Exclusivo de Solicitante2022."""
     import threading
     import uuid
 
-    from api.views import FormatEmail
+    from core.email import FormatEmail
 
     resp = {}
     email_user = data.get('email')

@@ -45,7 +45,7 @@ def usar_descuento_unico(mail):
 
 def _notificar_solicitantes(titulo, cuerpo, data_extra):
     from fcm_django.models import FCMDevice
-    from api.views import send_notificationF
+    from core.firebase import send_notificationF
 
     devices = FCMDevice.objects.filter(active=True, user__groups__name="Solicitante")
     tokens = list(devices.values_list("registration_id", flat=True))

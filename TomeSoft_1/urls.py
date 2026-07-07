@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path,include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.conf.urls import url, include
+from django.conf.urls import include
 
 
 urlpatterns = [
@@ -11,7 +11,6 @@ urlpatterns = [
     path('solicitante/', include('core.urls.solicitante')),
     path('web/',         include('core.urls.web')),
     path('adminDefault/', admin.site.urls),
-    path('', include('api.urls')),
 ]
 
 if settings.DEBUG:

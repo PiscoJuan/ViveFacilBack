@@ -1,3 +1,4 @@
+from django.shortcuts import redirect
 from rest_framework.views import APIView
 
 from core.permissions import IsAdministrador, IsProveedor, IsSolicitante, IsPublic
@@ -17,3 +18,8 @@ class SolicitanteAPIView(APIView):
 
 class WebAPIView(APIView):
     permission_classes = [IsPublic]
+
+
+class AdminPage(APIView):
+    def get(self, request):
+        return redirect(to="/static/index.html")
