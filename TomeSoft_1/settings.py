@@ -75,6 +75,12 @@ else:
         'ccapi-stg.paymentez.com',
         '*'
         ]
+
+# Requerido para que el login de /admin/ (form+sesión, a diferencia de la
+# API DRF que es csrf_exempt) no falle con "CSRF token missing or incorrect"
+# en producción. Django 3.2: dominios sin esquema.
+CSRF_TRUSTED_ORIGINS = ['tomesoft1.pythonanywhere.com']
+
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_ALL_ORIGINS = True
 
