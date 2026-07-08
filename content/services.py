@@ -1,4 +1,5 @@
-from api.models import Cargo, Insignia, Medalla, Politicas, Proveedor, Publicidad, Suggestion, clientexmedalla
+from accounts.models import Proveedor
+from content.models import Cargo, Insignia, Medalla, Politicas, Publicidad, Suggestion, clientexmedalla
 from api.serializers import CargoSerializer, InsigniaSerializer, MedallaSerializer, PublicidadSerializer, SuggestionSerializer
 
 

@@ -2,7 +2,7 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from api.models import NotificacionMasiva
+from notifications.models import NotificacionMasiva
 from api.serializers import NotificacionMasivaSerializer
 from core.permissions import IsAdministrador
 from core.views import WebAPIView

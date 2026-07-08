@@ -34,7 +34,7 @@ class BancosWebView(WebAPIView):
         return Response({'id': banco.id, 'nombre': banco.nombre, 'estado': banco.estado}, status=status.HTTP_201_CREATED)
 
     def delete(self, request, id, format=None):
-        from api.models import Banco
+        from payments.models import Banco
 
         try:
             services.eliminar_banco(id)

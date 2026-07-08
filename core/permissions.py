@@ -1,6 +1,6 @@
 from rest_framework.permissions import BasePermission, AllowAny
 
-from api.models import Datos  # el modelo sigue viviendo en api.models
+from accounts.models import Datos
 
 
 class BaseRolePermission(BasePermission):

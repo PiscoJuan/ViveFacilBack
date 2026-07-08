@@ -6,11 +6,11 @@ from django.conf.urls import include
 
 
 urlpatterns = [
-    path('admin/',       include('core.urls.admin')),
+    path('administrador/', include('core.urls.admin')),
     path('proveedor/',   include('core.urls.proveedor')),
     path('solicitante/', include('core.urls.solicitante')),
     path('web/',         include('core.urls.web')),
-    path('adminDefault/', admin.site.urls),
+    path('admin/', admin.site.urls),
 ]
 
 if settings.DEBUG:

@@ -1,6 +1,7 @@
 import uuid
 
-from api.models import Datos, Notificacion, NotificacionMasiva, Proveedor, Solicitante
+from accounts.models import Datos, Proveedor, Solicitante
+from notifications.models import Notificacion, NotificacionMasiva
 from django.contrib.auth.models import User
 
 

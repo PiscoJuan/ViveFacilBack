@@ -2,7 +2,8 @@ import datetime
 
 from django.db.models import Q
 
-from api.models import Categoria, Ciudad, Profesion, Profesion_Proveedor, Proveedor, Servicio, SolicitudProfesion
+from accounts.models import Proveedor
+from catalog.models import Categoria, Ciudad, Profesion, Profesion_Proveedor, Servicio, SolicitudProfesion
 from api.serializers import (
     CategoriaSerializer,
     CiudadSerializer,

@@ -2,16 +2,9 @@ from django.db.models import Case, CharField, Q, Sum, Value, When
 from django.utils import timezone
 from rest_framework import status
 
-from api.models import (
-    Datos,
-    Envio_Interesados,
-    Proveedor,
-    Servicio,
-    Solicitante,
-    Solicitud,
-    Tipo_Pago,
-    Ubicacion,
-)
+from accounts.models import Datos, Proveedor, Solicitante
+from catalog.models import Servicio
+from solicitudes.models import Envio_Interesados, Solicitud, Tipo_Pago, Ubicacion
 
 # --- Los 9 listados casi-duplicados de "mis solicitudes filtradas por
 # estado" se dejan sin colapsar a propósito. Cada función devuelve un

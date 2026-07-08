@@ -1,5 +1,11 @@
 from rest_framework import serializers
-from api.models import *
+from content.models import Cargo, Insignia, Medalla, Politicas, Publicidad, Suggestion, clientexmedalla
+from catalog.models import Categoria, Ciudad, Ciudad_Disponible, Profesion, Profesion_Proveedor, Servicio, SolicitudProfesion
+from payments.models import Banco, Cuenta, PagoEfectivo, PagoSolicitud, PagoTarjeta, Plan, PlanProveedor, Tarjeta, Tipo_Cuenta
+from promotions.models import Cupon, Cupon_Aplicado, CuponCategoria, Promocion, PromocionCategoria
+from notifications.models import Notificacion, NotificacionMasiva
+from solicitudes.models import Envio_Interesados, Solicitud, Tipo_Pago, Ubicacion
+from accounts.models import Administrador, Codigos, Datos, Document, PendienteDocuments, Proveedor, Proveedor_Pendiente, Solicitante
 from django.contrib.auth.models import User, Group, Permission
 from rest_framework.fields import IntegerField
 from fcm_django.models import FCMDevice

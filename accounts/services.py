@@ -9,18 +9,17 @@ from django.db.models import Q
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 
-from api.models import (
+from accounts.models import (
     Administrador,
     Cardauth,
     Datos,
     Document,
     PendienteDocuments,
-    Profesion,
-    Profesion_Proveedor,
     Proveedor,
     Proveedor_Pendiente,
     Solicitante,
 )
+from catalog.models import Profesion, Profesion_Proveedor
 from api.serializers import DocumentSerializer, Proveedor_PendienteSerializer
 
 
@@ -747,7 +746,7 @@ def actualizar_proveedor_proveedores_detalle(pk, data, files):
 def eliminar_proveedor_cascade(proveedor_id):
     from django.db import transaction
     from django.shortcuts import get_object_or_404
-    from api.models import Envio_Interesados, Solicitud
+    from solicitudes.models import Envio_Interesados, Solicitud
 
     proveedor = get_object_or_404(Proveedor, id=proveedor_id)
     with transaction.atomic():
@@ -890,10 +889,9 @@ def crear_cuenta_registro(data, files):
     from django.db.models import Q as _Q
     from rest_framework.authtoken.models import Token as _Token
 
-    from api.models import (
-        Banco, Cuenta, Document as _Document, Profesion as _Profesion,
-        Profesion_Proveedor as _Profesion_Proveedor, Tipo_Cuenta,
-    )
+    from accounts.models import Document as _Document
+    from catalog.models import Profesion as _Profesion, Profesion_Proveedor as _Profesion_Proveedor
+    from payments.models import Banco, Cuenta, Tipo_Cuenta
 
     out = {}
     try:
@@ -1106,7 +1104,7 @@ def recuperar_password_existe(user_email):
 def validar_codigo_recuperacion(email, codigo):
     """Mismo
     alcance real que recuperar_password_existe (solo Solicitante2022)."""
-    from api.models import Codigos
+    from accounts.models import Codigos
 
     usuario = User.objects.filter(email=email)
     if usuario.count() > 0:
@@ -1122,7 +1120,7 @@ def cambiar_password_con_codigo(email, password, codigo):
     el flujo real de cambio de contraseña pasa por otro camino, no
     confirmado desde acá). Se migra igual por consistencia, junto a sus dos
     vecinas del mismo flujo."""
-    from api.models import Codigos
+    from accounts.models import Codigos
 
     usuario = User.objects.filter(email=email)
     if usuario.count() > 0:
@@ -1259,7 +1257,8 @@ def registrar_proveedor_manual(data, files):
     from django.core.files import File
     from django.contrib.auth.models import Group as _Group, User as _User
 
-    from api.models import Profesion as _Profesion, Profesion_Proveedor as _Profesion_Proveedor, Proveedor_Pendiente, Document as _Document
+    from accounts.models import Proveedor_Pendiente, Document as _Document
+    from catalog.models import Profesion as _Profesion, Profesion_Proveedor as _Profesion_Proveedor
 
     passw = _User.objects.make_random_password()
     grupo_proveedor = _Group.objects.get(name='Proveedor')
@@ -1478,7 +1477,7 @@ def crear_proveedor_proveedor_manual(data):
     se corrige porque requeriría adivinar la intención original (¿guardar el
     banco/cuenta que mandó el admin? ¿ignorarlos a propósito?) — decisión de
     producto, no de arquitectura."""
-    from api.models import Banco, Cuenta, Tipo_Cuenta
+    from payments.models import Banco, Cuenta, Tipo_Cuenta
 
     if User.objects.filter(username=data.get('email')).count():
         return {'error': 'El usuario ya existe', 'success': False}

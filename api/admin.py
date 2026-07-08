@@ -1,7 +1,11 @@
 from django.contrib import admin
-
-from django.contrib import admin
-from api.models import *
+from content.models import Insignia, Suggestion, Publicidad
+from catalog.models import Categoria, Servicio, Profesion, Profesion_Proveedor
+from payments.models import Banco, Cuenta, PagoEfectivo, PagoSolicitud, PagoTarjeta, Plan, PlanProveedor, Tarjeta, Tipo_Cuenta
+from promotions.models import Cupon, Cupon_Aplicado, CuponCategoria, Promocion, PromocionCategoria
+from notifications.models import Notificacion
+from solicitudes.models import Envio_Interesados, Solicitud, Tipo_Pago, Ubicacion
+from accounts.models import Administrador, Codigos, Datos, Document, Proveedor, Proveedor_Pendiente, Solicitante
 
 # Register your models here.
 admin.site.register(Categoria)

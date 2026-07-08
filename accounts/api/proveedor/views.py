@@ -109,7 +109,7 @@ class ChangePasswordProveedorView(ProveedorAPIView):
     permission_classes = [IsPublic]
 
     def get(self, request, access_security, format=None):
-        from api.models import Datos as _Datos
+        from accounts.models import Datos as _Datos
 
         if _Datos.objects.filter(security_access=access_security).exists():
             return super().get(request, access_security, format)

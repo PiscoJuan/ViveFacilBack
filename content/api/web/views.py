@@ -91,7 +91,7 @@ class InsigniasWebView(WebAPIView):
         return [IsAdministrador()]
 
     def get(self, request, format=None):
-        from api.models import Insignia
+        from content.models import Insignia
 
         serializer = InsigniaSerializer(Insignia.objects.all().filter(), many=True)
         return Response(serializer.data)

@@ -1,7 +1,7 @@
 from rest_framework import status
 from rest_framework.response import Response
 
-from api.models import Notificacion, NotificacionMasiva
+from notifications.models import Notificacion, NotificacionMasiva
 from api.serializers import NotificacionMasivaSerializer, NotificacionSerializer
 from core.pagination import MyCustomPagination, MyPaginationMixin
 from core.views import AdminAPIView

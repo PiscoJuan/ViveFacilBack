@@ -3,10 +3,10 @@ import datetime
 from django.contrib.auth.models import User
 from django.db.models import Q, Sum
 
-from api.models import (
-    Banco, Cuenta, Cupon, Cupon_Aplicado, Datos, PagoEfectivo, PagoSolicitud, PagoTarjeta,
-    Plan, PlanProveedor, Proveedor, Solicitante, Solicitud, Tarjeta,
-)
+from accounts.models import Datos, Proveedor, Solicitante
+from solicitudes.models import Solicitud
+from payments.models import Banco, Cuenta, PagoEfectivo, PagoSolicitud, PagoTarjeta, Plan, PlanProveedor, Tarjeta
+from promotions.models import Cupon, Cupon_Aplicado
 from api.serializers import PagoTarjetaSerializer, PlanProveedorSerializer, PlanSerializer, TarjetaSerializer
 
 

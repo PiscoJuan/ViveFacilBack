@@ -20,7 +20,7 @@ class InsigniasListAdminView(AdminAPIView):
     content.api.web.views.InsigniasWebView)."""
 
     def get(self, request, format=None):
-        from api.models import Insignia
+        from content.models import Insignia
         return Response(InsigniaSerializer(Insignia.objects.all().filter(), many=True).data)
 
     def post(self, request, format=None):

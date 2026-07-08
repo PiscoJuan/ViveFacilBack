@@ -1,6 +1,8 @@
 import datetime
 
-from api.models import Categoria, Cupon, Cupon_Aplicado, CuponCategoria, Datos, Promocion, PromocionCategoria
+from accounts.models import Datos
+from catalog.models import Categoria
+from promotions.models import Cupon, Cupon_Aplicado, CuponCategoria, Promocion, PromocionCategoria
 from api.serializers import CuponSerializer, PromocionSerializer
 
 

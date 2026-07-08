@@ -4,7 +4,7 @@ from rest_framework.response import Response
 
 from fcm_django.models import FCMDevice
 
-from api.models import Datos
+from accounts.models import Datos
 from api.serializers import DatosSerializer, FCMDeviceSerializer, SolicitanteSerializer
 from core.permissions import IsPublic
 from core.views import WebAPIView
