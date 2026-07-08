@@ -5,15 +5,6 @@ from django.utils.timezone import now
 from rest_framework.authtoken.models import Token
 
 
-class Cardauth(models.Model):
-    id_cardauth = models.AutoField(primary_key=True)
-    token = models.CharField(max_length=20)
-    auth = models.CharField(max_length=3)
-
-    class Meta:
-        db_table = "api_cardauth"
-
-
 class Document(models.Model):
     descripcion = models.CharField(max_length=200, null=True, blank=True)
     documento = models.FileField(upload_to='documents', null=True)

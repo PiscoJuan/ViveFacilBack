@@ -1,9 +1,6 @@
-import json
-
 from allauth.socialaccount.providers.facebook.views import FacebookOAuth2Adapter
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from dj_rest_auth.registration.views import SocialLoginView
-from django.http import JsonResponse
 from rest_framework.response import Response
 
 from accounts import services
@@ -61,27 +58,6 @@ class DatoSolicitanteView(SolicitanteAPIView):
     def put(self, request, user, format=None):
         services.actualizar_datos_usuario(user, request.data, request.FILES)
         return Response(status=200)
-
-
-class TarjetaCvcSolicitanteView(SolicitanteAPIView):
-    """Solo lo consume ViveFacil_Solicitante2022 (paymentez.service.ts) —
-    no es multi-rol pese a estar en el mismo archivo que otros endpoints
-    de accounts."""
-
-    def get(self, request, format=None):
-        token = request.GET.get("token")
-        if token is None:
-            return Response({"sucess": False, "message": "No existe token pasado por parametro"})
-        return JsonResponse(services.buscar_cvc_tarjeta(token), safe=False)
-
-    def post(self, request, format=None):
-        body = json.loads(request.body)
-        creado = services.guardar_cvc_tarjeta(body["token"], body["cvc"])
-        return JsonResponse({"valid": "OK" if creado else "NO"}, safe=False)
-
-    def delete(self, request, token, format=None):
-        success, message = services.eliminar_cvc_tarjeta(token)
-        return JsonResponse({"success": success, "message": message})
 
 
 class RegistroRedesSolicitanteView(SolicitanteAPIView):

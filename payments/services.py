@@ -244,9 +244,11 @@ def crear_tarjeta(data):
     except Exception:
         return {'success': False, 'solicitante': data.get('user'), 'error': 'No se encontró el solicitante'}
     try:
+        # Nunca se guardan datos sensibles de tarjeta: cvv/numero se neutralizan.
+        # Las tarjetas reales viven en Paymentez; esta tabla queda por histórico.
         tarjeta = Tarjeta.objects.create(
             token=data.get('token_card'), code=data.get('status'), fecha_vencimiento=data.get('fecha_vencimiento'),
-            cvv=data.get('cvv'), numero=data.get('numero'), titular=data.get('titular'),
+            cvv="***", numero=0, titular=data.get('titular'),
             solicitante=solicitante, brand=data.get('brand'), tipo=data.get('type'),
         )
         return {'success': True, 'msg': 'La tarjeta se ha guardado exitosamente', 'tarjeta': TarjetaSerializer(tarjeta).data}

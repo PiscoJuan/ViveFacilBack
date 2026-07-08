@@ -294,8 +294,10 @@ class TarjetaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Tarjeta
-        fields = ['id', 'fecha_creacion', 'cvv', 'estado', 'titular',
-                  'fecha_vencimiento', 'numero', 'brand', 'code', 'solicitante', 'token', 'tipo']
+        # No se exponen 'cvv' ni 'numero' (PAN): datos sensibles de tarjeta.
+        # Las tarjetas viven en Paymentez; esta tabla queda solo por histórico.
+        fields = ['id', 'fecha_creacion', 'estado', 'titular',
+                  'fecha_vencimiento', 'brand', 'code', 'solicitante', 'token', 'tipo']
 
 
 class NotificacionSerializer(serializers.ModelSerializer):

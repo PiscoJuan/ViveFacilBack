@@ -121,6 +121,7 @@ INSTALLED_APPS = [
     'catalog',
     'solicitudes',
     'payments',
+    'pagos',
     'promotions',
     'notifications',
     'content',
@@ -317,13 +318,10 @@ ACCOUNT_EMAIL_VERIFICATION='none'
 ACCOUNT_EMAIL_REQUIRED=True
 ACCOUNT_AUTHENTICATION_METHOD='username'
 
-SERVER_APP_CODE = env('SERVER_APP_CODE', default='INNOVA-EC-SERVER')
-SERVER_APP_KEY = env('SERVER_APP_KEY')
-
-CLIENT_APP_CODE = env('CLIENT_APP_CODE', default='INNOVA-EC-CLIENT')
-CLIENT_APP_KEY = env('CLIENT_APP_KEY')
-
-PAYMENTEZ_HOST = env('PAYMENTEZ_HOST', default='https://ccapi-stg.paymentez.com/')
+# Paymentez: las credenciales viven en el modelo `pagos.ConfiguracionPaymentez`
+# (admin, server-side). Ya NO se leen de settings/.env por seguridad.
+# Solo se conserva el host público del backend para construir el term_url de 3DS.
+URL_BACKEND_HOST = env('URL_BACKEND_HOST', default='https://tomesoft1.pythonanywhere.com')
 """ 
 if DEBUG and False:  #si estas en modo desarrollo elimina la condicion 'and False'
     EMAIL_BACKEND = "naomi.mail.backends.naomi.NaomiBackend"

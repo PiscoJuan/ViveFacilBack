@@ -11,7 +11,6 @@ from rest_framework.authtoken.models import Token
 
 from accounts.models import (
     Administrador,
-    Cardauth,
     Datos,
     Document,
     PendienteDocuments,
@@ -175,30 +174,6 @@ def cambiar_contrasenia_firebase(firetoken, password):
     data["success"] = True
     data["message"] = "Contraseña cambiada con éxito"
     return data, 200
-
-
-def buscar_cvc_tarjeta(token):
-    return Cardauth.objects.get(token=token).auth
-
-
-def guardar_cvc_tarjeta(token, cvc):
-    """Si ya existe una
-    credencial con ese token, el original NO la actualiza (solo crea si no
-    existía) — devuelve False en ese caso, tal cual el 'valid': 'NO' viejo."""
-    if Cardauth.objects.filter(token=token).exists():
-        return False
-    Cardauth.objects.create(token=token, auth=cvc)
-    return True
-
-
-def eliminar_cvc_tarjeta(token):
-    """Devuelve
-    (success: bool, message: str)."""
-    try:
-        Cardauth.objects.get(token=token).delete()
-        return True, "Credencial eliminada exitosamente"
-    except Cardauth.DoesNotExist:
-        return False, "No se encontró la credencial con el token proporcionado"
 
 
 def registrar_dispositivo(request, token):

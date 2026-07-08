@@ -35,7 +35,11 @@ class TarjetaSolicitanteView(SolicitanteAPIView):
     sí está confirmado real, exclusivo de Solicitante2022."""
 
     def get(self, request, format=None):
-        return Response(TarjetaSerializer(services.list_tarjetas_todas(), many=True).data)
+        # Antes devolvía TODAS las tarjetas de todos los usuarios (fuga de datos).
+        # Ahora se limita a las del usuario autenticado. El listado real de
+        # tarjetas ahora vive en Paymentez (GET /solicitante/pagos/tarjetas/).
+        tarjetas = services.list_tarjetas_por_usuario(request.user.username)
+        return Response(TarjetaSerializer(tarjetas, many=True).data)
 
     def post(self, request, format=None):
         return Response(services.crear_tarjeta(request.data))
