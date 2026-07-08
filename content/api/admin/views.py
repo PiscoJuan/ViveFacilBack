@@ -120,7 +120,8 @@ class CargosAdminView(AdminAPIView):
 
     def post(self, request, format=None):
         return Response(services.crear_cargo(
-            request.POST.get("nombre"), request.POST.get("titulo"), request.POST.get("porcentaje")
+            request.POST.get("nombre"), request.POST.get("titulo"),
+            request.POST.get("porcentaje"), request.POST.get("tipo"),
         ))
 
     def put(self, request, id, format=None):

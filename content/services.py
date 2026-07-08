@@ -101,8 +101,8 @@ def list_cargos():
     return Cargo.objects.all().filter()
 
 
-def crear_cargo(nombre, titulo, porcentaje):
-    cargo = Cargo.objects.create(nombre=nombre, porcentaje=porcentaje, titulo=titulo)
+def crear_cargo(nombre, titulo, porcentaje, tipo=None):
+    cargo = Cargo.objects.create(nombre=nombre, porcentaje=porcentaje, titulo=titulo, tipo=tipo or None)
     return {"cargo": CargoSerializer(cargo).data}
 
 

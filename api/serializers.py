@@ -411,4 +411,4 @@ class CargoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Cargo
-        fields = ['id', 'nombre', 'porcentaje', 'titulo']
+        fields = ['id', 'nombre', 'porcentaje', 'titulo', 'tipo']

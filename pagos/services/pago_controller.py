@@ -114,6 +114,33 @@ def _montos(oferta: Decimal, pct: int) -> dict:
     }
 
 
+def _cargo_pct(tipo) -> Decimal:
+    """% configurado en content.Cargo para ese tipo (0 si no hay ninguno activo)."""
+    from content.models import Cargo
+
+    cargo = Cargo.objects.filter(tipo=tipo).first()
+    return Decimal(str(cargo.porcentaje)) if cargo else Decimal("0")
+
+
+def _cargos(monto: Decimal) -> dict:
+    """
+    Comisiones que se descuentan del pago al proveedor (el cliente sigue
+    pagando `monto` completo a la tarjeta). Cada tipo (banco/paymentez/
+    sistema) tiene a lo sumo un Cargo activo (unique=True en el modelo).
+    """
+    from content.models import TipoCargo
+
+    resultado = {}
+    for campo, tipo in (
+        ("cargo_paymentez", TipoCargo.PAYMENTEZ),
+        ("cargo_banco", TipoCargo.BANCO),
+        ("cargo_sistema", TipoCargo.SISTEMA),
+    ):
+        pct = _cargo_pct(tipo)
+        resultado[campo] = float((monto * pct / Decimal("100")).quantize(CENT, rounding=ROUND_HALF_UP))
+    return resultado
+
+
 def _estado_desde_resultado(resultado: ResultadoPaymentez) -> str:
     if not resultado.ok:
         return EstadoTransaccion.RECHAZADA
@@ -187,11 +214,9 @@ def _finalizar(transaccion):
             solicitud=solicitud,
             referencia=transaccion.referencia or transaccion.id,
             carrier_id=transaccion.codigo_autorizacion or "",
-            cargo_paymentez=0.0,
-            cargo_banco=0.0,
-            cargo_sistema=0.0,
             usuario=usuario.get_full_name() or usuario.username,
             servicio=getattr(getattr(solicitud, "servicio", None), "nombre", "") or "",
+            **_cargos(transaccion.monto),
         )
         PagoSolicitud.objects.create(pago_tarjeta=pago_tarjeta, solicitud=solicitud)
 

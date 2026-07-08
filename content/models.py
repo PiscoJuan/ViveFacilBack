@@ -79,16 +79,27 @@ class Politicas(models.Model):
         return self.terminos
 
 
+class TipoCargo(models.TextChoices):
+    BANCO = "banco", "Banco"
+    PAYMENTEZ = "paymentez", "Paymentez"
+    SISTEMA = "sistema", "Sistema"
+
+
 class Cargo(models.Model):
     nombre = models.CharField(max_length=200)
     porcentaje = models.FloatField(default=0.0)
     titulo = models.CharField(max_length=200, default=" ")
+    # Solo puede haber un cargo activo por tipo: es lo que se descuenta del
+    # pago al proveedor (ver pagos.services.pago_controller). Nulo = cargo
+    # legacy sin tipo asignado, no participa en el cálculo.
+    tipo = models.CharField(
+        max_length=20, choices=TipoCargo.choices, unique=True, null=True, blank=True)
 
     class Meta:
         db_table = "api_cargo"
 
     def __str__(self):
-        return self.nombre + "|" + self.porcentaje
+        return self.nombre + "|" + str(self.porcentaje)
 
 
 class clientexmedalla(models.Model):
