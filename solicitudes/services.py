@@ -61,6 +61,47 @@ def solicitudes_en_proceso_queryset(user, ordenar):
     return resultado.order_by("id" if ordenar == "asc" else "-id")
 
 
+def todas_solicitudes_admin_queryset(estado=None, tipo_pago=None, servicio=None, texto=None,
+                                      fecha_inicio=None, fecha_fin=None):
+    """Listado admin de TODAS las solicitudes (a diferencia de las de
+    arriba, no filtra por solicitante), con el mismo `estado_proceso`
+    anotado que `solicitudes_en_proceso_queryset` más CANCELADO/FINALIZADO/
+    EXPIRADA para cubrir el ciclo de vida completo."""
+    now = timezone.now()
+    qs = Solicitud.objects.all().annotate(
+        estado_proceso=Case(
+            When(termino="cancelado", then=Value("CANCELADO")),
+            When(termino="finalizado", then=Value("FINALIZADO")),
+            When(adjudicar=True, pagada=True, termino="pagado", then=Value("POR FINALIZAR")),
+            When(adjudicar=True, pagada=False, proveedor__isnull=False, then=Value("POR PAGAR")),
+            When(adjudicar=False, proveedor__isnull=True, termino__isnull=True,
+                 fecha_expiracion__gt=now, then=Value("ABIERTA")),
+            When(adjudicar=False, proveedor__isnull=True, termino__isnull=True,
+                 fecha_expiracion__lte=now, then=Value("EXPIRADA")),
+            default=Value("OTRO"),
+            output_field=CharField(),
+        )
+    )
+    if estado:
+        qs = qs.filter(estado_proceso=estado)
+    if tipo_pago:
+        qs = qs.filter(tipo_pago__nombre__iexact=tipo_pago)
+    if servicio:
+        qs = qs.filter(servicio_id=servicio)
+    if texto:
+        qs = qs.filter(
+            Q(solicitante__user_datos__user__email__icontains=texto)
+            | Q(solicitante__user_datos__nombres__icontains=texto)
+            | Q(solicitante__user_datos__apellidos__icontains=texto)
+            | Q(proveedor__user_datos__user__email__icontains=texto)
+            | Q(proveedor__user_datos__nombres__icontains=texto)
+            | Q(proveedor__user_datos__apellidos__icontains=texto)
+        )
+    if fecha_inicio and fecha_fin:
+        qs = qs.filter(fecha_creacion__gte=fecha_inicio, fecha_creacion__lte=fecha_fin)
+    return qs.order_by("-id")
+
+
 # --- Resto de endpoints solicitante de solicitudes/ ---
 
 

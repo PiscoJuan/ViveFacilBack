@@ -273,6 +273,19 @@ class SolicitudEnProcesoSerializer(SolicitudSerializer):
     class Meta(SolicitudSerializer.Meta):
         fields = SolicitudSerializer.Meta.fields + ['estado_proceso']
 
+
+class SolicitudAdminSerializer(SolicitudEnProcesoSerializer):
+    """Vista admin de solicitudes: agrega el monto cobrado, leído desde el
+    pago (tarjeta o efectivo) asociado, ya que Solicitud no lo guarda."""
+    valor = serializers.SerializerMethodField()
+
+    class Meta(SolicitudEnProcesoSerializer.Meta):
+        fields = SolicitudEnProcesoSerializer.Meta.fields + ['valor']
+
+    def get_valor(self, obj):
+        pago = obj.pagotarjeta_set.first() or obj.pagoefectivo_set.first()
+        return pago.valor if pago else None
+
 class Envio_InteresadosSerializer(serializers.ModelSerializer):
     solicitud = SolicitudSerializer(read_only=True)
     proveedor = ProveedorSerializer(read_only=True)

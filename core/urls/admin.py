@@ -7,4 +7,5 @@ urlpatterns = [
     path('notifications/', include('notifications.api.admin.urls')),
     path('payments/', include('payments.api.admin.urls')),
     path('promotions/', include('promotions.api.admin.urls')),
+    path('solicitudes/', include('solicitudes.api.admin.urls')),
 ]
