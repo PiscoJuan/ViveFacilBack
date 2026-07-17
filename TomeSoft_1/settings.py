@@ -90,6 +90,7 @@ CORS_ALLOW_HEADERS = list(default_headers()) + [
     'X-Requested-With',
     'versionamiento',
     'ngrok-skip-browser-warning',  # ← esto
+    'X-CSRFToken',  # ViveFacil_Solicitante2022/Provedor2022 lo mandan a mano en postTokenNotification()
 ]
 # Application definition
 

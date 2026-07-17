@@ -179,12 +179,18 @@ def cambiar_contrasenia_firebase(firetoken, password):
 def registrar_dispositivo(request, token):
     from fcm_django.models import FCMDevice
 
-    if FCMDevice.objects.filter(active=True, registration_id=token).exists():
+    print(f"[FCM] POST {request.path} token={token} usuario={request.user} autenticado={request.user.is_authenticated}")
+
+    existente = FCMDevice.objects.filter(active=True, registration_id=token).first()
+    if existente:
+        print(f"[FCM] Rechazado: el token ya está registrado para el usuario {existente.user_id} (request vino de {request.user}).")
         return {"message": "Token existente."}, 400
     if not request.user.is_authenticated:
+        print(f"[FCM] Rechazado: request sin usuario autenticado (headers Authorization={'presente' if request.headers.get('Authorization') else 'ausente'}).")
         return {"message": "Usuario no identificado."}, 400
     device = FCMDevice(registration_id=token, active=True, user=request.user)
     device.save()
+    print(f"[FCM] Registrado OK: device_id={device.id} usuario={request.user}")
     return {"message": "Token guardado."}, 200
 
 
