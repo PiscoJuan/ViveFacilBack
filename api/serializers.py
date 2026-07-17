@@ -274,13 +274,27 @@ class SolicitudEnProcesoSerializer(SolicitudSerializer):
         fields = SolicitudSerializer.Meta.fields + ['estado_proceso']
 
 
+class EnvioInteresadoAdminSerializer(serializers.ModelSerializer):
+    """Candidato al que se le envió la solicitud (sin anidar 'solicitud' de
+    vuelta, a diferencia de Envio_InteresadosSerializer, para no duplicar
+    toda la solicitud una vez por cada proveedor candidato)."""
+    proveedor = ProveedorSerializer(read_only=True)
+
+    class Meta:
+        model = Envio_Interesados
+        fields = ['id', 'proveedor', 'interesado', 'oferta', 'fecha_creacion']
+
+
 class SolicitudAdminSerializer(SolicitudEnProcesoSerializer):
     """Vista admin de solicitudes: agrega el monto cobrado, leído desde el
-    pago (tarjeta o efectivo) asociado, ya que Solicitud no lo guarda."""
+    pago (tarjeta o efectivo) asociado, ya que Solicitud no lo guarda, y los
+    proveedores candidatos (a quienes se les envió la solicitud) para poder
+    ver a quién se le ofreció vs. quién quedó adjudicado en 'proveedor'."""
     valor = serializers.SerializerMethodField()
+    candidatos = EnvioInteresadoAdminSerializer(source='envio_interesados_set', many=True, read_only=True)
 
     class Meta(SolicitudEnProcesoSerializer.Meta):
-        fields = SolicitudEnProcesoSerializer.Meta.fields + ['valor']
+        fields = SolicitudEnProcesoSerializer.Meta.fields + ['valor', 'candidatos']
 
     def get_valor(self, obj):
         pago = obj.pagotarjeta_set.first() or obj.pagoefectivo_set.first()

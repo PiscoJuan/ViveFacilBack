@@ -103,7 +103,13 @@ class AddSolicitudSolicitanteView(SolicitanteAPIView):
     def post(self, request, format=None):
         solicitud, data = services.crear_solicitud(request.data, request.FILES)
         if solicitud is not None:
-            data["solicitud"] = SolicitudSerializer(solicitud).data
+            try:
+                data["solicitud"] = SolicitudSerializer(solicitud).data
+            except Exception as e:
+                import traceback
+                print(f"[Solicitud] Solicitud {solicitud.id} se creó OK pero falló al serializarla para la respuesta: {e}")
+                print(traceback.format_exc())
+                data["message"] = "La solicitud se creó pero no se pudo armar la respuesta: " + str(e)
         return Response(data)
 
 

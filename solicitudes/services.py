@@ -1,3 +1,5 @@
+import traceback
+
 from django.db.models import Case, CharField, Q, Sum, Value, When
 from django.utils import timezone
 from rest_framework import status
@@ -102,6 +104,13 @@ def todas_solicitudes_admin_queryset(estado=None, tipo_pago=None, servicio=None,
     return qs.order_by("-id")
 
 
+def solicitud_admin_detalle(pk):
+    """Una sola solicitud desde el mismo queryset anotado que el listado
+    admin (necesario para que 'estado_proceso' exista al serializar).
+    Lanza Solicitud.DoesNotExist si no existe."""
+    return todas_solicitudes_admin_queryset().get(pk=pk)
+
+
 # --- Resto de endpoints solicitante de solicitudes/ ---
 
 
@@ -123,11 +132,16 @@ def crear_solicitud(data, files):
     ref = data.get("referencia")
     foto_ubic = files.get("foto_ubicacion")
 
+    print(f"[Solicitud] POST crear_solicitud solicitante={user} servicio={servicio_id} "
+          f"tipo_pago={pago_name} proveedores={proveedores_id}")
+
     try:
         ubic, _ = Ubicacion.objects.get_or_create(
             latitud=lat, altitud=alt, direccion=drc, referencia=ref, foto_ubicacion=foto_ubic
         )
     except Exception as e:
+        print(f"[Solicitud] FALLÓ creando/obteniendo Ubicacion lat={lat} alt={alt} drc={drc}: {e}")
+        print(traceback.format_exc())
         resp["message"] = "No se pudo obtener o crear al objeto Ubicación: " + str(e)
         resp["success"] = False
         return None, resp
@@ -135,6 +149,8 @@ def crear_solicitud(data, files):
     try:
         solic = Solicitante.objects.get(id=user)
     except Exception as e:
+        print(f"[Solicitud] FALLÓ obteniendo Solicitante id={user}: {e}")
+        print(traceback.format_exc())
         resp["message"] = "No se pudo obtener al solicitante en la base de datos: " + str(e)
         resp["success"] = False
         return None, resp
@@ -142,6 +158,8 @@ def crear_solicitud(data, files):
     try:
         service = Servicio.objects.get(id=servicio_id)
     except Exception as e:
+        print(f"[Solicitud] FALLÓ obteniendo Servicio id={servicio_id}: {e}")
+        print(traceback.format_exc())
         resp["message"] = "No se pudo obtener al objeto Servicio en la base de datos: " + str(e)
         resp["success"] = False
         return None, resp
@@ -149,6 +167,8 @@ def crear_solicitud(data, files):
     try:
         t_pago, _ = Tipo_Pago.objects.get_or_create(nombre=pago_name)
     except Exception as e:
+        print(f"[Solicitud] FALLÓ creando/obteniendo Tipo_Pago nombre={pago_name}: {e}")
+        print(traceback.format_exc())
         resp["message"] = "No se pudo obtener o crear al objeto Tipo_Pago: " + str(e)
         resp["success"] = False
         return None, resp
@@ -163,13 +183,19 @@ def crear_solicitud(data, files):
         # acá, pero como la excepción ocurre durante el propio `.create()`,
         # `solicitud` nunca llega a asignarse — esa rama nunca se ejecuta,
         # se omite en vez de replicar código muerto.
+        print(f"[Solicitud] FALLÓ creando Solicitud desc={desc!r} fecha_exp={fecha_exp}: {e}")
+        print(traceback.format_exc())
         resp["message"] = "No se pudo crear al objeto Solicitud: " + str(e)
         resp["success"] = False
         return None, resp
 
+    print(f"[Solicitud] Solicitud id={solicitud.id} creada OK, procesando proveedores...")
+
     try:
         proveedores_id = proveedores_id.split(",")
     except Exception as e:
+        print(f"[Solicitud] FALLÓ haciendo split de proveedores={proveedores_id!r} (solicitud {solicitud.id}): {e}")
+        print(traceback.format_exc())
         solicitud.delete()
         resp["message"] = "Ha ocurrido un error al hacer split de la lista de proveedores: " + str(e)
         resp["success"] = False
@@ -185,6 +211,8 @@ def crear_solicitud(data, files):
         try:
             prov = Proveedor.objects.get(id=proveedor_id)
         except Exception as e:
+            print(f"[Solicitud] FALLÓ obteniendo Proveedor id={proveedor_id} (solicitud {solicitud.id}): {e}")
+            print(traceback.format_exc())
             solicitud.delete()
             resp["message"] = f"Error al obtener un proveedor con ID {proveedor_id}: {str(e)}"
             resp["success"] = False
@@ -193,6 +221,8 @@ def crear_solicitud(data, files):
         try:
             envio_interesados = Envio_Interesados.objects.create(solicitud=solicitud, proveedor=prov)
         except Exception as e:
+            print(f"[Solicitud] FALLÓ creando Envio_Interesados proveedor={proveedor_id} (solicitud {solicitud.id}): {e}")
+            print(traceback.format_exc())
             solicitud.delete()
             resp["message"] = f"Error al crear Envio_Interesados para proveedor {proveedor_id}: {str(e)}"
             resp["success"] = False
@@ -202,14 +232,18 @@ def crear_solicitud(data, files):
             datos_prov = Datos.objects.get(id=prov.user_datos_id)
             devices = FCMDevice.objects.filter(active=True, user_id=datos_prov.user.id)
             tokens = list(devices.values_list("registration_id", flat=True))
+            print(f"[Solicitud] Notificando a proveedor {proveedor_id} ({len(tokens)} dispositivo(s))")
             send_notificationF(tokens, titles, bodys, notif_data)
         except Exception as e:
+            print(f"[Solicitud] FALLÓ notificando a proveedor {proveedor_id} (solicitud {solicitud.id}): {e}")
+            print(traceback.format_exc())
             envio_interesados.delete()
             solicitud.delete()
             resp["message"] = f"Error al enviar notificación al proveedor {proveedor_id}: {str(e)}"
             resp["success"] = False
             return None, resp
 
+    print(f"[Solicitud] Solicitud id={solicitud.id} creada y enviada a {len(proveedores_id)} proveedor(es) OK.")
     resp["success"] = True
     return solicitud, resp
 
