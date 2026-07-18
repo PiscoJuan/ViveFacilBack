@@ -1,7 +1,11 @@
+import logging
+
 import requests
 from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+
+logger = logging.getLogger(__name__)
 
 
 class TokenFirebase:
@@ -22,8 +26,8 @@ def get_firebase_access_token():
         )
         credentials.refresh(Request())
         return credentials.token
-    except Exception as e:
-        print(f"Error al inicializar Firebase Admin SDK o al obtener el token de acceso: {e}")
+    except Exception:
+        logger.error("Error al inicializar Firebase Admin SDK o al obtener el token de acceso", exc_info=True)
         return None
 
 
@@ -36,11 +40,11 @@ def send_notificationF(tokend, title, body, data):
         if not token_trabajo or TokenFirebase.expirado:
             token_trabajo = TokenFirebase.nuevo_token
         if not token_trabajo:
-            print("No se pudo obtener el token de Firebase")
+            logger.error("No se pudo obtener el token de Firebase")
             return JsonResponse({"error": "No se pudo obtener el token de Firebase"}, status=500)
 
-        print("Token Firebase listo.")
         unique_tokens = list(set(tokend))
+        logger.info("Token Firebase listo, notificando", extra={"num_tokens": len(unique_tokens)})
 
         for token in unique_tokens:
             message = {
@@ -51,18 +55,22 @@ def send_notificationF(tokend, title, body, data):
                 }
             }
 
+            # ponytail: timeout explícito — sin esto, si fcm.googleapis.com se
+            # cuelga, requests espera para siempre y bloquea todo el request de
+            # crear_solicitud (visto en campo: sube el 100% y nunca llega respuesta).
             response = requests.post(
                 settings.ACCESS_URL,
                 json=message,
                 headers={
                     'Content-Type': 'application/json',
                     'Authorization': f'Bearer {token_trabajo}'
-                }
+                },
+                timeout=15,
             )
 
             # Si el token expiró (401/403), lo renovamos y reintentamos una vez
             if response.status_code in (401, 403):
-                print("Token Firebase expirado, renovando...")
+                logger.warning("Token Firebase expirado, renovando...")
                 TokenFirebase.expirado = True
                 token_obtenido = get_firebase_access_token()
                 TokenFirebase.nuevo_token = token_obtenido
@@ -74,10 +82,11 @@ def send_notificationF(tokend, title, body, data):
                         headers={
                             'Content-Type': 'application/json',
                             'Authorization': f'Bearer {token_obtenido}'
-                        }
+                        },
+                        timeout=15,
                     )
 
-            print(f"Respuesta Firebase ({token}): {response.status_code}")
+            logger.info("Respuesta Firebase", extra={"fcm_token": token, "status_code": response.status_code})
 
             if response.status_code == 200:
                 success_flag = True
@@ -106,5 +115,5 @@ def send_notificationF(tokend, title, body, data):
             })
 
     except Exception as e:
-        print(f"Error general al enviar notificación: {e}")
+        logger.error("Error general al enviar notificación", exc_info=True)
         return JsonResponse({"error": "Error interno en el servidor", "details": str(e)}, status=500)

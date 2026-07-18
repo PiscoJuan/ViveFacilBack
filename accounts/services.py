@@ -1,4 +1,5 @@
 import datetime
+import logging
 import threading
 
 from django.contrib.auth import authenticate as authenticate_django
@@ -20,6 +21,8 @@ from accounts.models import (
 )
 from catalog.models import Profesion, Profesion_Proveedor
 from api.serializers import DocumentSerializer, Proveedor_PendienteSerializer
+
+logger = logging.getLogger(__name__)
 
 
 def get_proveedor_pendiente_activo_por_email(mail):
@@ -179,18 +182,27 @@ def cambiar_contrasenia_firebase(firetoken, password):
 def registrar_dispositivo(request, token):
     from fcm_django.models import FCMDevice
 
-    print(f"[FCM] POST {request.path} token={token} usuario={request.user} autenticado={request.user.is_authenticated}")
+    logger.info(
+        "registrar_dispositivo: request recibido",
+        extra={"path": request.path, "fcm_token": token, "usuario": str(request.user), "autenticado": request.user.is_authenticated},
+    )
 
     existente = FCMDevice.objects.filter(active=True, registration_id=token).first()
     if existente:
-        print(f"[FCM] Rechazado: el token ya está registrado para el usuario {existente.user_id} (request vino de {request.user}).")
+        logger.warning(
+            "registrar_dispositivo: rechazado, el token ya está registrado para otro usuario",
+            extra={"fcm_token": token, "usuario_existente": existente.user_id, "usuario_request": str(request.user)},
+        )
         return {"message": "Token existente."}, 400
     if not request.user.is_authenticated:
-        print(f"[FCM] Rechazado: request sin usuario autenticado (headers Authorization={'presente' if request.headers.get('Authorization') else 'ausente'}).")
+        logger.warning(
+            "registrar_dispositivo: rechazado, request sin usuario autenticado",
+            extra={"fcm_token": token, "authorization_header_presente": bool(request.headers.get("Authorization"))},
+        )
         return {"message": "Usuario no identificado."}, 400
     device = FCMDevice(registration_id=token, active=True, user=request.user)
     device.save()
-    print(f"[FCM] Registrado OK: device_id={device.id} usuario={request.user}")
+    logger.info("registrar_dispositivo: registrado OK", extra={"device_id": device.id, "usuario": str(request.user)})
     return {"message": "Token guardado."}, 200
 
 

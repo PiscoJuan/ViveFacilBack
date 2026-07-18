@@ -9,6 +9,13 @@ https://docs.djangoproject.com/en/2.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/2.2/ref/settings/
 """
+import sys
+# ponytail: PythonAnywhere bufferea stdout — los print() de debug pueden
+# quedarse en el buffer y no aparecer en el error log hasta que se llene o
+# el proceso se reinicie. Con esto, cada print() se vuelca de inmediato.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(line_buffering=True)
+
 import pymysql
 pymysql.install_as_MySQLdb()
 
@@ -180,6 +187,8 @@ FCM_DJANGO_SETTINGS = {
 
 MIDDLEWARE = [
 
+    'core.middleware.RequestIdMiddleware',
+    'core.middleware.AccessLogMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.BrokenLinkEmailsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -326,6 +335,47 @@ ACCOUNT_AUTHENTICATION_METHOD='username'
 # (admin, server-side). Ya NO se leen de settings/.env por seguridad.
 # Solo se conserva el host público del backend para construir el term_url de 3DS.
 URL_BACKEND_HOST = env('URL_BACKEND_HOST', default='https://tomesoft1.pythonanywhere.com')
+
+# Portado de cemedip/backend: logging estructurado a stdout (con
+# sys.stdout.reconfigure(line_buffering=True) más arriba, esto llega sin
+# demora al error log de PythonAnywhere) en vez de print() sueltos. En DEBUG
+# usa el formatter legible/coloreado; en producción, JSON por línea para
+# poder grep-earlo o parsearlo. RequestIdMiddleware/AccessLogMiddleware
+# (arriba en MIDDLEWARE) alimentan el request_id y el log de accesos.
+LOG_LEVEL = env('LOG_LEVEL', default='INFO')
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'filters': {
+        'request_id': {
+            '()': 'core.logging_context.RequestIdFilter',
+        },
+    },
+    'formatters': {
+        'console': {
+            '()': 'core.logging_context.PrettyConsoleFormatter' if DEBUG else 'core.logging_context.ExtrasJsonFormatter',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'stream': 'ext://sys.stdout',
+            'formatter': 'console',
+            'filters': ['request_id'],
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': LOG_LEVEL,
+    },
+    'loggers': {
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}
 """ 
 if DEBUG and False:  #si estas en modo desarrollo elimina la condicion 'and False'
     EMAIL_BACKEND = "naomi.mail.backends.naomi.NaomiBackend"

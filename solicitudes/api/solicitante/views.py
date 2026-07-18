@@ -1,9 +1,13 @@
+import logging
+
 from rest_framework.response import Response
 
 from api.serializers import SolicitudEnProcesoSerializer, SolicitudSerializer
 from core.pagination import MyCustomPagination, MyPaginationMixin
 from core.views import SolicitanteAPIView
 from solicitudes import services
+
+logger = logging.getLogger(__name__)
 
 
 def _listado_response(queryset):
@@ -106,9 +110,11 @@ class AddSolicitudSolicitanteView(SolicitanteAPIView):
             try:
                 data["solicitud"] = SolicitudSerializer(solicitud).data
             except Exception as e:
-                import traceback
-                print(f"[Solicitud] Solicitud {solicitud.id} se creó OK pero falló al serializarla para la respuesta: {e}")
-                print(traceback.format_exc())
+                logger.error(
+                    "Solicitud se creó OK pero falló al serializarla para la respuesta",
+                    extra={"solicitud_id": solicitud.id},
+                    exc_info=True,
+                )
                 data["message"] = "La solicitud se creó pero no se pudo armar la respuesta: " + str(e)
         return Response(data)
 
