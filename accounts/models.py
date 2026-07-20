@@ -4,10 +4,12 @@ from django.dispatch import receiver
 from django.utils.timezone import now
 from rest_framework.authtoken.models import Token
 
+from core.campos import URLCompletaFileField, URLCompletaImageField
+
 
 class Document(models.Model):
     descripcion = models.CharField(max_length=200, null=True, blank=True)
-    documento = models.FileField(upload_to='documents', null=True)
+    documento = URLCompletaFileField(upload_to='documents', null=True)
     estado = models.BooleanField(default=False)
     fecha_creacion = models.DateTimeField(auto_now_add=True, null=True)
 
@@ -31,7 +33,7 @@ class Datos(models.Model):
     cedula = models.CharField(max_length=20, null=True, default="0999999999")
     telefono = models.CharField(max_length=15)
     genero = models.CharField(max_length=255)
-    foto = models.ImageField(upload_to='foto_perfil', null=True, blank=True)
+    foto = URLCompletaImageField(upload_to='foto_perfil', null=True, blank=True)
     estado = models.BooleanField(default=True)
     security_access = models.UUIDField(
         primary_key=False, editable=False, null=True, blank=True)
@@ -69,11 +71,11 @@ class Proveedor(models.Model):
     estado = models.BooleanField(default=True)
     profesion = models.CharField(max_length=400, default='')
 
-    copiaCedula = models.FileField(
+    copiaCedula = URLCompletaFileField(
         upload_to='documentos-Proveedor', null=True, blank=True)
     direccion = models.CharField(max_length=300, default='')
     licencia = models.CharField(max_length=55, default='')
-    copiaLicencia = models.FileField(
+    copiaLicencia = URLCompletaFileField(
         upload_to='documentos-Proveedor', null=True, blank=True)
 
     ano_profesion = models.CharField(max_length=400, default='')
@@ -91,7 +93,7 @@ class Proveedor(models.Model):
 
 
 class PendienteDocuments(models.Model):
-    document = models.FileField(
+    document = URLCompletaFileField(
         upload_to='pendientes-documents', null=True, blank=True)
 
     class Meta:
@@ -111,14 +113,14 @@ class Proveedor_Pendiente(models.Model):
     genero = models.CharField(max_length=100)
     fecha_registro = models.DateTimeField(auto_now_add=True)
     email = models.CharField(max_length=255, default='')
-    copiaCedula = models.FileField(upload_to='pendientes-copias', null=True)
+    copiaCedula = URLCompletaFileField(upload_to='pendientes-copias', null=True)
     telefono = models.CharField(max_length=255, default='')
     descripcion = models.TextField()
     cedula = models.CharField(max_length=255, default='')
     estado = models.BooleanField(default=False)
     profesion = models.CharField(max_length=255, default='')
     licencia = models.CharField(max_length=55, default='')
-    copiaLicencia = models.FileField(upload_to='pendientes-copias', null=True)
+    copiaLicencia = URLCompletaFileField(upload_to='pendientes-copias', null=True)
     ano_experiencia = models.PositiveIntegerField(default=0)
     banco = models.CharField(max_length=255, default='')
     numero_cuenta = models.CharField(max_length=25, default='')
@@ -126,7 +128,7 @@ class Proveedor_Pendiente(models.Model):
     tipo_cuenta = models.CharField(max_length=50, default='')
     documentsPendientes = models.ManyToManyField(
         PendienteDocuments, db_table="api_proveedor_pendiente_documentspendientes")
-    foto = models.ImageField(upload_to='foto_proveedor', null=True, blank=True)
+    foto = URLCompletaImageField(upload_to='foto_proveedor', null=True, blank=True)
 
     class Meta:
         db_table = "api_proveedor_pendiente"

@@ -1,5 +1,7 @@
 from django.db import models
 
+from core.campos import URLCompletaImageField
+
 
 class Notificacion(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE, null=True)
@@ -14,7 +16,7 @@ class Notificacion(models.Model):
     fecha_expiracion = models.DateTimeField(null=True)
     hora = models.TimeField(null=True)
     estado = models.BooleanField(default=True)
-    imagen = models.ImageField(
+    imagen = URLCompletaImageField(
         upload_to='notificaciones', null=True, blank=True)
 
     class Meta:
@@ -40,7 +42,7 @@ class NotificacionMasiva(models.Model):
     fecha_expiracion = models.DateTimeField(null=True)
     hora = models.TimeField(null=True)
     estado = models.BooleanField(default=True)
-    imagen = models.ImageField(
+    imagen = URLCompletaImageField(
         upload_to='notificaciones-masivas', null=True, blank=True)
 
     class Meta:

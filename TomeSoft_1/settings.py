@@ -334,6 +334,9 @@ ACCOUNT_AUTHENTICATION_METHOD='username'
 # Paymentez: las credenciales viven en el modelo `pagos.ConfiguracionPaymentez`
 # (admin, server-side). Ya NO se leen de settings/.env por seguridad.
 # Solo se conserva el host público del backend para construir el term_url de 3DS.
+# También usado por los FileField/ImageField custom de core.campos para
+# armar la url completa de media (se sirve estático en PythonAnywhere, sin
+# proxy propio).
 URL_BACKEND_HOST = env('URL_BACKEND_HOST', default='https://tomesoft1.pythonanywhere.com')
 
 # Portado de cemedip/backend: logging estructurado a stdout (con

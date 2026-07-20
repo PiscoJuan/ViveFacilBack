@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils.timezone import now
 
+from core.campos import URLCompletaImageField
+
 
 class Tipo_Pago(models.Model):
     nombre = models.CharField(max_length=100, null=True)
@@ -19,7 +21,7 @@ class Ubicacion(models.Model):
     altitud = models.DecimalField(null=False, max_digits=30, decimal_places=15)
     direccion = models.CharField(max_length=300, null=True)
     referencia = models.CharField(max_length=300, null=True, blank=True)
-    foto_ubicacion = models.ImageField(
+    foto_ubicacion = URLCompletaImageField(
         upload_to='foto_solicitud/foto_ubicacion', null=True, blank=True)
 
     class Meta:
@@ -43,7 +45,7 @@ class Solicitud(models.Model):
     proveedor = models.ForeignKey(
         'accounts.Proveedor', on_delete=models.PROTECT, null=True, blank=True)
     descripcion = models.CharField(max_length=500)
-    foto_descripcion = models.ImageField(
+    foto_descripcion = URLCompletaImageField(
         upload_to='foto_solicitud/foto_descripcion', null=True, blank=True)
     fecha_expiracion = models.DateTimeField(max_length=200, default=now)
     adjudicar = models.BooleanField(default=False)

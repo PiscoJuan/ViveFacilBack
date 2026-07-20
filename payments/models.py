@@ -1,10 +1,12 @@
 from django.db import models
 
+from core.campos import URLCompletaImageField
+
 
 class Plan(models.Model):
     nombre = models.CharField(max_length=255)
     descripcion = models.CharField(max_length=255)
-    imagen = models.ImageField(upload_to='planes', null=True, blank=True)
+    imagen = URLCompletaImageField(upload_to='planes', null=True, blank=True)
     duracion = models.IntegerField(default=0)
     precio = models.FloatField(null=False)
     fecha_creacion = models.DateTimeField(

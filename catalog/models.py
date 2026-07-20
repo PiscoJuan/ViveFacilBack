@@ -1,11 +1,13 @@
 from django.db import models
 
+from core.campos import URLCompletaFileField, URLCompletaImageField
+
 
 class Categoria(models.Model):
     nombre = models.CharField(max_length=255, unique=True)
     descripcion = models.TextField()
-    foto = models.ImageField(upload_to='categoria')
-    foto2 = models.ImageField(upload_to='categoria2')
+    foto = URLCompletaImageField(upload_to='categoria')
+    foto2 = URLCompletaImageField(upload_to='categoria2')
     estado = models.BooleanField(default=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True, null=True)
 
@@ -23,7 +25,7 @@ class Servicio(models.Model):
         Categoria, on_delete=models.PROTECT, null=True)
     estado = models.BooleanField(default=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True, null=True)
-    foto = models.ImageField(upload_to='servicio', null=True)
+    foto = URLCompletaImageField(upload_to='servicio', null=True)
 
     class Meta:
         db_table = "api_servicio"
@@ -36,7 +38,7 @@ class Profesion(models.Model):
     nombre = models.CharField(max_length=255, unique=True)
     estado = models.BooleanField(default=True)
     servicio = models.ManyToManyField(Servicio, db_table="api_profesion_servicio")
-    foto = models.ImageField(upload_to='profesion', null=True)
+    foto = URLCompletaImageField(upload_to='profesion', null=True)
     descripcion = models.CharField(max_length=255, null=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True, null=True)
 
@@ -87,7 +89,7 @@ class SolicitudProfesion(models.Model):
     fecha_solicitud = models.DateTimeField(auto_now_add=True, null=True)
     estado = models.BooleanField(default=False)
     fecha = models.DateTimeField(null=True)
-    documento = models.FileField(upload_to='solicitudes', null=True)
+    documento = URLCompletaFileField(upload_to='solicitudes', null=True)
 
     class Meta:
         db_table = "api_solicitudprofesion"

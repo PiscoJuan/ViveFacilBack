@@ -1,5 +1,7 @@
 from django.db import models
 
+from core.campos import URLCompletaImageField
+
 
 class Cupon(models.Model):
     codigo = models.CharField(max_length=25, null=True,  unique=True)
@@ -13,7 +15,7 @@ class Cupon(models.Model):
     participantes = models.CharField(max_length=255, null=True)
     puntos = models.IntegerField(null=False)
     estado = models.BooleanField(default=True)
-    foto = models.ImageField(upload_to='cupones', null=True, blank=True)
+    foto = URLCompletaImageField(upload_to='cupones', null=True, blank=True)
     tipo_categoria = models.CharField(max_length=25, null=True)
 
     class Meta:
@@ -46,7 +48,7 @@ class Promocion(models.Model):
     porcentaje = models.IntegerField(null=False)
     participantes = models.CharField(max_length=255, null=True)
     estado = models.BooleanField(default=True)
-    foto = models.ImageField(upload_to='promociones', null=True, blank=True)
+    foto = URLCompletaImageField(upload_to='promociones', null=True, blank=True)
     tipo_categoria = models.CharField(max_length=25, null=True)
 
     class Meta:
