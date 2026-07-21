@@ -26,7 +26,12 @@ def list_servicios(todas=False):
 
 def proveedores_activos_por_servicio(servicio_id):
     servicio = Servicio.objects.get(id=servicio_id)
-    profesion = Profesion.objects.get(nombre=servicio.nombre)
+    # ponytail: el emparejamiento Servicio->Profesion es por nombre idéntico, no
+    # por la M2M Profesion.servicio (ver explicación al usuario) — si un admin
+    # renombra uno de los dos sin el otro, antes esto tiraba 500 (DoesNotExist).
+    profesion = Profesion.objects.filter(nombre=servicio.nombre).first()
+    if profesion is None:
+        return Profesion_Proveedor.objects.none()
     return Profesion_Proveedor.objects.all().filter(
         profesion=profesion, proveedor__estado=True
     )
@@ -87,10 +92,18 @@ def actualizar_categoria(id, data):
 
 
 def eliminar_categoria(id):
-    """Borra en
-    cascada los Servicios de la categoría, igual que el original."""
+    """Hard-delete real, bloqueado si tiene Servicios (sub-categorías)
+    asociados — antes borraba los Servicios en cascada sin avisar, perdiendo
+    esos datos en silencio. Devuelve (ok: bool, data: dict); data trae
+    'error' + conteo si ok=False, o {'nombre': ...} si ok=True."""
     categoria = Categoria.objects.get(id=id)
-    Servicio.objects.filter(categoria=categoria).delete()
+    n_subcategorias = Servicio.objects.filter(categoria=categoria).count()
+    if n_subcategorias:
+        return False, {
+            "error": "No se puede eliminar la categoría porque tiene sub-categorías asociadas.",
+            "sub_categorias": n_subcategorias,
+        }
+
     nombre = categoria.nombre
     categoria.delete()
     _notificar_solicitantes(
@@ -98,6 +111,7 @@ def eliminar_categoria(id):
         "¡Sorry, no podrás acceder a la categoría!",
         {"descripcion": f"Lamentamos informarles que la Categoría {nombre} ha sido eliminada de la aplicación", "ruta": "/main-tabs/home"},
     )
+    return True, {"nombre": nombre}
 
 
 def crear_servicio(nombre, descripcion, categoria_nombre, foto):
@@ -157,6 +171,41 @@ def desactivar_servicio(id):
         "¡Sorry, no podrás acceder al Servicio!",
         {"ruta": "/main-tabs/home", "descripcion": f"El servicio {nombre} se ha eliminado de nuestro aplicativo"},
     )
+
+
+def profesion_proveedor_por_servicio(servicio_id):
+    """Todos los Profesion_Proveedor del Servicio (emparejado por nombre con
+    su Profesion homónima), SIN filtrar por proveedor.estado — a diferencia
+    de proveedores_activos_por_servicio (que sí filtra activos, para el
+    matching de búsqueda del solicitante). Se usa para el conteo de bloqueo
+    de borrado y para la tabla admin: ahí importan también los inactivos."""
+    servicio = Servicio.objects.get(id=servicio_id)
+    profesion = Profesion.objects.filter(nombre=servicio.nombre).first()
+    if profesion is None:
+        return Profesion_Proveedor.objects.none()
+    return Profesion_Proveedor.objects.all().filter(profesion=profesion)
+
+
+def eliminar_servicio_definitivo(servicio_id):
+    """Hard-delete real, bloqueado si hay Solicitud o Profesion_Proveedor
+    asociados. Devuelve (ok: bool, data: dict); data trae 'error' + conteos
+    si ok=False, o {'nombre': ...} si ok=True."""
+    from solicitudes.models import Solicitud
+
+    servicio = Servicio.objects.get(id=servicio_id)
+    n_solicitudes = Solicitud.objects.filter(servicio=servicio).count()
+    n_proveedores = profesion_proveedor_por_servicio(servicio_id).count()
+
+    if n_solicitudes or n_proveedores:
+        return False, {
+            "error": "No se puede eliminar la sub-categoría porque tiene relaciones asociadas.",
+            "solicitudes": n_solicitudes,
+            "proveedores_asociados": n_proveedores,
+        }
+
+    nombre = servicio.nombre
+    servicio.delete()
+    return True, {"nombre": nombre}
 
 
 def crear_profesion(nombre, descripcion, servicio_nombre, foto):

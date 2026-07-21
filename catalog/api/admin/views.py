@@ -6,9 +6,9 @@ from rest_framework.response import Response
 from api.serializers import Profesion_ProveedorSerializer
 from catalog import services
 from catalog.api.admin.serializers import (
-    CategoriaSerializer,
+    CategoriaListAdminSerializer,
     ProfesionSerializer,
-    ServicioSerializer,
+    ServicioListAdminSerializer,
     SolicitudProfesionSerializer,
 )
 from core.pagination import MyCustomPagination, MyPaginationMixin
@@ -20,7 +20,7 @@ class CategoriasAdminView(AdminAPIView):
     Servicios/Profesiones, cuyo GET es público en catalog.api.web.views."""
 
     def get(self, request, format=None):
-        return Response(CategoriaSerializer(services.listar_categorias(), many=True).data)
+        return Response(CategoriaListAdminSerializer(services.listar_categorias(), many=True).data)
 
     def post(self, request, format=None):
         categoria, data = services.crear_categoria(
@@ -37,8 +37,10 @@ class CategoriasAdminView(AdminAPIView):
         return Response(data)
 
     def delete(self, request, id, format=None):
-        services.eliminar_categoria(id)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        ok, data = services.eliminar_categoria(id)
+        if not ok:
+            return Response(data, status=status.HTTP_409_CONFLICT)
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class ServiciosAdminView(AdminAPIView):
@@ -63,7 +65,7 @@ class ServiciosListAdminView(AdminAPIView):
 
     def get(self, request, format=None):
         todas = request.GET.get("todas")
-        return Response(ServicioSerializer(services.list_servicios(todas=bool(todas)), many=True).data)
+        return Response(ServicioListAdminSerializer(services.list_servicios(todas=bool(todas)), many=True).data)
 
     def post(self, request, format=None):
         _, data = services.crear_servicio(
@@ -71,6 +73,29 @@ class ServiciosListAdminView(AdminAPIView):
             request.POST.get("categoria"), request.FILES.get("foto"),
         )
         return Response(data)
+
+
+class ServicioDeleteAdminView(AdminAPIView):
+    """Hard delete real, bloqueado por relaciones — separado de
+    ServiciosAdminView.delete (que sigue siendo el soft-toggle existente)."""
+
+    def delete(self, request, id, format=None):
+        ok, data = services.eliminar_servicio_definitivo(id)
+        if not ok:
+            return Response(data, status=status.HTTP_409_CONFLICT)
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class ServicioProveedoresAdminView(AdminAPIView, MyPaginationMixin):
+    """Paginado: Profesion_Proveedor del Servicio (para la tabla de la
+    página de detalle)."""
+
+    pagination_class = MyCustomPagination
+
+    def get(self, request, servicio_id, format=None):
+        page = self.paginate_queryset(services.profesion_proveedor_por_servicio(servicio_id))
+        if page is not None:
+            return self.get_paginated_response(Profesion_ProveedorSerializer(page, many=True).data)
 
 
 class ProfesionesAdminView(AdminAPIView):

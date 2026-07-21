@@ -405,9 +405,27 @@ def cambiar_estado_administrador(admin_id, estado):
     admin.save()
 
 
+def eliminar_firebase_por_email(email):
+    """Best-effort: si Firebase no tiene esa cuenta o la llamada falla, no
+    bloquea el borrado local (evita dejar el registro a medio eliminar)."""
+    from firebase_admin import auth as fire_auth
+
+    if not email:
+        return
+    try:
+        user_record = fire_auth.get_user_by_email(email)
+        fire_auth.delete_user(user_record.uid)
+    except fire_auth.UserNotFoundError:
+        pass
+    except Exception:
+        logger.warning("No se pudo eliminar el usuario de Firebase (%s)", email, exc_info=True)
+
+
 def eliminar_administrador(admin_id):
     """Borrado duro del registro Administrador."""
-    Administrador.objects.get(id=admin_id).delete()
+    admin = Administrador.objects.get(id=admin_id)
+    eliminar_firebase_por_email(admin.user_datos.user.email)
+    admin.delete()
 
 
 def obtener_administrador(pk):
@@ -476,7 +494,9 @@ def actualizar_solicitante(id, data):
 
 
 def eliminar_solicitante(id):
-    Solicitante.objects.get(id=id).delete()
+    solicitante = Solicitante.objects.get(id=id)
+    eliminar_firebase_por_email(solicitante.user_datos.user.email)
+    solicitante.delete()
 
 
 def listar_proveedores_queryset():
@@ -742,10 +762,12 @@ def eliminar_proveedor_cascade(proveedor_id):
     from solicitudes.models import Envio_Interesados, Solicitud
 
     proveedor = get_object_or_404(Proveedor, id=proveedor_id)
+    email = proveedor.user_datos.user.email
     with transaction.atomic():
         Envio_Interesados.objects.filter(solicitud__proveedor=proveedor).delete()
         solicitudes_eliminadas = Solicitud.objects.filter(proveedor=proveedor).delete()
         proveedor.delete()
+    eliminar_firebase_por_email(email)
     return solicitudes_eliminadas[0]
 
 
