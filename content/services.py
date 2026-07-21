@@ -1,10 +1,20 @@
+from django.core.cache import cache
 from accounts.models import Proveedor
-from content.models import Cargo, Insignia, Medalla, Politicas, Publicidad, Suggestion, clientexmedalla
-from api.serializers import CargoSerializer, InsigniaSerializer, MedallaSerializer, PublicidadSerializer, SuggestionSerializer
+from content.models import (POLITICAS_CACHE_KEY, Cargo, Insignia, Medalla, Politicas, 
+                            Publicidad, Suggestion, clientexmedalla)
+from api.serializers import (CargoSerializer, InsigniaSerializer, MedallaSerializer, PublicidadSerializer, 
+                             SuggestionSerializer)
 
 
 def list_politicas():
-    return Politicas.objects.all().filter()
+    # corre sola vía signal post_save/post_delete en content/models.py, así
+    # que cualquier escritura futura a Politicas (esta función, el admin de
+    # Django, lo que sea) la limpia sin tener que acordarse acá.
+    politicas = cache.get(POLITICAS_CACHE_KEY)
+    if politicas is None:
+        politicas = list(Politicas.objects.all())
+        cache.set(POLITICAS_CACHE_KEY, politicas, timeout=None)
+    return politicas
 
 
 def crear_o_actualizar_politica(identifier, terminos):

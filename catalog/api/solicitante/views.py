@@ -7,9 +7,12 @@ from core.views import SolicitanteAPIView
 
 class ProveedoresPorServicioSolicitanteView(SolicitanteAPIView):
     def get(self, request, servicio_id, format=None):
-        serializer = Profesion_ProveedorSerializer(
-            services.proveedores_activos_por_servicio(servicio_id), many=True
-        )
+        try:
+            serializer = Profesion_ProveedorSerializer(
+                services.proveedores_activos_por_servicio(servicio_id), many=True
+            )
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
         return Response(serializer.data)
 
 

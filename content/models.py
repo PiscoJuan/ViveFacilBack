@@ -1,4 +1,7 @@
+from django.core.cache import cache
 from django.db import models
+from django.db.models.signals import post_delete, post_save
+from django.dispatch import receiver
 
 from core.campos import URLCompletaImageField
 
@@ -79,6 +82,14 @@ class Politicas(models.Model):
 
     def __str__(self):
         return self.terminos
+
+
+POLITICAS_CACHE_KEY = "politicas_list"
+
+
+@receiver([post_save, post_delete], sender=Politicas)
+def invalidar_cache_politicas(sender, **kwargs):
+    cache.delete(POLITICAS_CACHE_KEY)
 
 
 class TipoCargo(models.TextChoices):
