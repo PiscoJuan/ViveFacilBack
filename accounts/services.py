@@ -41,12 +41,6 @@ def crear_proveedor_pendiente(data, files):
     asignaba un `set` de Python a una respuesta JSON, no serializable por
     DRF — hacía fallar la respuesta con un 500 después de guardar el
     registro en la base.
-
-    El `threading.Thread(...)` sin `.start()` de abajo replica un patrón
-    repetido en todo `api/views.py`: el `target=` se evalúa (y por lo tanto
-    el email se manda) al construir el `Thread`, nunca llega a ejecutarse
-    en background. Se deja igual a propósito — arreglarlo es un cambio de
-    comportamiento (timing).
     """
     proveedor_pend = Proveedor_Pendiente.objects.create(
         nombres=data.get("nombres"),
@@ -77,13 +71,14 @@ def crear_proveedor_pendiente(data, files):
     format_email = FormatEmail()
     nombre_completo = f"{data.get('nombres')} {data.get('apellidos')}"
     threading.Thread(
-        target=format_email.send_email(
+        target=format_email.send_email,
+        args=(
             [data.get("email")],
             "Solicitud Enviada",
             "emails/formularioEnviado.html",
             {"username": nombre_completo, "user": data.get("email")},
-        )
-    )
+        ),
+    ).start()
 
     serializer = Proveedor_PendienteSerializer(proveedor_pend)
     return proveedor_pend, serializer
@@ -254,9 +249,8 @@ def registrar_proveedor(email, tipo, nombres, apellidos, telefono, genero, foto)
 
     format_email = FormatEmail()
     thread = threading.Thread(
-        target=format_email.send_email(
-            [email], "Bienvenido a Vive Fácil", "emails/welcome.html", {"username": nombres}
-        )
+        target=format_email.send_email,
+        args=([email], "Bienvenido a Vive Fácil", "emails/welcome.html", {"username": nombres}),
     )
     thread.start()
 
@@ -632,9 +626,6 @@ def pendiente_aprobar_por_id(ident):
 
 
 def pendiente_rechazar(pk, razon):
-    """El `threading.Thread(...)` de abajo se crea sin `.start()` — el
-    email se manda igual, de forma síncrona, al construir el Thread. Se
-    deja igual a propósito."""
     from core.email import FormatEmail
 
     pendiente = Proveedor_Pendiente.objects.get(id=pk)
@@ -642,9 +633,13 @@ def pendiente_rechazar(pk, razon):
     pendiente.rechazo = razon
     pendiente.save()
     formatEmail = FormatEmail()
-    threading.Thread(target=formatEmail.send_email(
-        [pendiente.email], "Solicitud Rechazada", "emails/formularioRechazado.html",
-        {"username": pendiente.nombres + " " + pendiente.apellidos, "user": pendiente.email, "razon": razon}))
+    threading.Thread(
+        target=formatEmail.send_email,
+        args=(
+            [pendiente.email], "Solicitud Rechazada", "emails/formularioRechazado.html",
+            {"username": pendiente.nombres + " " + pendiente.apellidos, "user": pendiente.email, "razon": razon},
+        ),
+    ).start()
 
 
 def obtener_proveedor_rechazado(pk):
@@ -1242,18 +1237,26 @@ def actualizar_caducidad_proveedor(pk, data):
     datos.estado = True
     datos.save()
     format_email = FormatEmail()
-    threading.Thread(target=format_email.send_email(
-        [proveedor.user_datos.user.username], "Cambio de fecha de contrato",
-        'emails/enviarAlerta.html',
-        {"username": proveedor.user_datos.user.username,
-         "contenido": "Tu fecha de contrato a cambiado, tu contrato expira el " + numero}))
+    threading.Thread(
+        target=format_email.send_email,
+        args=(
+            [proveedor.user_datos.user.username], "Cambio de fecha de contrato",
+            'emails/enviarAlerta.html',
+            {"username": proveedor.user_datos.user.username,
+             "contenido": "Tu fecha de contrato a cambiado, tu contrato expira el " + numero},
+        ),
+    ).start()
 
     for e in Proveedor.objects.all().order_by('-id').filter(fecha_caducidad__lt=date.today()):
         if e.estado != False:
-            thread = threading.Thread(target=format_email.send_email(
-                [e.user_datos.user.username], "Cuenta caducada", 'emails/enviarAlerta.html',
-                {"username": e.user_datos.user.username,
-                 "contenido": "Tu cuenta ha caducado, si deseas extender tu contrato contactanos por nuestros canales oficiales."}))
+            threading.Thread(
+                target=format_email.send_email,
+                args=(
+                    [e.user_datos.user.username], "Cuenta caducada", 'emails/enviarAlerta.html',
+                    {"username": e.user_datos.user.username,
+                     "contenido": "Tu cuenta ha caducado, si deseas extender tu contrato contactanos por nuestros canales oficiales."},
+                ),
+            ).start()
         e.estado = False
         e.save()
         datos = e.user_datos
@@ -1362,11 +1365,14 @@ def actualizar_caducidad_masiva_proveedores():
         return {"error": ["No hay proveedores caducados"]}, 400
     for e in proveedores_caducados:
         if e.estado != False:
-            thread = threading.Thread(target=format_email.send_email(
-                [e.user_datos.user.username], "Cuenta caducada", 'emails/enviarAlerta.html',
-                {"username": e.user_datos.user.username,
-                 "contenido": "Tu cuenta ha caducado, si deseas extender tu contrato contactanos por nuestros canales oficiales."}))
-            thread.start()
+            threading.Thread(
+                target=format_email.send_email,
+                args=(
+                    [e.user_datos.user.username], "Cuenta caducada", 'emails/enviarAlerta.html',
+                    {"username": e.user_datos.user.username,
+                     "contenido": "Tu cuenta ha caducado, si deseas extender tu contrato contactanos por nuestros canales oficiales."},
+                ),
+            ).start()
         e.estado = False
         e.save()
         datos = e.user_datos

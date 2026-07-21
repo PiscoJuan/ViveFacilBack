@@ -358,14 +358,16 @@ def enviar_email_factura(data):
     user.save()
     try:
         asunto = 'Recibo Pago de Servicios Vive Fácil'
-        thread = threading.Thread(target=format_email.send_email([email_user], asunto, 'emails/factura.html', {
-            "fecha_today": data.get('fecha_emision'), "fecha_emision": data.get('fecha_emision'),
-            "solicitante_name": user.nombres + ' ' + user.apellidos, "solicitud_descripcion": data.get('solicitud'),
-            "transaccion_id": data.get('transaccion'), "proveedor_name": data.get('proveedor'),
-            "pago_descripcion": data.get('pago_descripcion'), "metodo_pago": data.get('metodo'),
-            "oferta": data.get('oferta'), "descuento": data.get('descuento'), "valor_total": data.get('valor'),
-        }))
-        thread.start()
+        threading.Thread(
+            target=format_email.send_email,
+            args=([email_user], asunto, 'emails/factura.html', {
+                "fecha_today": data.get('fecha_emision'), "fecha_emision": data.get('fecha_emision'),
+                "solicitante_name": user.nombres + ' ' + user.apellidos, "solicitud_descripcion": data.get('solicitud'),
+                "transaccion_id": data.get('transaccion'), "proveedor_name": data.get('proveedor'),
+                "pago_descripcion": data.get('pago_descripcion'), "metodo_pago": data.get('metodo'),
+                "oferta": data.get('oferta'), "descuento": data.get('descuento'), "valor_total": data.get('valor'),
+            }),
+        ).start()
         resp['success'] = True
         resp['clave'] = user.security_access
     except Exception as e:

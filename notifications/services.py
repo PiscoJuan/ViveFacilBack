@@ -200,8 +200,11 @@ def enviar_email_bienvenida(email, password, tipo):
     asunto = 'Bienvenido a Vive Fácil'
     try:
         plantilla = 'emails/welcomeAdmin.html' if tipo == "Administrador" else 'emails/welcomeProveedor.html'
-        thread = threading.Thread(target=format_email.send_email([email], asunto, plantilla, {
-            "username": user.nombres + ' ' + user.apellidos, "user": email, "password": password}))
+        thread = threading.Thread(
+            target=format_email.send_email,
+            args=([email], asunto, plantilla, {
+                "username": user.nombres + ' ' + user.apellidos, "user": email, "password": password}),
+        )
         thread.start()
         data['success'] = True
         data['clave'] = user.security_access
@@ -225,8 +228,11 @@ def enviar_correo_solicitud(email, profesion, rechazada):
     asunto = "Respuesta Solicitud"
     try:
         plantilla = 'emails/solicitudRechazada.html' if rechazada else 'emails/solicitudAceptada.html'
-        thread = threading.Thread(target=format_email.send_email([email], asunto, plantilla, {
-            "username": user.nombres + ' ' + user.apellidos, "user": email, "profesion": profesion}))
+        thread = threading.Thread(
+            target=format_email.send_email,
+            args=([email], asunto, plantilla, {
+                "username": user.nombres + ' ' + user.apellidos, "user": email, "profesion": profesion}),
+        )
         thread.start()
         data['success'] = True
     except Exception:
@@ -247,8 +253,10 @@ def enviar_alerta(user_email, asunto, texto):
         user_dato = Datos.objects.get(user=usuario.first())
         if user_dato is not None:
             format_email = FormatEmail()
-            thread = threading.Thread(target=format_email.send_email(
-                [user_email], asunto, 'emails/enviarAlerta.html', {"username": user_dato.nombres, "contenido": texto}))
+            thread = threading.Thread(
+                target=format_email.send_email,
+                args=([user_email], asunto, 'emails/enviarAlerta.html', {"username": user_dato.nombres, "contenido": texto}),
+            )
             thread.start()
             data['success'] = True
     return data
