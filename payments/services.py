@@ -154,7 +154,7 @@ def registrar_pago_efectivo(data):
     devices = FCMDevice.objects.filter(active=True, user__id=solicitud.proveedor.user_datos.user.id)
     tokens = list(devices.values_list("registration_id", flat=True))
     data_not = {
-        "ruta": "/historial",
+        "ruta": "/main/solicitudes",
         "descripcion": "El pago por el servicio de " + solicitud.servicio.nombre + " fue existoso",
     }
     send_notificationF(tokens, titles, bodys, data_not)
@@ -332,7 +332,7 @@ def registrar_pago_tarjeta(data):
     bodys = "¡Dale un vistazo!"
     devices = FCMDevice.objects.filter(active=True, user__username=solicitud.proveedor.user_datos.user.email)
     tokens = list(devices.values_list("registration_id", flat=True))
-    data_not = {"ruta": "/historial", "descripcion": "El pago por el servicio de " + solicitud.servicio.nombre + " fue existoso"}
+    data_not = {"ruta": "/main/solicitudes", "descripcion": "El pago por el servicio de " + solicitud.servicio.nombre + " fue existoso"}
     send_notificationF(tokens, titles, bodys, data_not)
 
     return pago_tarjeta, resp

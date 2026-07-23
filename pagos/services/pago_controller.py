@@ -256,7 +256,7 @@ def _notificar_proveedor(solicitud):
                 tokens,
                 "Servicio pagado: " + servicio,
                 "¡Dale un vistazo!",
-                {"ruta": "/historial",
+                {"ruta": "/main/solicitudes",
                  "descripcion": f"El pago por el servicio de {servicio} fue exitoso"},
             )
     except Exception:

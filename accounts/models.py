@@ -64,7 +64,8 @@ class Codigos(models.Model):  # codigos que se envian para reestablecer contrase
 class Proveedor(models.Model):
     user_datos = models.OneToOneField(
         Datos, on_delete=models.CASCADE, null=True)
-    rating = models.FloatField(default=4.0)
+    total_resenas_dejadas = models.PositiveIntegerField(default=0)
+    total_resenas_dejadas_puntos = models.FloatField(default=0)
     servicios = models.PositiveIntegerField(default=0)
     descripcion = models.CharField(max_length=255)
     document = models.ManyToManyField(Document, db_table="api_proveedor_document")
@@ -90,6 +91,13 @@ class Proveedor(models.Model):
 
     def __str__(self):
         return self.user_datos.nombres + " " + self.user_datos.apellidos + " | " + self.profesion
+
+    @property
+    def rating(self):
+        # Base bayesiana: 25 pts / 5 reseñas (arranca en 5.0) para que las primeras
+        # reseñas no arruinen el puntaje. Redondeo a media estrella: 2.22->2.0, 2.26->2.5
+        raw = (25 + self.total_resenas_dejadas_puntos) / (5 + self.total_resenas_dejadas)
+        return round(raw * 2) / 2
 
 
 class PendienteDocuments(models.Model):
@@ -142,12 +150,21 @@ class Solicitante(models.Model):
         Datos, on_delete=models.CASCADE, null=True)
     bool_registro_completo = models.BooleanField(default=False)
     estado = models.BooleanField(default=True)
+    total_resenas_dejadas = models.PositiveIntegerField(default=0)
+    total_resenas_dejadas_puntos = models.FloatField(default=0)
 
     class Meta:
         db_table = "api_solicitante"
 
     def __str__(self):
         return self.user_datos.nombres + " | " + self.user_datos.user.email
+
+    @property
+    def rating(self):
+        # Espejo del rating del proveedor: base bayesiana 25 pts / 5 reseñas
+        # (arranca en 5.0) y redondeo a media estrella.
+        raw = (25 + self.total_resenas_dejadas_puntos) / (5 + self.total_resenas_dejadas)
+        return round(raw * 2) / 2
 
 
 class Administrador(models.Model):

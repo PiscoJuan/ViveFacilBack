@@ -1,6 +1,6 @@
 import logging
 
-from django.db.models import Case, CharField, Q, Sum, Value, When
+from django.db.models import Case, CharField, Q, Value, When
 from django.utils import timezone
 from rest_framework import status
 
@@ -205,7 +205,7 @@ def crear_solicitud(data, files):
 
     titles = "Solicitud Recibida del servicio " + solicitud.servicio.nombre
     bodys = "¡Dale un vistazo!"
-    notif_data = {"ruta": "/main/home", "descripcion": "Se ha recibido una solicitud de servicio."}
+    notif_data = {"ruta": "/main/solicitudes", "descripcion": "Se ha recibido una solicitud de servicio."}
 
     from fcm_django.models import FCMDevice
 
@@ -289,7 +289,7 @@ def adjudicar_solicitud(solicitud_id, proveedor_user_id, request_data):
         devices = FCMDevice.objects.filter(active=True, user__id=proveedor.user_datos.user.id)
         tokens = list(devices.values_list("registration_id", flat=True))
         notif_data = {
-            "ruta": "/historial",
+            "ruta": "/main/solicitudes",
             "descripcion": "Se le ha adjudicado el siguiente servicio: " + solicitud.servicio.nombre,
         }
         send_notificationF(tokens, titles, bodys, notif_data)
@@ -438,6 +438,26 @@ def actualizar_solicitud(solicitud_id, request_data):
     data = {}
     try:
         solicitud = Solicitud.objects.get(id=solicitud_id)
+
+        # El proveedor califica al cliente: solo en solicitudes finalizadas, una sola
+        # vez. Es una rama independiente de "finalizar" (no cambia estado ni acumula
+        # tramites/dinero), por eso retorna antes del bloque pesado de más abajo.
+        if request_data.get("rating_solicitante") is not None:
+            rating_sol = float(request_data.get("rating_solicitante") or 0)
+            ya_calificado = float(solicitud.rating_solicitante or 0) > 0
+            if rating_sol > 0 and not ya_calificado and solicitud.termino == "finalizado":
+                solicitud.rating_solicitante = rating_sol
+                solicitud.descripcion_rating_solicitante = request_data.get("descripcion_rating_solicitante", " ")
+                solicitud.save()
+                sol = solicitud.solicitante
+                sol.total_resenas_dejadas += 1
+                sol.total_resenas_dejadas_puntos += rating_sol
+                sol.save()
+                return {"success": True, "message": "Calificación del cliente registrada."}, 200
+            return {"success": False,
+                    "message": "No se pudo calificar (ya calificada, o la solicitud no está finalizada)."}, 200
+
+        ya_finalizada = solicitud.termino == "finalizado"  # evita contar la reseña dos veces
         solicitud.estado = request_data.get("estado", solicitud.estado)
         solicitud.pagada = request_data.get("pagada", solicitud.pagada)
         solicitud.termino = request_data.get("termino", solicitud.termino)
@@ -453,9 +473,14 @@ def actualizar_solicitud(solicitud_id, request_data):
             proveedor = solicitud.proveedor
             solicitante = solicitud.solicitante
             solicitudes_proveedor = Solicitud.objects.filter(proveedor=proveedor)
-            rating_proveedor = solicitudes_proveedor.aggregate(Sum("rating"))["rating__sum"] / len(solicitudes_proveedor)
             adjudicada = Envio_Interesados.objects.get(solicitud=solicitud, proveedor=solicitud.proveedor)
-            proveedor.rating = rating_proveedor
+            # El rating del proveedor es una propiedad calculada; solo acumulamos los
+            # totales cuando llega una reseña real (rating > 0). El proveedor que se
+            # auto-finaliza manda rating 0 -> no cuenta como reseña.
+            rating_val = float(request_data.get("rating") or 0)
+            if rating_val > 0 and not ya_finalizada:
+                proveedor.total_resenas_dejadas += 1
+                proveedor.total_resenas_dejadas_puntos += rating_val
             proveedor.servicios = len(solicitudes_proveedor)
             proveedor.user_datos.tramites = proveedor.user_datos.tramites + 1
             proveedor.user_datos.dinero_invertido = proveedor.user_datos.dinero_invertido + adjudicada.oferta
@@ -473,9 +498,9 @@ def actualizar_solicitud(solicitud_id, request_data):
                 devices = FCMDevice.objects.filter(active=True, user__username=solicitud.proveedor.user_datos.user.email)
                 tokens = list(devices.values_list("registration_id", flat=True))
                 notif_data = {
-                    "ruta": "/historial",
+                    "ruta": "/main/solicitudes",
                     "descripcion": "Puede observar la solicitud " + solicitud.servicio.nombre
-                    + " finalizada en la seccion de Historial > PASADAS",
+                    + " finalizada en la seccion de Solicitudes > PASADAS",
                 }
                 send_notificationF(tokens, titles, bodys, notif_data)
 

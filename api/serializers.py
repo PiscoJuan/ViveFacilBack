@@ -6,6 +6,7 @@ from promotions.models import Cupon, Cupon_Aplicado, CuponCategoria, Promocion, 
 from notifications.models import Notificacion, NotificacionMasiva
 from solicitudes.models import Envio_Interesados, Solicitud, Tipo_Pago, Ubicacion
 from accounts.models import Administrador, Codigos, Datos, Document, PendienteDocuments, Proveedor, Proveedor_Pendiente, Solicitante
+from pagos.serializers import TransaccionPaymentezAdminSerializer
 from django.contrib.auth.models import User, Group, Permission
 from rest_framework.fields import IntegerField
 from fcm_django.models import FCMDevice
@@ -164,10 +165,12 @@ class ProveedorSerializer(serializers.ModelSerializer):
     document = DocumentSerializer(many=True)
     plan_proveedor = PlanProveedorSerializer(
         source='planproveedor_set', many=True, read_only=True)
+    rating = serializers.FloatField(read_only=True)  # propiedad calculada del modelo
 
     class Meta:
         model = Proveedor
         fields = ['id', 'user_datos', 'direccion', 'copiaCedula', 'licencia', 'copiaLicencia', 'rating', 'servicios', 'descripcion',
+                  'total_resenas_dejadas', 'total_resenas_dejadas_puntos',
                   'profesion', 'ano_profesion', 'document', 'plan_proveedor', 'estado', 'banco', 'numero_cuenta', 'tipo_cuenta', 'fecha_caducidad']
 
 
@@ -241,10 +244,12 @@ class Tipo_PagoSerializer(serializers.ModelSerializer):
 
 class SolicitanteSerializer(serializers.ModelSerializer):
     user_datos = DatosSerializer()
+    rating = serializers.FloatField(read_only=True)  # propiedad calculada del modelo
 
     class Meta:
         model = Solicitante
-        fields = ['id', 'user_datos', 'bool_registro_completo', 'estado']
+        fields = ['id', 'user_datos', 'bool_registro_completo', 'estado',
+                  'rating', 'total_resenas_dejadas', 'total_resenas_dejadas_puntos']
 
 
 class AdministradorSerializer(serializers.ModelSerializer):
@@ -266,7 +271,8 @@ class SolicitudSerializer(serializers.ModelSerializer):
     class Meta:
         model = Solicitud
         fields = ['id', 'descripcion', 'foto_descripcion', 'fecha_creacion', 'fecha_expiracion', 'solicitante', 'ubicacion',
-                  'servicio', 'tipo_pago', 'proveedor', 'adjudicar', 'pagada', 'estado', 'termino', 'rating', 'descripcion_rating','descuento']
+                  'servicio', 'tipo_pago', 'proveedor', 'adjudicar', 'pagada', 'estado', 'termino', 'rating', 'descripcion_rating',
+                  'rating_solicitante', 'descripcion_rating_solicitante', 'descuento']
 
 class SolicitudEnProcesoSerializer(SolicitudSerializer):
     estado_proceso = serializers.CharField(read_only=True)
@@ -292,9 +298,10 @@ class SolicitudAdminSerializer(SolicitudEnProcesoSerializer):
     ver a quién se le ofreció vs. quién quedó adjudicado en 'proveedor'."""
     valor = serializers.SerializerMethodField()
     candidatos = EnvioInteresadoAdminSerializer(source='envio_interesados_set', many=True, read_only=True)
+    transacciones_paymentez = TransaccionPaymentezAdminSerializer(many=True, read_only=True)
 
     class Meta(SolicitudEnProcesoSerializer.Meta):
-        fields = SolicitudEnProcesoSerializer.Meta.fields + ['valor', 'candidatos']
+        fields = SolicitudEnProcesoSerializer.Meta.fields + ['valor', 'candidatos', 'transacciones_paymentez']
 
     def get_valor(self, obj):
         pago = obj.pagotarjeta_set.first() or obj.pagoefectivo_set.first()

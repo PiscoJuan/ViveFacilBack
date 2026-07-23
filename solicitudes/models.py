@@ -57,6 +57,10 @@ class Solicitud(models.Model):
     descripcion_rating = models.CharField(
         max_length=100, default=" ", null=True, blank=True)
     rating = models.FloatField(default=0)
+    # Reseña inversa: el proveedor califica al cliente (solicitante).
+    descripcion_rating_solicitante = models.CharField(
+        max_length=100, default=" ", null=True, blank=True)
+    rating_solicitante = models.FloatField(default=0)
 
     class Meta:
         db_table = "api_solicitud"
