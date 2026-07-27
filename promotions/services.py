@@ -265,16 +265,17 @@ def crear_cupon_aplicado(user, cupon_id, estado):
             cupon = Cupon.objects.get(id=cupon_id)
             data['cr'] = True
             usuario = Datos.objects.get(user__email=user)
-            usuario.puntos = usuario.puntos - cupon.puntos
-            cupon.cantidad = cupon.cantidad - 1
-            if usuario.puntos < 0:
+            saldo_tras_canje = (usuario.puntos or 0) - cupon.puntos
+            if saldo_tras_canje < 0:
                 data['valid'] = "puntos"
                 data['creado'] = False
-            elif cupon.cantidad + 1 <= 0:
+            elif cupon.cantidad <= 0:
                 data['valid'] = "cantidad"
                 data['creado'] = False
             else:
-                usuario.save()
+                from accounts.services import registrar_movimiento_puntos
+                registrar_movimiento_puntos(usuario, -cupon.puntos, "cupon", referencia=str(cupon_id))
+                cupon.cantidad = cupon.cantidad - 1
                 cupon.save()
                 Cupon_Aplicado.objects.get_or_create(cupon=Cupon.objects.get(id=cupon_id), user=user, estado=estado)
                 data['creado'] = True

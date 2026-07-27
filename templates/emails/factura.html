@@ -1,401 +1,88 @@
-{% load inlinecss %}
-{% inlinecss "css/emailsProveedor.css" %}
-<html>
+{% extends "emails/base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta content="width=device-width, initial-scale=1" name="viewport">
-    <meta name="x-apple-disable-message-reformatting">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta content="telephone=no" name="format-detection">
-</head>
+{% block title %}Recibo de pago - Vive Fácil{% endblock %}
 
-<body>
-    <div class="es-wrapper-color">
-        <table class="es-wrapper" width="100%" cellspacing="0" cellpadding="0">
-            <tbody>
-                <tr>
-                    <td class="esd-email-paddings" valign="top">
-                        <table class="es-content esd-header-popover" cellspacing="0" cellpadding="0" align="center">
-                            <tbody>
-                                <tr>
-                                    <td class="esd-stripe" esd-custom-block-id="2432" align="center">
-                                        <table class="es-content-body" style="background-color: #9aaea6;" width="610"
-                                            cellspacing="0" cellpadding="0" bgcolor="#9aaea6" align="center">
-                                            <tbody>
-                                                <tr>
-                                                    <td class="esd-structure es-p25t es-p20b es-p20r es-p20l"
-                                                        align="left" bgcolor="#f5f6f6"
-                                                        style="background-color: #f5f6f6;">
-                                                        <table width="100%" cellspacing="0" cellpadding="0">
-                                                            <tbody>
-                                                                <tr>
-                                                                    <td class="esd-container-frame" width="570"
-                                                                        valign="top" align="center">
-                                                                        <table width="100%" cellspacing="0"
-                                                                            cellpadding="0">
-                                                                            <tbody>
-                                                                                <tr>
-                                                                                    <td align="center"
-                                                                                        class="esd-block-image"
-                                                                                        style="font-size: 0px;"><a
-                                                                                            target="_blank"><img
-                                                                                                class="adapt-img"
-                                                                                                src="https://firebasestorage.googleapis.com/v0/b/to-me-292901.appspot.com/o/logo-inicio.png?alt=media&token=db99d081-48ee-4aa3-86ec-41ee3c3194bf"
-                                                                                                alt
-                                                                                                style="display: block;"
-                                                                                                width="233"></a></td>
-                                                                                </tr>
-                                                                            </tbody>
-                                                                        </table>
-                                                                    </td>
-                                                                </tr>
-                                                            </tbody>
-                                                        </table>
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td class="esd-structure es-p20r es-p20l"
-                                                        esd-general-paddings-checked="false" align="left"
-                                                        bgcolor="#052434" style="background-color: #ffffff;">
-                                                        <table cellspacing="0" cellpadding="0" width="100%">
-                                                            <tbody>
-                                                                <tr>
-                                                                    <th>
-                                                                        <div
-                                                                            style="border-style: solid;  border-bottom: #052434; margin-top: 20px;">
-                                                                        </div>
-                                                                    </th>
-                                                                </tr>
-                                                                <tr>
-                                                                    <th align="end"
-                                                                        style="color: #052434; padding: 20px; font-size: larger;">
-                                                                        Pago de servicio</th>
-                                                                </tr>
-                                                                <tr>
-                                                                    <th align="end"
-                                                                        style="color: #052434; padding: 5px; font-size: small; font-weight: lighter;">
-                                                                        Fecha de la recibo: {{ fecha_today}}</th>
-                                                                </tr>
-                                                                <tr>
-                                                                    <th align="end"
-                                                                        style="color: #052434; padding: 5px; font-size: small; font-weight: lighter;">
-                                                                        Fecha del pago: {{ fecha_emision}}</th>
-                                                                </tr>
-                                                                <tr>
+{% block heading %}RECIBO DE <span class="accent">PAGO</span>{% endblock %}
 
-                                                                    <td class="esd-container-frame" width="570"
-                                                                        align="left" style="padding-top: 30px;">
-                                                                        <table width="100%" cellspacing="0"
-                                                                            cellpadding="0" bgcolor="#ffffff"
-                                                                            style="border-width: 9px; border-style: solid; border-color: transparent; background-color: #ffffff; border-radius: 1px; border-collapse: separate;">
-                                                                            <thead>
-                                                                                <tr>
-                                                                                    <th
-                                                                                        style="padding-left: 25px; width: 150px; color: #052434; background: #ffffff; text-align: start; border-right: 1px solid #b3aeae;">
-                                                                                        Solicitud</th>
-                                                                                    <th
-                                                                                        style="font-size: small; font-weight: lighter; color: #052434;">
-                                                                                        {{solicitud_descripcion}}</th>
-                                                                                </tr>
-                                                                                <tr>
-                                                                                    <th
-                                                                                        style="padding-left: 25px; padding-top: 20px; width: 150px; color: #052434; background: #ffffff; text-align: start; border-right: 1px solid #b3aeae;">
-                                                                                        Transaccion</th>
-                                                                                    <th
-                                                                                        style=" font-size: small; font-weight: lighter; color: #052434;">
-                                                                                        {{transaccion_id}}</th>
-                                                                                </tr>
+{% block body %}
+  <p>Hola <strong>{{ solicitante_name }}</strong>,</p>
+  <p>Este es el recibo de tu pago de servicio en Vive Fácil.</p>
 
-                                                                                <tr>
-                                                                                    <th
-                                                                                        style="padding-left: 25px; padding-top: 20px; width: 150px; color: #052434; background: #ffffff; text-align: start; border-right: 1px solid #b3aeae;">
-                                                                                        Realizada por</th>
-                                                                                    <th
-                                                                                        style=" font-size: small; font-weight: lighter; color: #052434;">
-                                                                                        {{solicitante_name}}</th>
-                                                                                </tr>
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin: 20px 0; font-size: 14px; color: #433689;">
+    <tr>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; color: #888;">Fecha del recibo</td>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; text-align: right;">{{ fecha_today }}</td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; color: #888;">Fecha del pago</td>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; text-align: right;">{{ fecha_emision }}</td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; color: #888;">Transacción</td>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; text-align: right;">{{ transaccion_id }}</td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; color: #888;">Solicitud</td>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; text-align: right;">{{ solicitud_descripcion }}</td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; color: #888;">Realizada por</td>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; text-align: right;">{{ solicitante_name }}</td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; color: #888;">Para</td>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; text-align: right;">{{ proveedor_name }}</td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; color: #888;">Descripción</td>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; text-align: right;">{{ pago_descripcion }}</td>
+    </tr>
+  </table>
 
-                                                                                <tr>
-                                                                                    <th
-                                                                                        style="padding-left: 25px; padding-top: 20px; width: 150px; color: #052434; background: #ffffff; text-align: start; border-right: 1px solid #b3aeae;">
-                                                                                        Para</th>
-                                                                                    <th
-                                                                                        style=" font-size: small; font-weight: lighter; color: #052434;">
-                                                                                        {{proveedor_name}}</th>
-                                                                                </tr>
-                                                                                <tr>
-                                                                                    <th
-                                                                                        style="padding-left: 25px; padding-top: 20px; width: 150px; color: #052434; background: #ffffff; text-align: start; border-right: 1px solid #b3aeae;">
-                                                                                        Descripción</th>
-                                                                                    <th
-                                                                                        style="font-size: small; font-weight: lighter; color: #052434;">
-                                                                                        {{pago_descripcion}}</th>
-                                                                                </tr>
-                                                                            </thead>
-                                                                            <tbody>
-                                                                                <table>
-                                                                                    <thead>
-                                                                                        <th style="height: 20px;"></th>
-                                                                                    </thead>
-                                                                                    <tbody>
-                                                                                        <tr>
-                                                                                            <td class="esd-container-frame"
-                                                                                                width="570"
-                                                                                                align="center">
-                                                                                                <table width="100%"
-                                                                                                    cellspacing="0"
-                                                                                                    cellpadding="10"
-                                                                                                    bgcolor="#052434"
-                                                                                                    style="border-width: 9px; border-style: solid; border-color: transparent; background-color: #f5f6f6; border-radius: 1px; border-collapse: separate;">
-                                                                                                    <thead>
-                                                                                                        <tr>
-                                                                                                            <th
-                                                                                                                style="color: #052435">
-                                                                                                                Metodo
-                                                                                                            </th>
-                                                                                                            <th
-                                                                                                                style="color: #052435">
-                                                                                                                Costo-servicio
-                                                                                                            </th>
-                                                                                                            <th
-                                                                                                                style="color: #052435">
-                                                                                                                Descuento
-                                                                                                                %</th>
-                                                                                                            <th
-                                                                                                                style="color: #052435">
-                                                                                                                Total
-                                                                                                            </th>
-                                                                                                        </tr>
-                                                                                                    </thead>
-                                                                                                    <tbody
-                                                                                                        style="margin-top: 20px; background-color: #ffffff">
-                                                                                                        <tr>
-                                                                                                            <th
-                                                                                                                style="color: #052435; font-weight: lighter;">
-                                                                                                                {{metodo_pago}}
-                                                                                                            </th>
-                                                                                                            <th
-                                                                                                                style="color: #052435; font-weight: lighter;">
-                                                                                                                {{oferta}}
-                                                                                                            </th>
-                                                                                                            <th
-                                                                                                                style="color: #052435; font-weight: lighter;">
-                                                                                                                {{descuento}}
-                                                                                                            </th>
-                                                                                                            <th
-                                                                                                                style="color: #052435; font-weight: lighter;">
-                                                                                                                {{valor_total}}
-                                                                                                            </th>
-                                                                                                        </tr>
-                                                                                                    </tbody>
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin: 20px 0; font-size: 14px; color: #433689; background-color: #F5F5F8; border-left: 4px solid #FFE92F; border-radius: 3px;">
+    <tr style="font-weight: 700;">
+      <td style="padding: 10px 14px;">Método</td>
+      <td style="padding: 10px 14px;">Costo servicio</td>
+      <td style="padding: 10px 14px;">Descuento %</td>
+      <td style="padding: 10px 14px;">Total</td>
+    </tr>
+    <tr>
+      <td style="padding: 10px 14px;">{{ metodo_pago }}</td>
+      <td style="padding: 10px 14px;">{{ oferta }}</td>
+      <td style="padding: 10px 14px;">{{ descuento }}</td>
+      <td style="padding: 10px 14px; font-weight: 700;">{{ valor_total }}</td>
+    </tr>
+  </table>
 
-                                                                                                </table>
-                                                                                            </td>
-                                                                                        </tr>
-                                                                                    </tbody>
-                                                                                </table>
-                                                                            </tbody>
-
-                                                                        </table>
-                                                                    </td>
-                                                                </tr>
-                                                            </tbody>
-                                                        </table>
-                                                    </td>
-                                                </tr>
-                                                <tr style="height: 40px; background-color: transparent;">
-
-                                                </tr>
-                                                <tr>
-                                                    <td class="esd-structure es-p20r es-p20l"
-                                                        esd-general-paddings-checked="false" align="left"
-                                                        bgcolor="#052434"
-                                                        style="background-color: #052434; padding:10px">
-                                                        <table cellspacing="0" cellpadding="0" width="100%">
-                                                            <tbody>
-                                                                <tr>
-                                                                    <td class="esd-container-frame" width="570"
-                                                                        align="left">
-                                                                        <table cellpadding="0" cellspacing="0"
-                                                                            class="es-content" align="center">
-                                                                            <tbody>
-                                                                                <tr>
-                                                                                    <td class="esd-stripe"
-                                                                                        align="center">
-                                                                                        <table bgcolor="#ffffff"
-                                                                                            class="es-content-body"
-                                                                                            align="center"
-                                                                                            cellpadding="0"
-                                                                                            cellspacing="0" width="610">
-                                                                                            <tbody>
-                                                                                                <tr>
-                                                                                                    <td class="esd-structure es-p20t es-p40r es-p20l"
-                                                                                                        align="left"
-                                                                                                        bgcolor="#052434"
-                                                                                                        style="background-color: #052434;">
-                                                                                                        <table
-                                                                                                            cellpadding="0"
-                                                                                                            cellspacing="0"
-                                                                                                            align="left"
-                                                                                                            class="es-left">
-                                                                                                            <tbody>
-                                                                                                                <tr>
-                                                                                                                    <td width="236"
-                                                                                                                        class="esd-container-frame es-m-p20b"
-                                                                                                                        align="center"
-                                                                                                                        valign="top">
-                                                                                                                        <table
-                                                                                                                            cellpadding="0"
-                                                                                                                            cellspacing="0"
-                                                                                                                            width="100%"
-                                                                                                                            bgcolor="#052434"
-                                                                                                                            style="background-color: #052434;">
-                                                                                                                            <tbody>
-                                                                                                                                <tr>
-                                                                                                                                    <td class="esd-block-image"
-                                                                                                                                        align="center"
-                                                                                                                                        style="font-size: 0px;">
-                                                                                                                                        <a href
-                                                                                                                                            target="_blank"><img
-                                                                                                                                                src="https://firebasestorage.googleapis.com/v0/b/to-me-292901.appspot.com/o/logo-inicio.png?alt=media&token=db99d081-48ee-4aa3-86ec-41ee3c3194bf"
-                                                                                                                                                alt="Run app"
-                                                                                                                                                title="Run app"
-                                                                                                                                                width="96"
-                                                                                                                                                style="display: block;"></a>
-                                                                                                                                    </td>
-                                                                                                                                </tr>
-                                                                                                                            </tbody>
-                                                                                                                        </table>
-                                                                                                                    </td>
-                                                                                                                </tr>
-                                                                                                            </tbody>
-                                                                                                        </table>
-                                                                                                        <table
-                                                                                                            cellpadding="0"
-                                                                                                            cellspacing="0"
-                                                                                                            class="es-right"
-                                                                                                            align="right">
-                                                                                                            <tbody>
-                                                                                                                <tr>
-                                                                                                                    <td width="309"
-                                                                                                                        align="left"
-                                                                                                                        class="esd-container-frame">
-                                                                                                                        <table
-                                                                                                                            cellpadding="0"
-                                                                                                                            cellspacing="0"
-                                                                                                                            width="100%">
-                                                                                                                            <tbody>
-                                                                                                                                <tr>
-                                                                                                                                    <td align="left"
-                                                                                                                                        class="esd-block-text es-p15t es-p15b es-p10r">
-                                                                                                                                        <p
-                                                                                                                                            style="font-family: 'courier new', courier, 'lucida sans typewriter', 'lucida typewriter', monospace; color: #ffffff;">
-                                                                                                                                            <br><strong>Telf:</strong>
-                                                                                                                                            0989901326
-                                                                                                                                        </p>
-                                                                                                                                    </td>
-                                                                                                                                </tr>
-                                                                                                                            </tbody>
-                                                                                                                        </table>
-                                                                                                                    </td>
-                                                                                                                </tr>
-                                                                                                            </tbody>
-                                                                                                        </table>
-                                                                                                    </td>
-                                                                                                </tr>
-                                                                                            </tbody>
-                                                                                        </table>
-                                                                                    </td>
-                                                                                </tr>
-                                                                            </tbody>
-                                                                        </table>
-                                                                        <table cellpadding="0" cellspacing="0"
-                                                                            class="es-content esd-footer-popover"
-                                                                            align="center">
-                                                                            <tbody>
-                                                                                <tr>
-                                                                                    <td class="esd-stripe"
-                                                                                        align="center">
-                                                                                        <table bgcolor="#ffffff"
-                                                                                            class="es-content-body"
-                                                                                            align="center"
-                                                                                            cellpadding="0"
-                                                                                            cellspacing="0" width="610">
-                                                                                            <tbody>
-                                                                                                <tr>
-                                                                                                    <td class="es-p20t es-p20r es-p20l esd-structure"
-                                                                                                        align="left"
-                                                                                                        bgcolor="#052434"
-                                                                                                        style="background-color: #052434;">
-                                                                                                        <table
-                                                                                                            cellpadding="0"
-                                                                                                            cellspacing="0"
-                                                                                                            width="100%">
-                                                                                                            <tbody>
-                                                                                                                <tr>
-                                                                                                                    <td width="570"
-                                                                                                                        class="esd-container-frame"
-                                                                                                                        align="center"
-                                                                                                                        valign="top">
-                                                                                                                        <table
-                                                                                                                            cellpadding="0"
-                                                                                                                            cellspacing="0"
-                                                                                                                            width="100%">
-                                                                                                                            <tbody>
-                                                                                                                                <tr>
-                                                                                                                                    <td align="center"
-                                                                                                                                        class="esd-block-text"
-                                                                                                                                        bgcolor="#052434"
-                                                                                                                                        esd-links-color="#2282B4">
-                                                                                                                                        <p
-                                                                                                                                            style="color: #ffffff; font-size: 14px; font-family: 'courier new', courier, 'lucida sans typewriter', 'lucida typewriter', monospace;">
-                                                                                                                                            <em>Visitianos
-                                                                                                                                                en
-                                                                                                                                                nuestra
-                                                                                                                                                página
-                                                                                                                                                web
-                                                                                                                                                para
-                                                                                                                                                más
-                                                                                                                                                información
-                                                                                                                                                <strong><a
-                                                                                                                                                        href="https://www.vivefacil.app/home"
-                                                                                                                                                        style="font-size: 14px; font-family: 'courier new', courier, 'lucida sans typewriter', 'lucida typewriter', monospace; color: #2282b4;">link</a></strong></em>
-                                                                                                                                        </p>
-                                                                                                                                    </td>
-                                                                                                                                </tr>
-                                                                                                                            </tbody>
-                                                                                                                        </table>
-                                                                                                                    </td>
-                                                                                                                </tr>
-                                                                                                            </tbody>
-                                                                                                        </table>
-                                                                                                    </td>
-                                                                                                </tr>
-                                                                                            </tbody>
-                                                                                        </table>
-                                                                                    </td>
-                                                                                </tr>
-                                                                            </tbody>
-                                                                        </table>
-                                                                    </td>
-                                                                </tr>
-                                                            </tbody>
-                                                        </table>
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</body>
-
-</html>
-{% endinlinecss %}
+  {% if pago_tarjeta %}
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin: 20px 0; font-size: 14px; color: #433689;">
+    <tr>
+      <td colspan="2" style="padding: 0 0 10px; color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Detalle de la transacción</td>
+    </tr>
+    {% if numero_orden %}
+    <tr>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; color: #888;">N.º de orden</td>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; text-align: right;">{{ numero_orden }}</td>
+    </tr>
+    {% endif %}
+    {% if id_transaccion %}
+    <tr>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; color: #888;">ID transacción Paymentez</td>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; text-align: right;">{{ id_transaccion }}</td>
+    </tr>
+    {% endif %}
+    {% if codigo_autorizacion %}
+    <tr>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; color: #888;">Código de autorización</td>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; text-align: right;">{{ codigo_autorizacion }}</td>
+    </tr>
+    {% endif %}
+    {% if tipo_tarjeta %}
+    <tr>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; color: #888;">Tarjeta</td>
+      <td style="padding: 6px 0; border-bottom: 1px solid #ddd; text-align: right;">{{ tipo_tarjeta }}</td>
+    </tr>
+    {% endif %}
+  </table>
+  {% endif %}
+{% endblock %}

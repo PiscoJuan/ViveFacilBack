@@ -7,7 +7,7 @@ from accounts.models import Datos, Proveedor, Solicitante
 from solicitudes.models import Solicitud
 from payments.models import Banco, Cuenta, PagoEfectivo, PagoSolicitud, PagoTarjeta, Plan, PlanProveedor, Tarjeta
 from promotions.models import Cupon, Cupon_Aplicado
-from api.serializers import PagoTarjetaSerializer, PlanProveedorSerializer, PlanSerializer, TarjetaSerializer
+from api.serializers import PlanProveedorSerializer, PlanSerializer, TarjetaSerializer
 
 
 def list_bancos():
@@ -278,68 +278,10 @@ def eliminar_tarjeta(identifier):
         return {'success': False, 'error': 'No se pudo borrar la tarjeta'}
 
 
-def registrar_pago_tarjeta(data):
-    """Endpoint real de pago con tarjeta de Solicitante2022, distinto de
-    la familia admin `PagosTarjetaAdminView`/`pago_tarjetas`/`tarjeta_pago`.
-    Devuelve (pago_tarjeta_o_None, data)."""
-    from core.firebase import send_notificationF
-
-    resp = {"success": False}
-    try:
-        resp["detail"] = "User"
-        usuario = User.objects.get(username=data.get("username"))
-        resp["detail"] = "Tarjeta"
-        tarjeta = Tarjeta.objects.get(id=data.get("tarjeta"))
-        resp["detail"] = "Promocion"
-        cupon = Cupon.objects.get(pk=data.get("id_cupon")) if data.get("id_cupon") else None
-        resp["detail"] = "Solicitud"
-        solicitud = Solicitud.objects.get(id=data.get("solicitud"))
-    except Exception as e:
-        resp["error"] = str(e)
-        return None, resp
-
-    try:
-        resp["detail"] = "pago_tarjeta"
-        pago_tarjeta = PagoTarjeta.objects.create(
-            user=usuario, tarjeta=tarjeta, carrier_id=data.get("carrier"), carrier_code=data.get("carrier_code"),
-            promocion=None, cupon=cupon, valor=data.get("valor"), descripcion=data.get("descripcion"),
-            impuesto=data.get("impuesto"), solicitud=solicitud, referencia=data.get("referencia"),
-            cargo_paymentez=data.get("cargo_paymentez"), cargo_banco=data.get("cargo_banco"),
-            cargo_sistema=data.get("cargo_sistema"), usuario=data.get("usuario"), servicio=data.get("servicio"),
-            proveedor=data.get("proveedor"), prov_correo=data.get("prov_email"), prov_telefono=data.get("prov_phone"),
-        )
-        if cupon:
-            try:
-                cupon_aplicado = Cupon_Aplicado.objects.get(cupon=cupon, user=usuario)
-                cupon_aplicado.estado = False
-                cupon_aplicado.save()
-            except Exception:
-                pass
-        resp["detail"] = "pago_solicitud"
-        PagoSolicitud.objects.create(pago_tarjeta=pago_tarjeta, solicitud=solicitud)
-    except Exception:
-        resp["error"] = "No se pudo guardar el pago/sin embargo, si se realizo"
-        return None, resp
-
-    solicitud.descuento = data.get("descuento")
-    solicitud.save()
-    resp["success"] = True
-    resp["msg"] = "El pago se guardo exitosamente"
-
-    from fcm_django.models import FCMDevice
-
-    titles = "Servicio pagado: " + solicitud.servicio.nombre
-    bodys = "¡Dale un vistazo!"
-    devices = FCMDevice.objects.filter(active=True, user__username=solicitud.proveedor.user_datos.user.email)
-    tokens = list(devices.values_list("registration_id", flat=True))
-    data_not = {"ruta": "/main/solicitudes", "descripcion": "El pago por el servicio de " + solicitud.servicio.nombre + " fue existoso"}
-    send_notificationF(tokens, titles, bodys, data_not)
-
-    return pago_tarjeta, resp
-
-
 def enviar_email_factura(data):
-    """Exclusivo de Solicitante2022."""
+    """Exclusivo de Solicitante2022 — sigue en uso para el flujo de pago en
+    efectivo (`pagarConEfectivo`), que no pasa por Paymentez y por lo tanto
+    no dispara ningún envío automático desde el backend."""
     import threading
     import uuid
 

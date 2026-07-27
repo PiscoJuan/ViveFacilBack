@@ -1,0 +1,20 @@
+{% extends "emails/base.html" %}
+
+{% block title %}{% if es_cambio %}Cambio de precio{% else %}Nueva oferta{% endif %} - Vive Fácil{% endblock %}
+
+{% block heading %}{% if es_cambio %}CAMBIO DE <span class="accent">PRECIO</span>{% else %}NUEVA <span class="accent">OFERTA</span>{% endif %}{% endblock %}
+
+{% block body %}
+  <p>Hola <strong>{{ username }}</strong>,</p>
+  {% if es_cambio %}
+    <p><strong>{{ proveedor_name }}</strong> ha cambiado el precio ofrecido para tu solicitud de <strong class="highlight">{{ servicio }}</strong>.</p>
+  {% else %}
+    <p><strong>{{ proveedor_name }}</strong> te ha enviado una nueva oferta para tu solicitud de <strong class="highlight">{{ servicio }}</strong>.</p>
+  {% endif %}
+
+  <div class="credentials">
+    <p><strong>Precio ofrecido:</strong> ${{ oferta }}</p>
+  </div>
+
+  <p>Ingresa a la app para revisar la oferta y decidir si la aceptas.</p>
+{% endblock %}

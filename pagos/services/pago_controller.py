@@ -238,6 +238,7 @@ def _finalizar(transaccion):
             usar_descuento_unico(_email(usuario))
 
     _notificar_proveedor(solicitud)
+    _enviar_correos_pago(solicitud, transaccion, cupon, ctx)
     return pago_tarjeta
 
 
@@ -261,6 +262,69 @@ def _notificar_proveedor(solicitud):
             )
     except Exception:
         logger.exception("No se pudo notificar al proveedor del pago")
+
+
+def _enviar_correos_pago(solicitud, transaccion, cupon, ctx):
+    """Correo de recibo (mejorado con datos de Paymentez) al solicitante que
+    pagó, y correo de aviso al proveedor de que ya se le pagó."""
+    try:
+        import threading
+
+        from django.utils import timezone
+
+        from core.email import FormatEmail
+
+        usuario = transaccion.usuario
+        datos_prov = solicitud.proveedor.user_datos
+        servicio_nombre = getattr(getattr(solicitud, "servicio", None), "nombre", "") or "el servicio"
+        pct = cupon.porcentaje if cupon else (15 if ctx.get("usar_desc_unico") else 0)
+        monto = transaccion.monto
+        format_email = FormatEmail()
+
+        threading.Thread(
+            target=format_email.send_email,
+            args=(
+                [_email(usuario)],
+                "Recibo Pago de Servicios Vive Fácil",
+                "emails/factura.html",
+                {
+                    "fecha_today": timezone.localdate().strftime("%d/%m/%Y"),
+                    "fecha_emision": timezone.localtime(transaccion.fecha_actualizacion).strftime("%d/%m/%Y %H:%M"),
+                    "solicitante_name": usuario.get_full_name() or usuario.username,
+                    "solicitud_descripcion": solicitud.descripcion or servicio_nombre,
+                    "transaccion_id": transaccion.id,
+                    "proveedor_name": f"{datos_prov.nombres} {datos_prov.apellidos}",
+                    "pago_descripcion": servicio_nombre,
+                    "metodo_pago": f"Tarjeta {transaccion.tipo_tarjeta}".strip(),
+                    "oferta": monto,
+                    "descuento": f"{pct}%",
+                    "valor_total": monto,
+                    "pago_tarjeta": True,
+                    "numero_orden": transaccion.referencia,
+                    "id_transaccion": transaccion.id,
+                    "codigo_autorizacion": transaccion.codigo_autorizacion,
+                    "tipo_tarjeta": transaccion.tipo_tarjeta,
+                },
+            ),
+        ).start()
+
+        threading.Thread(
+            target=format_email.send_email,
+            args=(
+                [datos_prov.user.email],
+                "Pago recibido",
+                "emails/pagoRecibidoProveedor.html",
+                {
+                    "username": f"{datos_prov.nombres} {datos_prov.apellidos}",
+                    "solicitante_name": usuario.get_full_name() or usuario.username,
+                    "servicio": servicio_nombre,
+                    "monto": monto,
+                    "numero_orden": transaccion.referencia,
+                },
+            ),
+        ).start()
+    except Exception:
+        logger.exception("No se pudo enviar los correos de pago", extra={"solicitud_id": solicitud.id})
 
 
 # --------------------------------------------------------------------- público

@@ -25,6 +25,10 @@ class Document(models.Model):
 
 
 class Datos(models.Model):
+    # PK legacy es INT en la BD; el app_config global usa BigAutoField, así que
+    # lo declaramos explícito para que las FK nuevas hacia Datos salgan INT y no
+    # bigint (si no, MySQL rechaza la FK por tipos incompatibles).
+    id = models.AutoField(primary_key=True)
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE, null=True)
     tipo = models.ForeignKey('auth.group', on_delete=models.PROTECT, null=True)
     nombres = models.CharField(max_length=255, null=True)
@@ -39,7 +43,7 @@ class Datos(models.Model):
         primary_key=False, editable=False, null=True, blank=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True, null=True)
     puntos = models.PositiveIntegerField(default=0, null=True)
-    codigo_invitacion = models.CharField(max_length=12, default="", null=True)
+    codigo_invitacion = models.CharField(max_length=12, null=True, unique=True)
     dinero_invertido = models.PositiveIntegerField(default=0, null=True)
     tramites = models.PositiveIntegerField(default=0, null=True)
     descuento = models.PositiveIntegerField(default=0, null=True)
@@ -177,6 +181,51 @@ class Administrador(models.Model):
 
     def __str__(self):
         return self.user_datos.nombres + " | " + self.user_datos.user.email
+
+
+class Invitacion(models.Model):
+    """Un referido consumado: quién invitó a quién con qué código. El
+    OneToOne sobre `invitado` garantiza "un código por cuenta"."""
+    id = models.AutoField(primary_key=True)
+    invitador = models.ForeignKey(
+        Datos, on_delete=models.CASCADE, null=True, related_name="invitaciones_enviadas")
+    invitado = models.OneToOneField(
+        Datos, on_delete=models.CASCADE, null=True, related_name="invitacion_recibida")
+    codigo = models.CharField(max_length=12)
+    fecha = models.DateTimeField(auto_now_add=True, null=True)
+
+    class Meta:
+        db_table = "api_invitacion"
+
+    def __str__(self):
+        return str(self.invitador) + " -> " + str(self.invitado) + " (" + self.codigo + ")"
+
+
+class MovimientoPuntos(models.Model):
+    """Ledger de puntos: una fila por cada cambio de saldo, prospectivo
+    (no reconstruye saldos previos a su existencia)."""
+    MOTIVOS = [
+        ("medalla", "Medalla"),
+        ("cupon", "Cupón"),
+        ("invitacion_recibida", "Invitación (canje)"),
+        ("invitacion_enviada", "Invitación (referido)"),
+        ("ajuste_admin", "Ajuste admin"),
+    ]
+    id = models.AutoField(primary_key=True)
+    usuario = models.ForeignKey(
+        Datos, on_delete=models.CASCADE, null=True, related_name="movimientos_puntos")
+    monto = models.IntegerField(default=0)
+    motivo = models.CharField(max_length=30, choices=MOTIVOS)
+    saldo_resultante = models.PositiveIntegerField(default=0)
+    referencia = models.CharField(max_length=255, null=True, blank=True)
+    fecha = models.DateTimeField(auto_now_add=True, null=True)
+
+    class Meta:
+        db_table = "api_movimiento_puntos"
+        ordering = ["-fecha"]
+
+    def __str__(self):
+        return str(self.usuario) + " | " + self.motivo + " | " + str(self.monto)
 
 
 @receiver(post_save, sender='auth.User')

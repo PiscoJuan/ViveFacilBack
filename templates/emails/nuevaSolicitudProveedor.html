@@ -1,0 +1,17 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Nueva solicitud de servicio - Vive Fácil{% endblock %}
+
+{% block heading %}NUEVA <span class="accent">SOLICITUD</span> DE SERVICIO{% endblock %}
+
+{% block body %}
+  <p>Hola <strong>{{ username }}</strong>,</p>
+  <p><strong>{{ solicitante_name }}</strong> ha solicitado el servicio de <strong class="highlight">{{ servicio }}</strong> y te ha elegido como uno de los proveedores para atenderla.</p>
+
+  <div class="credentials">
+    <p><strong>Descripción:</strong> {{ descripcion }}</p>
+    {% if direccion %}<p><strong>Ubicación:</strong> {{ direccion }}</p>{% endif %}
+  </div>
+
+  <p>Ingresa a la app para revisar los detalles y enviar tu oferta.</p>
+{% endblock %}

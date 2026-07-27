@@ -118,6 +118,9 @@ def solicitud_admin_detalle(pk):
 
 def crear_solicitud(data, files):
     """Devuelve (solicitud_o_None, data: dict)."""
+    import threading
+
+    from core.email import FormatEmail
     from core.firebase import send_notificationF
 
     resp = {}
@@ -257,6 +260,31 @@ def crear_solicitud(data, files):
             resp["success"] = False
             return None, resp
 
+        try:
+            format_email = FormatEmail()
+            threading.Thread(
+                target=format_email.send_email,
+                args=(
+                    [datos_prov.user.email],
+                    "Nueva solicitud de servicio",
+                    "emails/nuevaSolicitudProveedor.html",
+                    {
+                        "username": f"{datos_prov.nombres} {datos_prov.apellidos}",
+                        "solicitante_name": f"{solic.user_datos.nombres} {solic.user_datos.apellidos}",
+                        "servicio": solicitud.servicio.nombre,
+                        "descripcion": solicitud.descripcion,
+                        "direccion": ubic.direccion,
+                    },
+                ),
+            ).start()
+        except Exception:
+            # Un fallo enviando el email no debe abortar la creación de la
+            # solicitud (a diferencia del push, que sí es crítico para el flujo).
+            logger.exception(
+                "crear_solicitud: falló enviando email de notificación al proveedor",
+                extra={"solicitud_id": solicitud.id, "proveedor_id": proveedor_id},
+            )
+
     logger.info(
         "crear_solicitud: creada y enviada a todos los proveedores OK",
         extra={"solicitud_id": solicitud.id, "num_proveedores": len(proveedores_id)},
@@ -362,7 +390,10 @@ def envio_interesado_lectura(solicitud_id):
 
 def actualizar_envio_interesado(solicitud_id, user_proveedor, request_data):
     """Devuelve (data, http_status)."""
+    import threading
+
     from api.serializers import Envio_InteresadosSerializer
+    from core.email import FormatEmail
     from core.firebase import send_notificationF
     from fcm_django.models import FCMDevice
 
@@ -386,6 +417,30 @@ def actualizar_envio_interesado(solicitud_id, user_proveedor, request_data):
     devices = FCMDevice.objects.filter(active=True, user__username=solicitante.user_datos.user.email)
     tokens = list(devices.values_list("registration_id", flat=True))
     send_notificationF(tokens, titles, bodys, {"ruta": "/historial", "descripcion": descripcion})
+
+    try:
+        format_email = FormatEmail()
+        threading.Thread(
+            target=format_email.send_email,
+            args=(
+                [solicitante.user_datos.user.email],
+                titles,
+                "emails/ofertaSolicitante.html",
+                {
+                    "username": f"{solicitante.user_datos.nombres} {solicitante.user_datos.apellidos}",
+                    "proveedor_name": f"{envio_interesado.proveedor.user_datos.nombres} {envio_interesado.proveedor.user_datos.apellidos}",
+                    "servicio": solicitud.servicio.nombre,
+                    "oferta": envio_interesado.oferta,
+                    "es_cambio": es_nuevo,
+                },
+            ),
+        ).start()
+    except Exception:
+        logger.exception(
+            "actualizar_envio_interesado: falló enviando email de notificación al solicitante",
+            extra={"solicitud_id": solicitud_id},
+        )
+
     return serializer.data, status.HTTP_200_OK
 
 

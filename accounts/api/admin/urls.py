@@ -16,6 +16,7 @@ from accounts.api.admin.views import (
     GruposAdminView,
     LoginAdminView,
     LogoutAdminView,
+    MovimientosPuntosAdminView,
     PendientesDocumentsAdminView,
     PendientesFilterDateAdminView,
     PendientesSearchAdminView,
@@ -48,6 +49,8 @@ urlpatterns = [
     path("login/", LoginAdminView.as_view()),
     path("registro/", RegistroAdminView.as_view()),
 
+    path("movimientos-puntos/", MovimientosPuntosAdminView.as_view()),
+
     path("administradores/", AdministradoresAdminView.as_view()),
     path("administradores/fechas/", AdministradoresFilterAdminView.as_view()),  # antes que <str:id>/
     path("administradores/buscar/<str:user>/", AdministradoresUserAdminView.as_view()),
@@ -74,10 +77,10 @@ urlpatterns = [
     path("proveedores-pendientes/buscar/<str:user>/", PendientesSearchAdminView.as_view()),
     path("proveedores-pendientes/fechas/", PendientesFilterDateAdminView.as_view()),
     path("proveedores-pendientes/actualizar-datos/", UpdateProveedorPendienteAdminView.as_view()),
+    path("proveedores-pendientes/<str:pk>/rechazo/", ProveedoresPendientesRechazoAdminView.as_view()),
     path("proveedores-pendientes/<str:username>/<str:desc>/", ProveedoresPendientesAdminView.as_view()),
     path("proveedores-pendientes/<str:pk>/", ProveedoresPendientesDetailsAdminView.as_view()),
     path("proveedores-pendientes-estado/", ProveedoresPendientesEstadoAdminView.as_view()),
-    path("proveedores-pendientes/<str:pk>/rechazo/", ProveedoresPendientesRechazoAdminView.as_view()),
 
     path("proveedores-rechazados/", ProveedoresRechazadosAdminView.as_view()),
     path("proveedores-rechazados/<str:pk>/", ProveedoresRechazadosDetailsAdminView.as_view()),

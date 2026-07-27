@@ -5,7 +5,7 @@ from payments.models import Banco, Cuenta, PagoEfectivo, PagoSolicitud, PagoTarj
 from promotions.models import Cupon, Cupon_Aplicado, CuponCategoria, Promocion, PromocionCategoria
 from notifications.models import Notificacion, NotificacionMasiva
 from solicitudes.models import Envio_Interesados, Solicitud, Tipo_Pago, Ubicacion
-from accounts.models import Administrador, Codigos, Datos, Document, PendienteDocuments, Proveedor, Proveedor_Pendiente, Solicitante
+from accounts.models import Administrador, Codigos, Datos, Document, Invitacion, MovimientoPuntos, PendienteDocuments, Proveedor, Proveedor_Pendiente, Solicitante
 from pagos.serializers import TransaccionPaymentezAdminSerializer
 from django.contrib.auth.models import User, Group, Permission
 from rest_framework.fields import IntegerField
@@ -16,6 +16,23 @@ class FCMDeviceSerializer(serializers.ModelSerializer):
     class Meta:
         model = FCMDevice
         fields = ('registration_id', 'active', 'user', 'date_created')
+
+
+class MovimientoPuntosSerializer(serializers.ModelSerializer):
+    usuario_email = serializers.CharField(source='usuario.user.email', read_only=True, default='')
+    usuario_nombre = serializers.SerializerMethodField()
+    motivo_display = serializers.CharField(source='get_motivo_display', read_only=True)
+
+    class Meta:
+        model = MovimientoPuntos
+        fields = ['id', 'usuario_email', 'usuario_nombre', 'monto', 'motivo',
+                  'motivo_display', 'saldo_resultante', 'referencia', 'fecha']
+
+    def get_usuario_nombre(self, obj):
+        d = obj.usuario
+        if not d:
+            return ''
+        return ((d.nombres or '') + ' ' + (d.apellidos or '')).strip()
 
 
 class InsigniaSerializer(serializers.ModelSerializer):

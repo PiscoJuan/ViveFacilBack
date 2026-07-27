@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Vive Fácil{% endblock %}</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #ebebeb; font-family: Arial, sans-serif; }
+    .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+    .header { background-color: #433689; text-align: center; padding: 28px 40px 22px; }
+    .header img { max-height: 70px; max-width: 220px; }
+    .content { background-color: #F5F5F8; padding: 40px 36px 36px; }
+    .title { text-align: center; margin: 0 0 30px; line-height: 1.15; color: #433689; font-size: 26px; font-weight: 800; }
+    .content p { color: #444444; font-size: 15px; line-height: 1.8; margin: 0 0 14px; }
+    .accent { color: #433689; font-weight: 700; }
+    .highlight { color: #433689; }
+    .credentials { background-color: #ffffff; border-left: 4px solid #FFE92F; padding: 14px 18px; border-radius: 3px; margin: 20px 0; }
+    .credentials p { margin: 0 0 6px; font-size: 15px; }
+    .farewell { padding-top: 20px; margin-top: 28px; border-top: 1px solid #d8d6e8; }
+    .farewell p { color: #444; font-size: 14px; margin: 0 0 3px; }
+    .signature { font-weight: 700; color: #433689; }
+    .closing { font-style: italic; color: #888; }
+    .footer { background-color: #433689; padding: 22px 36px 26px; text-align: center; }
+    .footer-title { color: #FFE92F; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin: 0 0 16px; }
+    .footer-link { color: #ffffff; font-size: 13px; text-decoration: none; }
+    .socials { margin-top: 14px; }
+    .socials a { display: inline-block; margin: 0 6px; text-decoration: none; }
+    .socials img { width: 32px; height: 32px; }
+  </style>
+</head>
+<body>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      <td align="center" style="background-color:#ebebeb; padding:30px 0;">
+        <table class="container" cellpadding="0" cellspacing="0" border="0" width="600">
+
+          <!-- HEADER -->
+          <tr>
+            <td class="header">
+              {% if logo_url %}
+                <img src="{{ logo_url }}" alt="Vive Fácil">
+              {% else %}
+                <span style="color:#FFE92F; font-size:28px; font-weight:800;">Vive Fácil</span>
+              {% endif %}
+            </td>
+          </tr>
+
+          <!-- CONTENT -->
+          <tr>
+            <td class="content">
+              <p class="title">{% block heading %}{% endblock %}</p>
+              {% block body %}{% endblock %}
+
+              <div class="farewell">
+                <p class="signature">El equipo de Vive Fácil</p>
+                <p class="closing">Saludos cordiales</p>
+              </div>
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td class="footer">
+              <a class="footer-link" href="https://www.vivefacil.app/home">www.vivefacil.app</a>
+              <p class="footer-title" style="margin-top:16px;">Síguenos en nuestras redes sociales</p>
+              <div class="socials">
+                {% if url_facebook %}
+                  <a href="{{ url_facebook }}"><img src="{{ icon_facebook }}" alt="Facebook"></a>
+                {% endif %}
+                {% if url_instagram %}
+                  <a href="{{ url_instagram }}"><img src="{{ icon_instagram }}" alt="Instagram"></a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

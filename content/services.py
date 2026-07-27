@@ -249,9 +249,9 @@ def medallas_personales(user):
             list_of_ids.append(a.id)
             medalla_tiene = clientexmedalla.objects.filter(medalla=a, user=dato.user)
             if not medalla_tiene:
+                from accounts.services import registrar_movimiento_puntos
                 clientexmedalla.objects.create(medalla=a, user=dato.user)
-                dato.puntos = dato.puntos + a.puntos
-                dato.save()
+                registrar_movimiento_puntos(dato, a.puntos, "medalla", referencia=str(a.id))
 
     return Medalla.objects.filter(id__in=list_of_ids)
 

@@ -514,3 +514,16 @@ class ProveedorPendienteAdminView(AdminAPIView):
     def post(self, request, format=None):
         _, serializer = services.crear_proveedor_pendiente(request.data, request.FILES)
         return Response({"success": True, "serializer": serializer.data})
+
+
+class MovimientosPuntosAdminView(AdminAPIView, MyPaginationMixin):
+    """Ledger de puntos: cada ganancia/gasto de puntos, más reciente primero.
+    Filtra por `?user=` (email o nombre)."""
+    pagination_class = MyCustomPagination
+
+    def get(self, request, format=None):
+        from api.serializers import MovimientoPuntosSerializer
+        filtro = request.GET.get("user")
+        page = self.paginate_queryset(services.listar_movimientos_puntos_queryset(filtro))
+        if page is not None:
+            return self.get_paginated_response(MovimientoPuntosSerializer(page, many=True).data)

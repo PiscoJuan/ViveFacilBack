@@ -147,6 +147,12 @@ class PuntosSolicitanteView(SolicitanteAPIView):
         return Response(services.obtener_puntos(email))
 
 
+class CanjearInvitacionSolicitanteView(SolicitanteAPIView):
+    def put(self, request, email, format=None):
+        data = services.canjear_codigo_invitacion(email, request.data.get("codigo"))
+        return Response(data)
+
+
 class VersionAndroidSolicitanteView(SolicitanteAPIView):
     """Público (IsPublic), mismo criterio que su análogo de proveedor
     (VersionAndroidProveedorView)."""

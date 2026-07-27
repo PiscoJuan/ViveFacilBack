@@ -316,7 +316,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
 EMAIL_PORT = env.int('EMAIL_PORT', default=587)
-EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='info.vivefacile@gmail.com')
+EMAIL_HOST_USER = env('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
 
 # default static files settings for PythonAnywhere.
@@ -379,8 +379,3 @@ LOGGING = {
         },
     },
 }
-""" 
-if DEBUG and False:  #si estas en modo desarrollo elimina la condicion 'and False'
-    EMAIL_BACKEND = "naomi.mail.backends.naomi.NaomiBackend"
-    EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'tmp')
- """

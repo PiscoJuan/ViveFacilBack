@@ -14,6 +14,8 @@ from accounts.models import (
     Administrador,
     Datos,
     Document,
+    Invitacion,
+    MovimientoPuntos,
     PendienteDocuments,
     Proveedor,
     Proveedor_Pendiente,
@@ -23,6 +25,72 @@ from catalog.models import Profesion, Profesion_Proveedor
 from api.serializers import DocumentSerializer, Proveedor_PendienteSerializer
 
 logger = logging.getLogger(__name__)
+
+
+# --- Puntos e invitación ---------------------------------------------------
+
+def registrar_movimiento_puntos(dato, monto, motivo, referencia=None):
+    """Punto único de mutación de `Datos.puntos`: aplica el delta y deja una
+    fila en el ledger MovimientoPuntos. `monto` puede ser negativo (gasto).
+    El caller es responsable de validar que el saldo no quede negativo."""
+    dato.puntos = (dato.puntos or 0) + monto
+    dato.save()
+    MovimientoPuntos.objects.create(
+        usuario=dato, monto=monto, motivo=motivo,
+        saldo_resultante=dato.puntos, referencia=referencia,
+    )
+    return dato.puntos
+
+
+def generar_codigo_invitacion():
+    """8 chars alfanuméricos impredecibles (secrets), único contra Datos."""
+    import secrets
+    import string
+    alfabeto = string.ascii_uppercase + string.digits
+    while True:
+        codigo = "".join(secrets.choice(alfabeto) for _ in range(8))
+        if not Datos.objects.filter(codigo_invitacion=codigo).exists():
+            return codigo
+
+
+def canjear_codigo_invitacion(invitado_email, codigo):
+    """El invitado ingresa el código de otro usuario. Una vez por cuenta.
+    Otorga +10 al invitado y +2 al invitador. Devuelve {success, motivo, puntos}."""
+    codigo = (codigo or "").strip().upper()
+    if not codigo:
+        return {"success": False, "motivo": "invalido"}
+    try:
+        invitado = Datos.objects.get(user__email=invitado_email)
+    except Datos.DoesNotExist:
+        return {"success": False, "motivo": "invalido"}
+
+    if Invitacion.objects.filter(invitado=invitado).exists():
+        return {"success": False, "motivo": "ya_canjeado", "puntos": invitado.puntos}
+
+    if invitado.codigo_invitacion == codigo:
+        return {"success": False, "motivo": "propio", "puntos": invitado.puntos}
+
+    invitador = Datos.objects.filter(codigo_invitacion=codigo).first()
+    if not invitador:
+        return {"success": False, "motivo": "invalido", "puntos": invitado.puntos}
+
+    Invitacion.objects.create(invitador=invitador, invitado=invitado, codigo=codigo)
+    registrar_movimiento_puntos(invitado, 10, "invitacion_recibida", referencia=codigo)
+    registrar_movimiento_puntos(invitador, 2, "invitacion_enviada", referencia=invitado_email)
+    return {"success": True, "motivo": "ok", "puntos": invitado.puntos}
+
+
+def listar_movimientos_puntos_queryset(filtro_usuario=None):
+    """Ledger de puntos para el admin, más reciente primero. `filtro_usuario`
+    filtra por email o nombre/apellido (contains, case-insensitive)."""
+    qs = MovimientoPuntos.objects.select_related('usuario', 'usuario__user').all()
+    if filtro_usuario:
+        qs = qs.filter(
+            Q(usuario__user__email__icontains=filtro_usuario)
+            | Q(usuario__nombres__icontains=filtro_usuario)
+            | Q(usuario__apellidos__icontains=filtro_usuario)
+        )
+    return qs.order_by('-fecha')
 
 
 def get_proveedor_pendiente_activo_por_email(mail):
@@ -599,14 +667,6 @@ def actualizar_proveedor_pendiente_detalle(pk, data, files):
     from django.utils import timezone
     pendiente.fecha_registro = timezone.now()
     serializer = Proveedor_PendienteSerializer(pendiente, data=data, partial=True)
-    profesiones_lista = data.get("profesion").split(",")
-    if profesiones_lista:
-        Profesion_Proveedor.objects.all().filter(proveedor=pendiente).delete()
-        for profesion in profesiones_lista:
-            profesion_obj = Profesion.objects.filter(nombre=profesion)
-            if profesion_obj:
-                Profesion_Proveedor.objects.get_or_create(
-                    proveedor=pendiente, profesion=profesion_obj.get())
     if serializer.is_valid():
         serializer.save()
         return serializer.data, 200
@@ -926,6 +986,9 @@ def crear_cuenta_registro(data, files):
             )
             if not creado:
                 raise Exception("Esta persona ya existe en Datos")
+
+            dato.codigo_invitacion = generar_codigo_invitacion()
+            dato.save()
 
             if tipo_user == 'Solicitante':
                 Solicitante.objects.create(user_datos=dato, bool_registro_completo=True)

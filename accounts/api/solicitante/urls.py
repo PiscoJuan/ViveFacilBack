@@ -3,6 +3,7 @@ from django.urls import path
 from accounts.api.solicitante.views import (
     CambioContraseniaSolicitanteView,
     CambioPasswordCodigoSolicitanteView,
+    CanjearInvitacionSolicitanteView,
     CompleteDataUserSolicitanteView,
     DatosUsuarioSolicitanteView,
     DatoSolicitanteView,
@@ -37,6 +38,7 @@ urlpatterns = [
     path("validar-codigo/<str:email>/<str:codigo>", ValidarCodigoSolicitanteView.as_view()),
     path("cambiar-password-codigo/<str:email>/<str:password>/<str:codigo>", CambioPasswordCodigoSolicitanteView.as_view()),
     path("puntos/<str:email>", PuntosSolicitanteView.as_view()),
+    path("invitacion/canjear/<str:email>", CanjearInvitacionSolicitanteView.as_view()),
     path("version/android/", VersionAndroidSolicitanteView.as_view()),
     path("version/ios/", VersionIosSolicitanteView.as_view()),
 ]
