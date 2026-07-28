@@ -32,5 +32,5 @@ urlpatterns = [
     path("reactivar/<str:access_security>", ChangePasswordProveedorView.as_view()),
     path("dato-usuario/<str:id>", DatosUsuarioProveedorView.as_view()),
     path("completar-datos/<str:username>/", CompleteDataUserProveedorView.as_view()),
-    path("datos-proveedor/<str:user>", ProveedorPorCorreoProveedorView.as_view()),
+    path("datos-proveedor/", ProveedorPorCorreoProveedorView.as_view()),
 ]

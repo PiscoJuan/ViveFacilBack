@@ -87,12 +87,33 @@ class GoogleLoginSolicitanteView(SocialLoginView):
 
 
 class SolicitanteUserSolicitanteView(SolicitanteAPIView):
-    """Endpoint compartido con Admin (ver `SolicitanteUserAdminView`) —
-    usado en login/registro/perfil propio."""
+    """Perfil propio del solicitante autenticado (login/registro/perfil).
+    La identidad sale del token, no de un parámetro en la URL — evita que
+    cualquier solicitante autenticado pueda pedir el perfil de otro solo
+    cambiando el correo en la ruta. Comparte serializer con Admin (ver
+    `SolicitanteUserAdminView`), que sí recibe el correo por parámetro
+    porque ahí un admin consulta el perfil de otro usuario a propósito."""
 
-    def get(self, request, user, format=None):
-        serializer = SolicitanteSerializer(services.obtener_solicitante_por_email(user), many=True)
-        return Response(serializer.data)
+    def get(self, request, format=None):
+        serializer = SolicitanteSerializer(services.obtener_solicitante_por_email(request.user.email), many=True)
+        data = serializer.data
+        for solicitante in data:
+            usuario = solicitante.get("user_datos", {}).get("user", {})
+            usuario.pop("password", None)
+            usuario.pop("groups", None)
+            usuario.pop("is_superuser", None)
+        return Response(data)
+
+
+class ExisteEmailSolicitanteView(SolicitanteAPIView):
+    """Público: chequeo de disponibilidad de correo antes de registrarse
+    (register.page.ts), no puede exigir sesión previa."""
+
+    permission_classes = [IsPublic]
+
+    def get(self, request, email, format=None):
+        existe = services.obtener_solicitante_por_email(email).exists()
+        return Response({"existe": existe})
 
 
 class DatosUsuarioSolicitanteView(SolicitanteAPIView):

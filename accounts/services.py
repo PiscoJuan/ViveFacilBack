@@ -1257,8 +1257,8 @@ def obtener_proveedor_por_pk(pk):
 
 def obtener_proveedor_por_correo(correo):
     """Confirmado real: Provedor2022 lo usa en el login (`getProveedorByCorreo`,
-    login.page.ts) — se llama antes de tener token, por eso queda público
-    (IsPublic) en el namespace nuevo, igual que antes."""
+    login.page.ts), llamado justo después de guardar el token — requiere
+    sesión (IsProveedor) en el namespace nuevo."""
     from api.serializers import ProveedorSerializer
 
     proveedor = Proveedor.objects.get(user_datos__user__username=correo)

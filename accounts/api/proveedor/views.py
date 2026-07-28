@@ -144,13 +144,17 @@ class CompleteDataUserProveedorView(ProveedorAPIView):
 
 
 class ProveedorPorCorreoProveedorView(ProveedorAPIView):
-    """Se usa durante el login (`getProveedorByCorreo`, login.page.ts) —
-    antes de tener token, por eso queda público."""
+    """Perfil propio del proveedor autenticado (`getProveedorByCorreo`,
+    login.page.ts, llamado justo después de guardar el token). La identidad
+    sale del token, no de un parámetro en la URL."""
 
-    permission_classes = [IsPublic]
-
-    def get(self, request, user, format=None):
-        return Response(services.obtener_proveedor_por_correo(user))
+    def get(self, request, format=None):
+        data = services.obtener_proveedor_por_correo(request.user.username)
+        usuario = data.get("user_datos", {}).get("user", {})
+        usuario.pop("password", None)
+        usuario.pop("groups", None)
+        usuario.pop("is_superuser", None)
+        return Response(data)
 
 
 class ProveedorRegistroManualView(ProveedorAPIView):
