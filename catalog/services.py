@@ -1,10 +1,9 @@
 import datetime
 
-from django.core.cache import cache
 from django.db.models import Q
 
 from accounts.models import Proveedor
-from catalog.models import SERVICIOS_CACHE_KEY, Categoria, Ciudad, Profesion, Profesion_Proveedor, Servicio, SolicitudProfesion
+from catalog.models import Categoria, Ciudad, Profesion, Profesion_Proveedor, Servicio, SolicitudProfesion
 from api.serializers import (
     CategoriaSerializer,
     CiudadSerializer,
@@ -19,18 +18,9 @@ def list_profesiones_activas():
 
 
 def list_servicios(todas=False):
-    """Cachea la tabla completa de servicios (rara vez cambia). La
-    invalidación corre sola vía signal post_save/post_delete en
-    catalog/models.py, así que cualquier alta/edición/baja de un Servicio
-    (admin de Django, este mismo módulo, lo que sea) la limpia sin tener
-    que acordarse acá."""
-    servicios = cache.get(SERVICIOS_CACHE_KEY)
-    if servicios is None:
-        servicios = list(Servicio.objects.all())
-        cache.set(SERVICIOS_CACHE_KEY, servicios, timeout=None)
-    if not todas:
-        return [servicio for servicio in servicios if servicio.estado]
-    return servicios
+    if todas:
+        return Servicio.objects.all()
+    return Servicio.objects.filter(estado=True)
 
 
 def proveedores_activos_por_servicio(servicio_id):

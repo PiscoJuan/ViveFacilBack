@@ -1,7 +1,4 @@
-from django.core.cache import cache
 from django.db import models
-from django.db.models.signals import post_delete, post_save
-from django.dispatch import receiver
 
 from core.campos import URLCompletaFileField, URLCompletaImageField
 
@@ -35,14 +32,6 @@ class Servicio(models.Model):
 
     def __str__(self):
         return self.nombre + " | " + self.descripcion + " | " + self.categoria.nombre
-
-
-SERVICIOS_CACHE_KEY = "servicios_list"
-
-
-@receiver([post_save, post_delete], sender=Servicio)
-def invalidar_cache_servicios(sender, **kwargs):
-    cache.delete(SERVICIOS_CACHE_KEY)
 
 
 class Profesion(models.Model):
