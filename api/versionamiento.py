@@ -10,10 +10,10 @@ class Plataforma(str, Enum):
     ANDROID = "android"
     IOS = "ios"
 
-VERSION_ANDROID_SOLICITANTE = "1"
-VERSION_IOS_SOLICITANTE = "1"
-VERSION_ANDROID_PROVEEDOR = "1"
-VERSION_IOS_PROVEEDOR = "1"
+VERSION_ANDROID_SOLICITANTE = "1.1"
+VERSION_IOS_SOLICITANTE = "1.1"
+VERSION_ANDROID_PROVEEDOR = "1.1"
+VERSION_IOS_PROVEEDOR = "1.1"
 
 VERSIONES = {
     AppMovil.SOLICITANTE: {
@@ -99,7 +99,10 @@ class VersionamientoMiddleware:
 
         if version != expected_version:
             return JsonResponse(
-                {"message": "Debe actualizar a una versión más reciente"},
+                {
+                    "message": "Debe actualizar a una versión más reciente",
+                    "version_requerida": expected_version,
+                },
                 status=426,
             )
 
