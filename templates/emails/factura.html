@@ -48,9 +48,9 @@
     </tr>
     <tr>
       <td style="padding: 10px 14px;">{{ metodo_pago }}</td>
-      <td style="padding: 10px 14px;">{{ oferta }}</td>
+      <td style="padding: 10px 14px;">${{ oferta|floatformat:2 }}</td>
       <td style="padding: 10px 14px;">{{ descuento }}</td>
-      <td style="padding: 10px 14px; font-weight: 700;">{{ valor_total }}</td>
+      <td style="padding: 10px 14px; font-weight: 700;">${{ valor_total|floatformat:2 }}</td>
     </tr>
   </table>
 

@@ -9,7 +9,7 @@
   <p><strong>{{ solicitante_name }}</strong> ya realizó el pago por el servicio de <strong class="highlight">{{ servicio }}</strong>.</p>
 
   <div class="credentials">
-    <p><strong>Monto:</strong> ${{ monto }}</p>
+    <p><strong>Monto:</strong> ${{ monto|floatformat:2 }}</p>
     {% if numero_orden %}<p><strong>N.º de orden:</strong> {{ numero_orden }}</p>{% endif %}
   </div>
 

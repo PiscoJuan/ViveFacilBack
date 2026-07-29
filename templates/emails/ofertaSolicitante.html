@@ -13,7 +13,7 @@
   {% endif %}
 
   <div class="credentials">
-    <p><strong>Precio ofrecido:</strong> ${{ oferta }}</p>
+    <p><strong>Precio ofrecido:</strong> ${{ oferta|floatformat:2 }}</p>
   </div>
 
   <p>Ingresa a la app para revisar la oferta y decidir si la aceptas.</p>
