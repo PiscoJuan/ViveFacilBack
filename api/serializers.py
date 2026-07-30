@@ -132,6 +132,31 @@ class DatosSerializer(serializers.ModelSerializer):
                   'codigo_invitacion', 'telefono', 'genero', 'foto', 'estado', 'fecha_creacion', 'puntos']
 
 
+class DatosContraparteSerializer(serializers.ModelSerializer):
+    """Datos de la *otra* persona en un chat (ver `DatosUsuarioSolicitanteView`
+    / `DatosUsuarioProveedorView`). Solo lo que el chat pinta: nombre y foto.
+
+    No usa `DatosSerializer` porque ese expone hash de password, cédula,
+    teléfono, correo y código de invitación, y este endpoint recibe un id
+    arbitrario en la URL: cualquier usuario autenticado podría enumerar a
+    todos los demás.
+
+    ponytail: se filtra por campos, no por permiso. Verificar que exista un
+    chat entre los dos exigiría consultar Firebase desde el backend; si
+    aparece esa necesidad, ese es el upgrade.
+    """
+
+    user = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Datos
+        fields = ['id', 'user', 'tipo', 'nombres', 'apellidos', 'foto', 'estado']
+
+    def get_user(self, obj):
+        # se mantiene como objeto (no id plano) para no romper el shape que ya consumen las apps
+        return {'id': obj.user_id}
+
+
 class CodigosSerializer(serializers.ModelSerializer):
     user_datos = DatosSerializer()
 

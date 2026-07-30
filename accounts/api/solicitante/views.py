@@ -121,9 +121,9 @@ class DatosUsuarioSolicitanteView(SolicitanteAPIView):
     feature de chat, mostrar datos básicos de la contraparte."""
 
     def get(self, request, id, format=None):
-        from api.serializers import DatosSerializer
+        from api.serializers import DatosContraparteSerializer
 
-        serializer = DatosSerializer(services.obtener_datos_por_user_id(id), many=True)
+        serializer = DatosContraparteSerializer(services.obtener_datos_por_user_id(id), many=True)
         return Response(serializer.data)
 
 
