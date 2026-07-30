@@ -99,9 +99,17 @@ class PagoTarjeta(models.Model):
         'promotions.Promocion', on_delete=models.CASCADE, null=True, blank=True)
     cupon = models.ForeignKey(
         'promotions.Cupon', on_delete=models.CASCADE, null=True, blank=True)
+    # ponytail: FloatField para dinero es un bug latente de redondeo (igual que
+    # los cargo_* de abajo). Migrarlo a DecimalField es otro trabajo: se anota.
     valor = models.FloatField(default=0.0)
     descripcion = models.CharField(max_length=255, null=True)
+    # OJO: `impuesto` es la TASA en porcentaje (15), no el monto — nombre
+    # heredado que no se cambia para no romper los reportes existentes.
     impuesto = models.IntegerField(null=False)
+    # Desglose incluido en `valor` (valor = base_imponible + iva_monto). Se copia
+    # de TransaccionPaymentez al aprobarse. Nulo en registros anteriores.
+    base_imponible = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    iva_monto = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     referencia = models.CharField(max_length=255, null=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True, null=True)
     carrier_id = models.CharField(max_length=255, null=True)
@@ -132,6 +140,11 @@ class PagoEfectivo(models.Model):
         'promotions.Cupon', on_delete=models.CASCADE, null=True,  blank=True)
     valor = models.FloatField(default=0.0)
     oferta = models.FloatField(default=0.0)
+    # Mismo desglose que PagoTarjeta: el efectivo también es precio final con
+    # IVA incluido. Nulo en registros anteriores.
+    base_imponible = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    iva_monto = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    iva_porcentaje = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     descripcion = models.CharField(max_length=255, null=True)
     concepto = models.CharField(max_length=255, null=True, default="Solicitud")
     referencia = models.CharField(max_length=255, null=True)

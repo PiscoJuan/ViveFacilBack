@@ -23,7 +23,11 @@ logger = logging.getLogger("api")
 
 CENT = Decimal("0.01")
 TAX_PCT = Decimal("15")  # IVA Ecuador
-TAX_FACTOR = Decimal("1.15")
+# El factor se deriva de la tasa a propósito: antes eran dos constantes sueltas
+# (15 y 1.15) que había que mantener sincronizadas a mano, y cambiar una sin la
+# otra producía un desglose incoherente en silencio.
+def _factor(tax_pct: Decimal) -> Decimal:
+    return Decimal(1) + (tax_pct / Decimal(100))
 
 
 class PagoError(Exception):
@@ -95,22 +99,28 @@ def _descuento_pct(username, user, cupon_codigo):
     return 0, None, False
 
 
-def _montos(oferta: Decimal, pct: int) -> dict:
+def _montos(oferta: Decimal, pct: int, tax_pct: Decimal = TAX_PCT) -> dict:
     """
-    Replica el monto que cobraba el front: `amount` = oferta con el descuento
-    aplicado, tratado como IVA incluido.
-    ponytail: el front viejo COBRABA este `amount` pero REGISTRABA amount*1.15
-    (bug de math en cliente). Acá se cobra y se registra el MISMO `amount`.
+    La oferta del proveedor es PRECIO FINAL con IVA incluido: si oferta = 5.00,
+    el cliente paga 5.00 y el IVA se extrae al revés (4.35 + 0.65), no se suma
+    encima. `amount` es la oferta con el descuento aplicado.
+
+    `tax_pct` es parámetro y no la constante global para el día en que haya
+    proveedores con IVA 0; hoy todos los llamadores usan el default.
+
+    ponytail: el front viejo COBRABA este `amount` pero MOSTRABA amount*1.15
+    (bug de math en cliente). Acá se cobra, se muestra y se registra el MISMO
+    `amount`.
     """
     base = (oferta * (Decimal(100 - pct) / Decimal(100)))
     amount = base.quantize(CENT, rounding=ROUND_HALF_UP)
-    taxable = (amount / TAX_FACTOR).quantize(CENT, rounding=ROUND_HALF_UP)
+    taxable = (amount / _factor(tax_pct)).quantize(CENT, rounding=ROUND_HALF_UP)
     vat = (amount - taxable).quantize(CENT, rounding=ROUND_HALF_UP)
     return {
         "amount": amount,
         "taxable_amount": taxable,
         "vat": vat,
-        "tax_percentage": TAX_PCT,
+        "tax_percentage": tax_pct,
     }
 
 
@@ -160,6 +170,12 @@ def _guardar_transaccion(*, tx_id, usuario, solicitud, montos, card_token,
             usuario=usuario,
             solicitud=solicitud,
             monto=montos["amount"],
+            # El desglose se persiste acá y no se recalcula al reportar: si
+            # mañana cambia la tasa de IVA, los pagos viejos deben conservar la
+            # que se les aplicó.
+            base_imponible=montos["taxable_amount"],
+            iva_monto=montos["vat"],
+            iva_porcentaje=montos["tax_percentage"],
             card_token=card_token or card.get("token"),
             referencia=card.get("transaction_reference") or tx.get("id"),
             codigo_autorizacion=tx.get("authorization_code"),
@@ -210,7 +226,12 @@ def _finalizar(transaccion):
             cupon=cupon,
             valor=float(transaccion.monto),
             descripcion=facturacion.get("descripcion") or "Solicitud",
-            impuesto=int(TAX_PCT),
+            # `impuesto` es la TASA (15), no el monto — nombre heredado. El monto
+            # va en iva_monto. Se copian de la transacción, que es donde se
+            # calcularon, para que ambos registros digan lo mismo.
+            impuesto=int(transaccion.iva_porcentaje or TAX_PCT),
+            base_imponible=transaccion.base_imponible,
+            iva_monto=transaccion.iva_monto,
             solicitud=solicitud,
             referencia=transaccion.referencia or transaccion.id,
             carrier_id=transaccion.codigo_autorizacion or "",
@@ -392,9 +413,6 @@ class PagoSolicitudController:
             card_cvc=card_cvc,
             browser_info=browser_info,
             threeds_ctx=threeds_ctx if browser_info else None,
-            vat=montos["vat"],
-            taxable_amount=montos["taxable_amount"],
-            tax_percentage=montos["tax_percentage"],
         )
         resultado = client.debit(payload)
 

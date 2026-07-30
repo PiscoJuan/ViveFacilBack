@@ -70,16 +70,24 @@ class PaymentezClient:
     # --------------------------------------------------------------- payloads
     def build_payload_debit(self, *, user_id, email, monto, descripcion,
                             dev_reference, card_token, card_cvc, browser_info=None,
-                            threeds_ctx=None, vat=0, taxable_amount=0, tax_percentage=0):
+                            threeds_ctx=None):
+        # A Paymentez se le declara IVA CERO a propósito: `amount` es el precio
+        # final y los tres campos fiscales van presentes pero en 0. Como
+        # `taxable_amount` es la porción del monto sujeta a impuesto, si el IVA
+        # declarado es 0 esa porción también es 0 — no el monto completo.
+        #
+        # El desglose real (base imponible / IVA / tasa) SÍ se calcula y se
+        # guarda en nuestra BD, en TransaccionPaymentez y PagoTarjeta: la
+        # declaración del impuesto se lleva por fuera de la pasarela.
         payload = {
             "user": {"id": str(user_id), "email": email or "sincorreo@vivefacil.ec"},
             "order": {
                 "amount": float(round(monto, 2)),
                 "description": descripcion,
                 "dev_reference": dev_reference,
-                "vat": float(round(vat, 2)),
-                "taxable_amount": float(round(taxable_amount, 2)),
-                "tax_percentage": float(round(tax_percentage, 2)),
+                "vat": 0,
+                "taxable_amount": 0,
+                "tax_percentage": 0,
             },
             "card": {
                 "token": card_token,

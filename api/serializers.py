@@ -157,7 +157,7 @@ class DatosContraparteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Datos
         fields = ['id', 'user', 'tipo', 'nombres', 'apellidos', 'foto', 'estado',
-                  'cedula', 'telefono', 'correo', 'profesion', 'rating', 'descripcion']
+                  'cedula', 'telefono', 'correo', 'ciudad', 'profesion', 'rating', 'descripcion']
 
     def get_user(self, obj):
         # se mantiene como objeto (no id plano) para no romper el shape que ya consumen las apps
@@ -174,11 +174,12 @@ class DatosContraparteSerializer(serializers.ModelSerializer):
         return (proveedor.profesion or '') if proveedor else ''
 
     def get_rating(self, obj):
-        """Calificación promedio, para el detalle del proveedor que se abre
-        desde la lista de chats. Es dato público (ya se muestra en los
-        listados de proveedores); None si la contraparte no es proveedor."""
-        proveedor = getattr(obj, 'proveedor', None)
-        return proveedor.rating if proveedor else None
+        """Calificación promedio, para el detalle que se abre desde la lista de
+        chats. Sirve para ambos roles: `Proveedor.rating` y `Solicitante.rating`
+        son la misma propiedad calculada (base bayesiana, ver accounts/models.py).
+        None si la persona no tiene ninguno de los dos perfiles."""
+        perfil = getattr(obj, 'proveedor', None) or getattr(obj, 'solicitante', None)
+        return perfil.rating if perfil else None
 
     def get_descripcion(self, obj):
         """Presentación pública del proveedor; vacía si no es proveedor."""

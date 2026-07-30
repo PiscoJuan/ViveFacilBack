@@ -98,10 +98,11 @@ def registrar_pago_efectivo(data):
     """Devuelve (pago_efectivo_o_None, data: dict)."""
     from core.firebase import send_notificationF
 
+    from pagos.services.pago_controller import PagoError, _montos, _oferta_adjudicada
+
     resp = {"success": False}
     user = data.get("username")
     id_cupon = data.get("id_cupon")
-    amount = data.get("valor")
     descuento = data.get("descuento")
     desc = data.get("descripcion")
     referencia = data.get("referencia")
@@ -121,10 +122,30 @@ def registrar_pago_efectivo(data):
         resp["error"] = "No se encontraron los datos de la promocion"
         return None, resp
 
+    # El monto se deriva en el servidor desde la oferta adjudicada, igual que en
+    # el pago con tarjeta. Antes se tomaba `data["valor"]` tal cual del cliente:
+    # además de ser un monto sin validar, venía inflado un 15% porque el front
+    # sumaba el IVA encima, y el efectivo quedaba registrado por encima de lo
+    # que se cobraba por tarjeta para la misma oferta.
+    try:
+        pct = max(0, min(100, int(float(descuento or 0))))
+        montos = _montos(_oferta_adjudicada(solicitud), pct)
+    except PagoError as e:
+        resp["error"] = e.mensaje
+        return None, resp
+    except (TypeError, ValueError):
+        resp["error"] = "El descuento recibido no es un porcentaje válido."
+        return None, resp
+
     try:
         pago_efectivo = PagoEfectivo.objects.create(
-            user=usuario, promocion=None, cupon=cupon, valor=amount, descripcion=desc,
-            referencia=referencia, oferta=descuento, solicitud=solicitud, usuario=us,
+            user=usuario, promocion=None, cupon=cupon,
+            valor=float(montos["amount"]), descripcion=desc,
+            base_imponible=montos["taxable_amount"], iva_monto=montos["vat"],
+            iva_porcentaje=montos["tax_percentage"],
+            # `oferta` guardaba el descuento por un error histórico; ahora guarda
+            # lo que dice su nombre.
+            referencia=referencia, oferta=float(montos["amount"]), solicitud=solicitud, usuario=us,
             servicio=serv, proveedor=prov, prov_correo=prov_email, prov_telefono=prov_phone,
             user_telefono=us_phone,
         )

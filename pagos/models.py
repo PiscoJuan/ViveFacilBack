@@ -114,6 +114,13 @@ class TransaccionPaymentez(models.Model):
     # token de la tarjeta en Paymentez (no es el PAN).
     card_token = models.CharField(max_length=255, null=True, blank=True)
     monto = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    # Desglose del IVA, que va incluido en `monto` (monto = base_imponible +
+    # iva_monto). Se guarda en vez de recalcularse al reportar: la tasa cambia
+    # con el tiempo (Ecuador pasó de 12% a 15%) y los pagos viejos deben
+    # conservar la suya. Nulos en los registros anteriores a este cambio.
+    base_imponible = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    iva_monto = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    iva_porcentaje = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     # estado interno simplificado
     estado = models.CharField(
         max_length=20,
