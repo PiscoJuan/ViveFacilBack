@@ -134,12 +134,14 @@ class DatosSerializer(serializers.ModelSerializer):
 
 class DatosContraparteSerializer(serializers.ModelSerializer):
     """Datos de la *otra* persona en un chat (ver `DatosUsuarioSolicitanteView`
-    / `DatosUsuarioProveedorView`). Solo lo que el chat pinta: nombre y foto.
+    / `DatosUsuarioProveedorView`). Cubre lo que muestra el modal de detalle
+    del proveedor, que se abre tanto desde el listado de proveedores como
+    desde la lista de chats.
 
-    No usa `DatosSerializer` porque ese expone hash de password, cédula,
-    teléfono, correo y código de invitación, y este endpoint recibe un id
-    arbitrario en la URL: cualquier usuario autenticado podría enumerar a
-    todos los demás.
+    No usa `DatosSerializer` porque ese expone el hash de la contraseña, los
+    grupos y el flag de superusuario, y este endpoint recibe un id arbitrario
+    en la URL. Los datos de contacto sí van: son los mismos que
+    `proveedores-por-servicio` ya entrega a cualquier solicitante autenticado.
 
     ponytail: se filtra por campos, no por permiso. Verificar que exista un
     chat entre los dos exigiría consultar Firebase desde el backend; si
@@ -147,14 +149,41 @@ class DatosContraparteSerializer(serializers.ModelSerializer):
     """
 
     user = serializers.SerializerMethodField()
+    correo = serializers.SerializerMethodField()
+    profesion = serializers.SerializerMethodField()
+    rating = serializers.SerializerMethodField()
+    descripcion = serializers.SerializerMethodField()
 
     class Meta:
         model = Datos
-        fields = ['id', 'user', 'tipo', 'nombres', 'apellidos', 'foto', 'estado']
+        fields = ['id', 'user', 'tipo', 'nombres', 'apellidos', 'foto', 'estado',
+                  'cedula', 'telefono', 'correo', 'profesion', 'rating', 'descripcion']
 
     def get_user(self, obj):
         # se mantiene como objeto (no id plano) para no romper el shape que ya consumen las apps
         return {'id': obj.user_id}
+
+    def get_correo(self, obj):
+        return obj.user.email if obj.user else ''
+
+    def get_profesion(self, obj):
+        """Oficio del proveedor, para el chip de la lista de chats del
+        solicitante. Vive en `Proveedor.profesion` (texto libre, separado por
+        comas si tiene varios); vacío si la contraparte no es proveedor."""
+        proveedor = getattr(obj, 'proveedor', None)
+        return (proveedor.profesion or '') if proveedor else ''
+
+    def get_rating(self, obj):
+        """Calificación promedio, para el detalle del proveedor que se abre
+        desde la lista de chats. Es dato público (ya se muestra en los
+        listados de proveedores); None si la contraparte no es proveedor."""
+        proveedor = getattr(obj, 'proveedor', None)
+        return proveedor.rating if proveedor else None
+
+    def get_descripcion(self, obj):
+        """Presentación pública del proveedor; vacía si no es proveedor."""
+        proveedor = getattr(obj, 'proveedor', None)
+        return (proveedor.descripcion or '') if proveedor else ''
 
 
 class CodigosSerializer(serializers.ModelSerializer):
