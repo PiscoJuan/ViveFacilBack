@@ -95,10 +95,11 @@ class Tarjeta(models.Model):
 class PagoTarjeta(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE, null=True)
     tarjeta = models.ForeignKey(Tarjeta, on_delete=models.CASCADE, null=True)
-    promocion = models.ForeignKey(
-        'promotions.Promocion', on_delete=models.CASCADE, null=True, blank=True)
+    # SET_NULL y no CASCADE: con CASCADE, borrar un cupón desde el admin
+    # borraba también los PAGOS hechos con él. El registro contable tiene que
+    # sobrevivir a la desaparición de la promoción.
     cupon = models.ForeignKey(
-        'promotions.Cupon', on_delete=models.CASCADE, null=True, blank=True)
+        'promotions.Cupon', on_delete=models.SET_NULL, null=True, blank=True)
     # ponytail: FloatField para dinero es un bug latente de redondeo (igual que
     # los cargo_* de abajo). Migrarlo a DecimalField es otro trabajo: se anota.
     valor = models.FloatField(default=0.0)
@@ -134,10 +135,10 @@ class PagoTarjeta(models.Model):
 
 class PagoEfectivo(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE, null=True)
-    promocion = models.ForeignKey(
-        'promotions.Promocion', on_delete=models.CASCADE, null=True,  blank=True)
+    # SET_NULL por lo mismo que en PagoTarjeta: el pago no puede desaparecer
+    # porque se borre el cupón.
     cupon = models.ForeignKey(
-        'promotions.Cupon', on_delete=models.CASCADE, null=True,  blank=True)
+        'promotions.Cupon', on_delete=models.SET_NULL, null=True,  blank=True)
     valor = models.FloatField(default=0.0)
     oferta = models.FloatField(default=0.0)
     # Mismo desglose que PagoTarjeta: el efectivo también es precio final con

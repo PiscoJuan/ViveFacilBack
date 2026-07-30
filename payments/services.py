@@ -119,7 +119,7 @@ def registrar_pago_efectivo(data):
         cupon = Cupon.objects.get(pk=id_cupon) if id_cupon else None
         solicitud = Solicitud.objects.get(id=solicitud_id)
     except Exception:
-        resp["error"] = "No se encontraron los datos de la promocion"
+        resp["error"] = "No se encontraron el usuario, el cupón o la solicitud"
         return None, resp
 
     # El monto se deriva en el servidor desde la oferta adjudicada, igual que en
@@ -139,7 +139,7 @@ def registrar_pago_efectivo(data):
 
     try:
         pago_efectivo = PagoEfectivo.objects.create(
-            user=usuario, promocion=None, cupon=cupon,
+            user=usuario, cupon=cupon,
             valor=float(montos["amount"]), descripcion=desc,
             base_imponible=montos["taxable_amount"], iva_monto=montos["vat"],
             iva_porcentaje=montos["tax_percentage"],
@@ -151,8 +151,11 @@ def registrar_pago_efectivo(data):
         )
         if cupon:
             try:
+                from django.utils import timezone
+
                 cupon_aplicado = Cupon_Aplicado.objects.get(cupon=cupon, user=usuario)
                 cupon_aplicado.estado = False
+                cupon_aplicado.fecha_uso = timezone.now()
                 cupon_aplicado.save()
             except Exception:
                 pass

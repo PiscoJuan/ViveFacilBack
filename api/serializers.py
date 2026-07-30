@@ -2,7 +2,7 @@ from rest_framework import serializers
 from content.models import Cargo, Insignia, Medalla, Politicas, Publicidad, Suggestion, clientexmedalla
 from catalog.models import Categoria, Ciudad, Ciudad_Disponible, Profesion, Profesion_Proveedor, Servicio, SolicitudProfesion
 from payments.models import Banco, Cuenta, PagoEfectivo, PagoSolicitud, PagoTarjeta, Plan, PlanProveedor, Tarjeta, Tipo_Cuenta
-from promotions.models import Cupon, Cupon_Aplicado, CuponCategoria, Promocion, PromocionCategoria
+from promotions.models import Cupon, Cupon_Aplicado, CuponCategoria
 from notifications.models import Notificacion, NotificacionMasiva
 from solicitudes.models import Envio_Interesados, Solicitud, Tipo_Pago, Ubicacion
 from accounts.models import Administrador, Codigos, Datos, Document, Invitacion, MovimientoPuntos, PendienteDocuments, Proveedor, Proveedor_Pendiente, Solicitante
@@ -55,11 +55,32 @@ class CategoriaSerializer(serializers.ModelSerializer):
 
 
 class CuponSerializer(serializers.ModelSerializer):
+    # Dos cosas distintas, a propósito en dos campos:
+    #   `estado`   -> interruptor manual del admin (booleano del modelo)
+    #   `vigencia` -> si sirve por fechas y cupos, sin mirar el interruptor
+    # Un cupón puede estar habilitado y aun así expirado o agotado.
+    vigencia = serializers.SerializerMethodField()
+    usos = serializers.SerializerMethodField()
+
     class Meta:
         model = Cupon
         fields = ['id', 'codigo', 'titulo', 'descripcion', 'porcentaje', 'participantes','fecha_creacion',
-                  'fecha_iniciacion', 'fecha_expiracion', 'estado', 'puntos', 'foto','tipo_categoria', 'cantidad']
-        
+                  'fecha_iniciacion', 'fecha_expiracion', 'estado', 'puntos', 'foto','tipo_categoria', 'cantidad',
+                  'vigencia', 'usos']
+
+    def get_vigencia(self, obj):
+        from promotions.services import vigencia_cupon
+
+        return vigencia_cupon(obj)
+
+    def get_usos(self, obj):
+        """canjeados / usados / pendientes / restantes. Ver
+        promotions.services.estadisticas_cupon."""
+        from promotions.services import estadisticas_cupon
+
+        return estadisticas_cupon(obj)
+
+
 
 
 class PublicidadSerializer(serializers.ModelSerializer):
@@ -201,6 +222,38 @@ class Cupon_AplicadoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cupon_Aplicado
         fields = ['id', 'cupon', 'user', 'estado']
+
+
+class CuponUsoAdminSerializer(serializers.ModelSerializer):
+    """Una fila de la tabla "quién usó este cupón" del admin. No anida el cupón
+    (ya se conoce, es el de la pantalla) y en cambio resuelve los datos de la
+    persona, que en el modelo solo está como un username suelto."""
+
+    usuario = serializers.SerializerMethodField()
+    usado = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Cupon_Aplicado
+        fields = ['id', 'user', 'usuario', 'estado', 'usado', 'fecha_canje', 'fecha_uso']
+
+    def get_usado(self, obj):
+        # estado=False significa "ya se consumió en un pago".
+        return not obj.estado
+
+    def get_usuario(self, obj):
+        """`Cupon_Aplicado.user` guarda el username (el correo), no un FK, así
+        que hay que ir a buscar la persona. Devuelve None si el usuario ya no
+        existe: el canje histórico igual se muestra."""
+        datos = Datos.objects.filter(user__username=obj.user).select_related('user').first()
+        if not datos:
+            return None
+        return {
+            'nombres': datos.nombres,
+            'apellidos': datos.apellidos,
+            'correo': datos.user.email if datos.user else obj.user,
+            'telefono': datos.telefono,
+            'foto': datos.foto.url if datos.foto else None,
+        }
 
 
 class DocumentSerializer(serializers.ModelSerializer):
@@ -419,42 +472,24 @@ class NotificacionSerializer(serializers.ModelSerializer):
 
 
 
-class PromocionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Promocion
-        fields = ['id', 'codigo', 'titulo', 'descripcion', 'porcentaje', 'fecha_creacion', 'fecha_iniciacion',
-                  'fecha_expiracion', 'estado', 'participantes', 'foto', 'tipo_categoria', 'cantidad']
-
-
-class PromocionCategoriaSerializer(serializers.ModelSerializer):
-    promocion = PromocionSerializer()
-    categoria = CategoriaSerializer()
-
-    class Meta:
-        model = PromocionCategoria
-        fields = ['id', 'promocion', 'categoria', 'fecha_creacion', 'estado']
-
-
 class PagoTarjetaSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     tarjeta = TarjetaSerializer()
-    promocion = PromocionSerializer()
     solicitud = SolicitudSerializer()
 
     class Meta:
         model = PagoTarjeta
-        fields = ['id', 'user', 'concepto', 'promocion', 'tarjeta', 'valor', 'descripcion', 'carrier_id', 'carrier_code', 'impuesto', 'referencia', 'fecha_creacion',
+        fields = ['id', 'user', 'concepto', 'tarjeta', 'valor', 'descripcion', 'carrier_id', 'carrier_code', 'impuesto', 'referencia', 'fecha_creacion',
                   'estado', 'pago_proveedor', 'cargo_paymentez', 'cargo_banco', 'cargo_sistema', 'proveedor', 'servicio', 'usuario', 'prov_correo', 'prov_telefono', 'solicitud']
 
 
 class PagoEfectivoSerializer(serializers.ModelSerializer):
     user = UserSerializer()
-    promocion = PromocionSerializer()
     solicitud = SolicitudSerializer()
 
     class Meta:
         model = PagoEfectivo
-        fields = ['id', 'user', 'concepto', 'promocion', 'valor', 'descripcion', 'referencia', 'fecha_creacion',
+        fields = ['id', 'user', 'concepto', 'valor', 'descripcion', 'referencia', 'fecha_creacion',
                   'estado', 'proveedor', 'servicio', 'usuario', 'prov_correo', 'prov_telefono', 'user_telefono', 'solicitud']
 
 

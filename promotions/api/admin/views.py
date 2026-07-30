@@ -1,47 +1,10 @@
 from rest_framework import status
 from rest_framework.response import Response
 
-from api.serializers import CuponSerializer, PromocionSerializer
+from api.serializers import CuponSerializer, CuponUsoAdminSerializer
+from core.pagination import MyCustomPagination, MyPaginationMixin
 from core.views import AdminAPIView
 from promotions import services
-
-
-class PromocionesListAdminView(AdminAPIView):
-    """Ruta base `admin/promotions/promociones/` (GET+POST) — antes
-    Admin2022 la pedía en `web/promotions/promociones/` (misma lógica que
-    promotions.api.web.views.PromocionesWebView)."""
-
-    def get(self, request, format=None):
-        return Response(PromocionSerializer(services.list_promociones(), many=True).data)
-
-    def post(self, request, format=None):
-        _, data = services.crear_promocion(request.data, request.POST.getlist('categorias'))
-        return Response(data)
-
-
-class PromocionesAdminView(AdminAPIView):
-    """Solo PUT (`promocion_update/<id>`)/DELETE (`promocion_delete/<id>`),
-    admin-exclusivas. El GET (`promociones/`, compartido de verdad con
-    Solicitante2022) y el POST viven en
-    `promotions.api.web.views.PromocionesWebView`, con permiso endurecido
-    a IsAdministrador para todo lo que no sea GET."""
-
-    def put(self, request, id, format=None):
-        data = services.actualizar_promocion(request.data, request.POST.getlist("categorias"))
-        return Response(data)
-
-    def delete(self, request, id, format=None):
-        services.eliminar_promocion(id)
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-class PromocionDetailsAdminView(AdminAPIView):
-    def get(self, request, pk, format=None):
-        return Response(PromocionSerializer(services.obtener_promocion(pk)).data)
-
-    def put(self, request, format=None):
-        services.actualizar_estado_promocion(request.GET.get("id"), request.data.get("estado"))
-        return Response(status=status.HTTP_200_OK)
 
 
 class CuponesAdminView(AdminAPIView):
@@ -53,19 +16,42 @@ class CuponesAdminView(AdminAPIView):
         return Response(data)
 
     def put(self, request, id, format=None):
-        data = services.actualizar_cupon(request.data, request.POST.getlist("categorias"))
+        # Se pasa el id de la URL para poder editar también el código.
+        data = services.actualizar_cupon(request.data, request.POST.getlist("categorias"), cupon_id=id)
         return Response(data)
 
     def delete(self, request, id, format=None):
-        services.eliminar_cupon(id)
+        ok, data = services.eliminar_cupon(id)
+        if not ok:
+            return Response(data, status=status.HTTP_409_CONFLICT)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CuponDetailsAdminView(AdminAPIView):
-    """Solo PUT (`cupon_estado/`), admin-exclusivo. El GET (`cupones/<pk>`)
-    lo consume también Solicitante2022 y vive en
-    `promotions.api.web.views.CuponDetalleWebView`."""
+    """PUT `cupones/estado/?id=N` (interruptor manual) y GET
+    `cupones/<pk>/detalle/` (cupón + estadísticas para la pantalla de detalle
+    del admin). El GET plano `cupones/<pk>` lo consume también Solicitante2022 y
+    vive en `promotions.api.web.views.CuponDetalleWebView`."""
+
+    def get(self, request, pk, format=None):
+        try:
+            cupon = services.obtener_cupon(pk)
+        except Exception:
+            return Response({"error": "No se encontró el cupón."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(CuponSerializer(cupon).data)
 
     def put(self, request, format=None):
         services.actualizar_estado_cupon(request.GET.get("id"), request.data.get("estado"))
         return Response(status=status.HTTP_200_OK)
+
+
+class CuponUsosAdminView(AdminAPIView, MyPaginationMixin):
+    """Paginado: quién canjeó el cupón y si ya lo usó en un pago."""
+
+    pagination_class = MyCustomPagination
+
+    def get(self, request, pk, format=None):
+        page = self.paginate_queryset(services.usos_de_cupon(pk))
+        if page is not None:
+            return self.get_paginated_response(CuponUsoAdminSerializer(page, many=True).data)
+        return Response([])

@@ -1,16 +1,8 @@
 from rest_framework.response import Response
 
-from api.serializers import Cupon_AplicadoSerializer, CuponCategoriaSerializer, PromocionSerializer
+from api.serializers import Cupon_AplicadoSerializer, CuponCategoriaSerializer
 from core.views import SolicitanteAPIView
 from promotions import services
-
-
-class PromocionesSolicitanteView(SolicitanteAPIView):
-    """Endpoint propio del solicitante para listar promociones — antes
-    pedía una ruta sin ningún prefijo de rol."""
-
-    def get(self, request, format=None):
-        return Response(PromocionSerializer(services.list_promociones(), many=True).data)
 
 
 class CuponAplicadoSolicitanteView(SolicitanteAPIView):

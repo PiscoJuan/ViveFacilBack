@@ -222,7 +222,6 @@ def _finalizar(transaccion):
         pago_tarjeta = PagoTarjeta.objects.create(
             user=usuario,
             tarjeta=None,  # las tarjetas viven en Paymentez, no en la BD local
-            promocion=None,
             cupon=cupon,
             valor=float(transaccion.monto),
             descripcion=facturacion.get("descripcion") or "Solicitud",
@@ -252,9 +251,11 @@ def _finalizar(transaccion):
 
         # consumir descuento
         if cupon:
+            from django.utils import timezone
+
             Cupon_Aplicado.objects.filter(
                 cupon=cupon, user=usuario.username, estado=True
-            ).update(estado=False)
+            ).update(estado=False, fecha_uso=timezone.now())
         if ctx.get("usar_desc_unico"):
             usar_descuento_unico(_email(usuario))
 

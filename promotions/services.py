@@ -2,8 +2,8 @@ import datetime
 
 from accounts.models import Datos
 from catalog.models import Categoria
-from promotions.models import Cupon, Cupon_Aplicado, CuponCategoria, Promocion, PromocionCategoria
-from api.serializers import CuponSerializer, PromocionSerializer
+from promotions.models import Cupon, Cupon_Aplicado, CuponCategoria
+from api.serializers import CuponSerializer
 
 
 def cupones_aplicados_activos(user):
@@ -55,107 +55,50 @@ def _notificar_solicitantes(titulo, cuerpo, data_extra):
         send_notificationF(tokens, titulo, cuerpo, data_extra)
 
 
-def list_promociones():
-    """El
-    `order_by('-pk')` es el comportamiento real (el filtro por fecha
-    comentado en el original nunca se aplicó)."""
-    return Promocion.objects.all().order_by("-pk")
+def _a_fecha_aware(valor):
+    """Normaliza una fecha que llega del formulario a un datetime con zona.
+
+    Los `<input type="datetime-local">` del admin mandan '2023-10-26T00:00', sin
+    zona horaria. Si se asigna ese string al modelo y se guarda, la instancia en
+    memoria SIGUE teniendo el string (Django no la refresca), y cualquier cosa
+    que después compare esa fecha revienta con
+    "'<' not supported between 'datetime.datetime' and 'str'". Además Django
+    avisa por cada guardado (RuntimeWarning: naive datetime).
+
+    Si no se puede interpretar se devuelve el valor tal cual, para no cambiar el
+    comportamiento previo en formatos que no contemplamos.
+    """
+    from django.utils import timezone
+    from django.utils.dateparse import parse_date, parse_datetime
+
+    if not valor or not isinstance(valor, str):
+        return valor
+
+    fecha = parse_datetime(valor)
+    if fecha is None:
+        solo_dia = parse_date(valor)
+        if solo_dia is None:
+            return valor
+        fecha = datetime.datetime.combine(solo_dia, datetime.time.min)
+
+    return timezone.make_aware(fecha) if timezone.is_naive(fecha) else fecha
 
 
-def crear_promocion(data, categorias_nombres):
-    """Devuelve (promocion_o_None, data: dict)."""
-    resp = {"success": False}
-    try:
-        promocion = Promocion.objects.create(
-            titulo=data.get("titulo"), descripcion=data.get("descripcion"),
-            fecha_expiracion=data.get("fecha_expiracion"), porcentaje=data.get("porcentaje"),
-            codigo=data.get("codigo"), fecha_iniciacion=data.get("fecha_iniciacion"),
-            participantes=data.get("participantes"), foto=data.get("foto"),
-            tipo_categoria=data.get("tipo_categoria"), cantidad=data.get("cantidad"),
-        )
-    except Exception:
-        resp["error"] = "No se pudo crear la promoción"
-        return None, resp
+def _comparable(valor):
+    """Devuelve un datetime con zona que se pueda comparar con `timezone.now()`,
+    o None si el valor no sirve.
 
-    try:
-        for nombre in categorias_nombres:
-            categoria = Categoria.objects.all().filter(nombre=nombre)
-            PromocionCategoria.objects.create(categoria=categoria[0], promocion=promocion)
-    except Exception:
-        promocion.delete()
-        resp["error"] = "No se pudo asignar las categorias"
-        return None, resp
+    `vigencia_cupon` lo usa para no reventar nunca: se lo llama desde
+    `CuponSerializer`, y una función que solo decide una etiqueta no puede
+    tumbar un request. Si llega un string sin normalizar, se intenta convertir;
+    si no se puede, se ignora ese criterio en vez de fallar.
+    """
+    from django.utils import timezone
 
-    _notificar_solicitantes(
-        "Nueva Promoción " + promocion.titulo, promocion.descripcion,
-        # "Home" tampoco era una ruta; el resto de avisos al solicitante usan
-        # "/main-tabs/home" (ver catalog/services.py).
-        {"ruta": "/main-tabs/home", "descripcion": "Se ha creado una nueva promoción"},
-    )
-    resp["success"] = True
-    resp["msg"] = "La promoción se ha creado exitosamente"
-    resp["promocion"] = PromocionSerializer(promocion).data
-    return promocion, resp
-
-
-def actualizar_promocion(data, categorias_nombres):
-    """Busca
-    por `codigo` (viene del body), no por el `id` de la URL — tal cual el
-    original (el `id` de la URL nunca se usa)."""
-    resp = {"success": False}
-    codigo = data.get("codigo")
-    try:
-        promocion = Promocion.objects.get(codigo=codigo)
-    except Promocion.DoesNotExist:
-        resp["error"] = "No se encontró la promoción"
-        return resp
-
-    promocion.titulo = data.get("titulo")
-    promocion.descripcion = data.get("descripcion")
-    promocion.participantes = data.get("participantes")
-    promocion.porcentaje = data.get("porcentaje")
-    promocion.cantidad = data.get("cantidad")
-    promocion.fecha_iniciacion = data.get("fecha_iniciacion")
-    promocion.fecha_expiracion = data.get("fecha_expiracion")
-    if data.get("foto") is not None:
-        promocion.foto = data.get("foto")
-    promocion.save()
-
-    try:
-        catnom = list(
-            PromocionCategoria.objects.all()
-            .filter(promocion__codigo=codigo)
-            .values_list("categoria__nombre", flat=True)
-        )
-        for cat in categorias_nombres:
-            if cat not in catnom:
-                categ = Categoria.objects.get(nombre=cat)
-                PromocionCategoria.objects.create(promocion=promocion, categoria=categ)
-        for promctg in PromocionCategoria.objects.all().filter(promocion__codigo=codigo):
-            if promctg.categoria.nombre not in categorias_nombres:
-                PromocionCategoria.objects.filter(categoria=promctg.categoria).delete()
-    except Exception:
-        resp["error"] = "No se pudo actualizar las categorias"
-        return resp
-
-    resp["success"] = True
-    resp["msg"] = "La promoción se ha actualizado exitosamente"
-    resp["promocion"] = PromocionSerializer(promocion).data
-    return resp
-
-
-def eliminar_promocion(id):
-    Promocion.objects.get(id=id).delete()
-
-
-def obtener_promocion(pk):
-    return Promocion.objects.get(id=pk)
-
-
-def actualizar_estado_promocion(id, estado):
-    promocion = Promocion.objects.get(id=id)
-    promocion.estado = estado
-    promocion.save()
+    fecha = _a_fecha_aware(valor)
+    if not isinstance(fecha, datetime.datetime):
+        return None
+    return timezone.make_aware(fecha) if timezone.is_naive(fecha) else fecha
 
 
 def list_cupones():
@@ -167,9 +110,9 @@ def crear_cupon(data, categorias_nombres):
     try:
         cupon = Cupon.objects.create(
             titulo=data.get("titulo"), descripcion=data.get("descripcion"),
-            fecha_expiracion=data.get("fecha_expiracion"), porcentaje=data.get("porcentaje"),
+            fecha_expiracion=_a_fecha_aware(data.get("fecha_expiracion")), porcentaje=data.get("porcentaje"),
             participantes=data.get("participantes"), codigo=data.get("codigo"),
-            fecha_iniciacion=data.get("fecha_iniciacion"), puntos=data.get("puntos"),
+            fecha_iniciacion=_a_fecha_aware(data.get("fecha_iniciacion")), puntos=data.get("puntos"),
             foto=data.get("foto"), tipo_categoria=data.get("tipo_categoria"), cantidad=data.get("cantidad"),
         )
     except Exception:
@@ -189,34 +132,42 @@ def crear_cupon(data, categorias_nombres):
         "Nuevo Cupón de descuento " + cupon.titulo, cupon.descripcion,
         {"ruta": "/promociones", "descripcion": "Se encuentra disponible un nuevo cupón!"},
     )
+    # Los datos vienen de un FormData: todos los campos son strings, y Django
+    # no reconvierte la instancia en memoria al guardar. Sin este refresco, el
+    # serializer trabaja con "5" en vez de 5 y con la fecha como texto.
+    cupon.refresh_from_db()
     resp["success"] = True
     resp["msg"] = "El cupon se ha creado exitosamente"
     resp["cupon"] = CuponSerializer(cupon).data
     return cupon, resp
 
 
-def actualizar_cupon(data, categorias_nombres):
-    """Busca por
-    `codigo` (body), no por el `id` de la URL, tal cual el original.
-    `tipo_categoria` acá es singular (a diferencia de Promociones, que
-    sincroniza una lista completa) — réplica exacta de la asimetría real
-    entre ambas clases en el original."""
+def actualizar_cupon(data, categorias_nombres, cupon_id=None):
+    """Busca por el `id` de la URL cuando viene, y solo cae al `codigo` del
+    body por compatibilidad con llamadas viejas. Antes buscaba únicamente por
+    `codigo`, lo que hacía imposible editar el código de un cupón: al cambiarlo
+    ya no encontraba nada que actualizar.
+
+    `tipo_categoria` acá es singular: se guarda una sola categoría por cupón.
+    """
     resp = {"success": False}
     codigo = data.get("codigo")
     type_category = data.get("tipo_categoria")
     try:
-        cupon = Cupon.objects.get(codigo=codigo)
-    except Cupon.DoesNotExist:
+        cupon = Cupon.objects.get(id=cupon_id) if cupon_id else Cupon.objects.get(codigo=codigo)
+    except (Cupon.DoesNotExist, ValueError):
         resp["error"] = "No se encontró el cupon"
         return resp
 
+    if codigo:
+        cupon.codigo = codigo
     cupon.titulo = data.get("titulo")
     cupon.descripcion = data.get("descripcion")
     cupon.puntos = data.get("puntos")
     cupon.porcentaje = data.get("porcentaje")
     cupon.cantidad = data.get("cantidad")
-    cupon.fecha_iniciacion = data.get("fecha_iniciacion")
-    cupon.fecha_expiracion = data.get("fecha_expiracion")
+    cupon.fecha_iniciacion = _a_fecha_aware(data.get("fecha_iniciacion"))
+    cupon.fecha_expiracion = _a_fecha_aware(data.get("fecha_expiracion"))
     cupon.participantes = data.get("participantes")
     cupon.tipo_categoria = type_category
     if data.get("foto") is not None:
@@ -224,19 +175,25 @@ def actualizar_cupon(data, categorias_nombres):
     cupon.save()
 
     try:
+        # Se filtra por el cupón y no por su código: el código pudo acabar de
+        # cambiar en el save() de arriba.
         catnom = list(
-            CuponCategoria.objects.all().filter(cupon__codigo=codigo).values_list("categoria__nombre", flat=True)
+            CuponCategoria.objects.all().filter(cupon=cupon).values_list("categoria__nombre", flat=True)
         )
         if type_category not in catnom:
             categ = Categoria.objects.get(nombre=type_category)
             CuponCategoria.objects.create(cupon=cupon, categoria=categ)
-        for cupon_categoria in CuponCategoria.objects.all().filter(cupon__codigo=codigo):
+        for cupon_categoria in CuponCategoria.objects.all().filter(cupon=cupon):
             if cupon_categoria.categoria.nombre != type_category:
                 cupon_categoria.delete()
     except Exception:
         resp["error"] = "No se pudo actualizar las categorias"
         return resp
 
+    # Los datos vienen de un FormData: todos los campos son strings, y Django
+    # no reconvierte la instancia en memoria al guardar. Sin este refresco, el
+    # serializer trabaja con "5" en vez de 5 y con la fecha como texto.
+    cupon.refresh_from_db()
     resp["success"] = True
     resp["msg"] = "El cupón se ha actualizado exitosamente"
     resp["cupon"] = CuponSerializer(cupon).data
@@ -244,11 +201,86 @@ def actualizar_cupon(data, categorias_nombres):
 
 
 def eliminar_cupon(id):
-    Cupon.objects.get(id=id).delete()
+    """Borrado definitivo, bloqueado si el cupón ya tiene historial. Devuelve
+    (ok: bool, data: dict) — mismo criterio que
+    catalog.services.eliminar_servicio_definitivo.
+
+    Un cupón canjeado o usado no se borra: se desactiva (estado=False). Si se
+    borrara, se irían con él los `Cupon_Aplicado` (CASCADE) y se perdería el
+    rastro de a quién se le cobró el descuento.
+    """
+    from payments.models import PagoEfectivo, PagoTarjeta
+
+    try:
+        cupon = Cupon.objects.get(id=id)
+    except (Cupon.DoesNotExist, ValueError):
+        return False, {"error": "No se encontró el cupón."}
+
+    canjes = Cupon_Aplicado.objects.filter(cupon=cupon).count()
+    pagos = (
+        PagoTarjeta.objects.filter(cupon=cupon).count()
+        + PagoEfectivo.objects.filter(cupon=cupon).count()
+    )
+    if canjes or pagos:
+        return False, {
+            "error": "No se puede eliminar el cupón porque ya tiene historial de uso. "
+                     "Desactívalo en su lugar.",
+            "canjes": canjes,
+            "pagos": pagos,
+        }
+
+    titulo = cupon.titulo
+    cupon.delete()
+    return True, {"titulo": titulo}
 
 
 def obtener_cupon(pk):
     return Cupon.objects.get(id=pk)
+
+
+# --------------------------------------------------------------- uso de cupones
+def usos_de_cupon(cupon_id):
+    """Canjes de un cupón, del más reciente al más viejo. `estado=True` es
+    canjeado sin usar; `False` es ya usado en un pago."""
+    return Cupon_Aplicado.objects.filter(cupon__id=cupon_id).select_related("cupon")
+
+
+def estadisticas_cupon(cupon):
+    """Los cuatro números que resumen un cupón. `cantidad` es el stock que
+    queda por canjear: baja de a uno en `crear_cupon_aplicado`, no al pagar."""
+    canjes = Cupon_Aplicado.objects.filter(cupon=cupon)
+    usados = canjes.filter(estado=False).count()
+    return {
+        "canjeados": canjes.count(),
+        "usados": usados,
+        "pendientes": canjes.filter(estado=True).count(),
+        "restantes": max(0, int(cupon.cantidad or 0)),
+    }
+
+
+def vigencia_cupon(cupon):
+    """Si el cupón sirve hoy POR SUS FECHAS Y CUPOS: vigente | programado |
+    expirado | agotado.
+
+    A propósito NO mira `Cupon.estado`, que es el interruptor manual del admin y
+    es una cosa aparte: un cupón puede estar habilitado y aun así estar expirado
+    o agotado. Antes esta función devolvía "deshabilitado" y tapaba ese dato, de
+    modo que al apagar un cupón ya no se veía por qué tampoco servía. El admin
+    muestra ambos por separado.
+    """
+    from django.utils import timezone
+
+    ahora = timezone.now()
+    inicio = _comparable(cupon.fecha_iniciacion)
+    fin = _comparable(cupon.fecha_expiracion)
+
+    if inicio and ahora < inicio:
+        return "programado"
+    if fin and ahora > fin:
+        return "expirado"
+    if int(cupon.cantidad or 0) <= 0:
+        return "agotado"
+    return "vigente"
 
 
 def actualizar_estado_cupon(id, estado):
@@ -319,16 +351,6 @@ def actualizar_cantidad_cupon(pk, cantidad):
     cupon = Cupon.objects.get(id=pk)
     cupon.cantidad = cantidad
     cupon.save()
-
-
-def promociones_por_categoria(promocion_codigo):
-    """Sin consumidor real confirmado en ningún frontend."""
-    return PromocionCategoria.objects.all().filter(promocion__codigo=promocion_codigo)
-
-
-def all_promociones_categoria():
-    """Sin consumidor real confirmado en ningún frontend."""
-    return PromocionCategoria.objects.all()
 
 
 def cupones_por_categoria(cupon_codigo):
