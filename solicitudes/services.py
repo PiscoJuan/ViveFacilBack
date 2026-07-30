@@ -416,7 +416,9 @@ def actualizar_envio_interesado(solicitud_id, user_proveedor, request_data):
     bodys = "¡Dale un vistazo!"
     devices = FCMDevice.objects.filter(active=True, user__username=solicitante.user_datos.user.email)
     tokens = list(devices.values_list("registration_id", flat=True))
-    send_notificationF(tokens, titles, bodys, {"ruta": "/historial", "descripcion": descripcion})
+    # Va al solicitante: su pestaña de solicitudes es /main-tabs/solicitudes.
+    # "/historial" era la vista vieja (hoy solo redirige).
+    send_notificationF(tokens, titles, bodys, {"ruta": "/main-tabs/solicitudes", "descripcion": descripcion})
 
     try:
         format_email = FormatEmail()

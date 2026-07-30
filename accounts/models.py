@@ -41,7 +41,16 @@ class Datos(models.Model):
     estado = models.BooleanField(default=True)
     security_access = models.UUIDField(
         primary_key=False, editable=False, null=True, blank=True)
-    fecha_creacion = models.DateTimeField(auto_now_add=True, null=True)
+    # Fecha de alta, inmutable: se pone sola al crear y ningún flujo la
+    # reescribe. `editable=False` la deja fuera de formularios y de los
+    # serializers que la incluirían como escribible. Sin NULL porque hay código
+    # que la compara con `<` sin chequear (content/services.py, cálculo de
+    # medallas) y ahí un NULL revienta.
+    fecha_creacion = models.DateTimeField(default=now, editable=False)
+    # Se actualiza sola en cada save(). Antes esta información se guardaba
+    # encima de fecha_creacion al editar un proveedor, lo que falseaba la fecha
+    # de alta y los filtros por rango de fecha que la usan.
+    fecha_modificacion = models.DateTimeField(auto_now=True)
     puntos = models.PositiveIntegerField(default=0, null=True)
     codigo_invitacion = models.CharField(max_length=12, null=True, unique=True)
     dinero_invertido = models.PositiveIntegerField(default=0, null=True)

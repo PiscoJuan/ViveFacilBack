@@ -777,7 +777,8 @@ def actualizar_proveedor_proveedores_detalle(pk, data, files):
                 pendiente.user_datos.telefono = user_datos.get("telefono")
                 pendiente.user_datos.genero = user_datos.get("genero")
                 pendiente.user_datos.foto = data.get("foto") or pendiente.user_datos.foto
-                pendiente.user_datos.fecha_creacion = timezone.now()
+                # `fecha_modificacion` se actualiza sola (auto_now). Antes acá
+                # se pisaba `fecha_creacion`, que es la fecha de alta.
                 pendiente.user_datos.save()
 
                 email_actual = pendiente.user_datos.user.email

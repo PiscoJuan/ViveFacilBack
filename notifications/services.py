@@ -302,7 +302,9 @@ def notificar_general(user, message, title):
 
     devices = FCMDevice.objects.filter(active=True, user_id=user)
     tokend = devices.values_list('registration_id', flat=True)
-    data = {"ruta": "Historial", "descripcion": "Proveedor Interesado"}
+    # "Historial" no era una ruta, era el nombre de la vista vieja: el router
+    # de la app no la resolvía y la notificación no navegaba a ningún lado.
+    data = {"ruta": "/main-tabs/solicitudes", "descripcion": "Proveedor Interesado"}
     tokens = list(tokend)
     send_notificationF(tokens, title, message, data)
     return user

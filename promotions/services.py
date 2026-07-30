@@ -88,7 +88,9 @@ def crear_promocion(data, categorias_nombres):
 
     _notificar_solicitantes(
         "Nueva Promoción " + promocion.titulo, promocion.descripcion,
-        {"ruta": "Home", "descripcion": "Se ha creado una nueva promoción"},
+        # "Home" tampoco era una ruta; el resto de avisos al solicitante usan
+        # "/main-tabs/home" (ver catalog/services.py).
+        {"ruta": "/main-tabs/home", "descripcion": "Se ha creado una nueva promoción"},
     )
     resp["success"] = True
     resp["msg"] = "La promoción se ha creado exitosamente"
