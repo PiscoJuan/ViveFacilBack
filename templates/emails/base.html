@@ -61,6 +61,12 @@
           <!-- FOOTER -->
           <tr>
             <td class="footer">
+              <!-- Separador invisible para el resumen del correo. Gmail arma la
+                   vista previa concatenando los textos sin espacio entre bloques
+                   y quedaba "...por la gasolinerawww.vivefacil.app". Va &nbsp;
+                   (U+00A0) y no un espacio normal, porque los espacios normales
+                   sí los recorta. -->
+              <span style="display:block;font-size:1px;line-height:1px;color:transparent;">&nbsp;</span>
               <a class="footer-link" href="https://www.vivefacil.app/home">www.vivefacil.app</a>
               <p class="footer-title" style="margin-top:16px;">Síguenos en nuestras redes sociales</p>
               <div class="socials">

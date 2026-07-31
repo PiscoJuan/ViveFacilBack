@@ -277,9 +277,14 @@ def notificar_chat_solicitante(remitente_id, es_solicitante, mensaje, user_id, u
     remitente_nombre = Datos.objects.get(id=remitente_id)
     titles = 'Nuevo Mensaje de ' + remitente_nombre.nombres + remitente_nombre.apellidos
     bodys = mensaje
+    # OJO: la ruta es la de la app que RECIBE el push, no la de la que lo manda.
+    # Solicitante usa /main-tabs/..., Proveedor usa /main/... Estaban al revés y
+    # el tap en la notificación no navegaba a ningún lado (ninguna de las dos
+    # apps tiene ruta comodín, así que Angular no matcheaba nada).
     ruta = ""
     if es_solicitante:
-        ruta = "/main-tabs/chat"
+        # Lo manda el solicitante; el destinatario es el proveedor.
+        ruta = "/main/chat"
         dato_prov = Datos.objects.get(user_id=user_id)
         dato_id_prov = dato_prov.user_id
         devices = FCMDevice.objects.filter(active=True, user_id=dato_id_prov)
@@ -288,7 +293,8 @@ def notificar_chat_solicitante(remitente_id, es_solicitante, mensaje, user_id, u
         data = {"url": url, "ruta": ruta, "descripcion": "Tiene un Mensaje nuevo"}
         send_notificationF(tokens, titles, bodys, data)
     else:
-        ruta = "/main/chat"
+        # Destinatario solicitante (rama muerta hoy, ver docstring).
+        ruta = "/main-tabs/chat"
         data = {"url": url, "ruta": ruta, "descripcion": "Tiene un Mensaje nuevo"}
         send_notificationF(tokens, titles, bodys, data)  # noqa: F821 — bug preservado, ver docstring
 
@@ -343,7 +349,10 @@ def notificar_chat_proveedor(remitente_id, get_usuario_id, mensaje, url):
         return {"error": "No devices found"}, 404
 
     tokens = list(devices.values_list("registration_id", flat=True))
-    data = {"url": url, "ruta": "/main/chat", "descripcion": "Tiene un Mensaje nuevo"}
+    # El destinatario es el solicitante: su app usa /main-tabs/... (la del
+    # proveedor usa /main/...). Iba con la ruta del proveedor y el tap en la
+    # notificación no navegaba a ningún lado.
+    data = {"url": url, "ruta": "/main-tabs/chat", "descripcion": "Tiene un Mensaje nuevo"}
     try:
         send_notificationF(tokens, titles, bodys, data)
     except Exception:
