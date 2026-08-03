@@ -758,10 +758,20 @@ def actualizar_proveedor_proveedores_detalle(pk, data, files):
     try:
         with transaction.atomic():
             pendiente = Proveedor.objects.get(id=pk)
+            # Best-effort: registros viejos con el nombre de archivo corrupto
+            # (ver bug de dominio duplicado en URLCompletaFileField) hacen que
+            # storage.delete() tire SuspiciousFileOperation — no debe bloquear
+            # el reemplazo por el archivo nuevo, que igual pisa el valor.
             if data.get("copiaCedula") is not None:
-                pendiente.copiaCedula.delete()
+                try:
+                    pendiente.copiaCedula.delete()
+                except Exception:
+                    logger.warning("No se pudo borrar copiaCedula previa (proveedor %s)", pk, exc_info=True)
             if data.get("copiaLicencia") is not None:
-                pendiente.copiaLicencia.delete()
+                try:
+                    pendiente.copiaLicencia.delete()
+                except Exception:
+                    logger.warning("No se pudo borrar copiaLicencia previa (proveedor %s)", pk, exc_info=True)
             for doc in files.getlist("filesDocuments"):
                 documento_creado = Document.objects.create(documento=doc)
                 pendiente.document.add(documento_creado)
