@@ -401,6 +401,16 @@ class UsuariosAdminView(AdminAPIView):
         return Response(services.eliminar_usuario_por_id(request.GET.get("id")))
 
 
+class CambiarPasswordUsuarioAdminView(AdminAPIView):
+    """Botón "Cambiar contraseña" en proveedores/solicitantes (Admin2022)."""
+
+    def put(self, request, user_id, format=None):
+        success, message = services.cambiar_password_usuario(user_id, request.data.get("password"))
+        if success:
+            return Response({"message": message}, status=status.HTTP_200_OK)
+        return Response({"message": message}, status=status.HTTP_502_BAD_GATEWAY)
+
+
 class ProveedoresSearchAdminView(AdminAPIView, MyPaginationMixin):
     pagination_class = MyCustomPagination
 

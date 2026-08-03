@@ -1031,15 +1031,19 @@ def crear_cuenta_registro(data, files):
                 proveedor_user.licencia = data.get('licencia')
                 proveedor_user.direccion = data.get('direccion')
 
+                # ponytail: [7:] asumía ruta relativa ("/media/xxx"); el admin
+                # a veces manda la URL absoluta ya armada por
+                # URLCompletaFileField y duplicaba dominio+/media/. split
+                # funciona para ambos casos.
                 if 'filesDocuments' in data:
-                    doc = _Document.objects.create(documento=data.get('filesDocuments')[7:])
+                    doc = _Document.objects.create(documento=data.get('filesDocuments').split('/media/', 1)[-1])
                     proveedor_user.document.set([doc])
                 if 'foto' in data:
-                    proveedor_user.user_datos.foto = data.get('foto')[7:]
+                    proveedor_user.user_datos.foto = data.get('foto').split('/media/', 1)[-1]
                 if 'copiaCedula' in data:
-                    proveedor_user.copiaCedula = data.get('copiaCedula')[7:]
+                    proveedor_user.copiaCedula = data.get('copiaCedula').split('/media/', 1)[-1]
                 if 'copiaLicencia' in data:
-                    proveedor_user.copiaLicencia = data.get('copiaLicencia')[7:]
+                    proveedor_user.copiaLicencia = data.get('copiaLicencia').split('/media/', 1)[-1]
 
                 proveedor_user.save()
                 proveedor_user.user_datos.save()
@@ -1472,6 +1476,41 @@ def eliminar_usuario_por_id(user_id):
         return {'sucess': True, 'mensaje': 'Eliminacion del Objeto User realizado exitosamente.'}
     except Exception:
         return {'sucess': False, 'mensaje': 'Ha ocurrido un error al eliminar el Objeto User.'}
+
+
+def cambiar_password_usuario(user_id, nueva_password):
+    """Cambio de contraseña forzado por un admin (panel Admin2022, botón
+    "Cambiar contraseña" en proveedores/solicitantes) — no requiere la
+    contraseña actual, a diferencia de un cambio de contraseña por el propio
+    usuario.
+
+    El login real de Proveedor2022/Solicitante2022 pasa por Firebase Auth, no
+    por este User de Django — hay que actualizar ambos o la cuenta queda
+    inconsistente (la vieja sigue sirviendo para entrar, la nueva da 400).
+    Devuelve (success: bool, message: str)."""
+    from firebase_admin import auth as fire_auth
+
+    usuario = User.objects.get(id=user_id)
+    usuario.set_password(nueva_password)
+    usuario.save()
+
+    # Token DRF no expira solo (a diferencia de un JWT) — sin esto, cualquier
+    # sesión ya logueada sigue funcionando con el token viejo pese al cambio
+    # de contraseña. get_or_create en el próximo login genera uno nuevo.
+    Token.objects.filter(user=usuario).delete()
+
+    if not usuario.email:
+        return True, "Contraseña actualizada."
+
+    try:
+        user_record = fire_auth.get_user_by_email(usuario.email)
+        fire_auth.update_user(user_record.uid, password=nueva_password)
+    except fire_auth.UserNotFoundError:
+        pass  # Sin cuenta en Firebase (ej. alta manual sin login social) — no es un error.
+    except Exception as e:
+        return False, f"La contraseña se actualizó en el sistema pero no en Firebase: {e}"
+
+    return True, "Contraseña actualizada."
 
 
 def buscar_proveedores_por_nombre_queryset(nombre):

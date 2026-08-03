@@ -9,6 +9,7 @@ from accounts.api.admin.views import (
     ActualizarCaducidadProveedoresAdminView,
     AdminUserPassView,
     AdminUserView,
+    CambiarPasswordUsuarioAdminView,
     DataProveedorProveedorAdminView,
     DatosAdminView,
     FiltroNombresAdminView,
@@ -108,6 +109,7 @@ urlpatterns = [
 
     path("datos/", DatosAdminView.as_view()),
     path("usuarios/", UsuariosAdminView.as_view()),
+    path("usuarios/<str:user_id>/password/", CambiarPasswordUsuarioAdminView.as_view()),
     path("proveedor-proveedor/", DataProveedorProveedorAdminView.as_view()),
     path("datos-admin/<str:user>", GetAdminByUserAdminView.as_view()),
 ]
