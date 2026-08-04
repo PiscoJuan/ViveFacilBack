@@ -275,8 +275,14 @@ def notificar_chat_solicitante(remitente_id, es_solicitante, mensaje, user_id, u
     from fcm_django.models import FCMDevice
 
     remitente_nombre = Datos.objects.get(id=remitente_id)
-    titles = 'Nuevo Mensaje de ' + remitente_nombre.nombres + remitente_nombre.apellidos
+    # nombres/apellidos vienen con espacios sueltos en la BD ("Nancy "), así que
+    # se normaliza en vez de concatenar a pelo (antes salía "Juan CarlosCarrillo").
+    titles = 'Nuevo Mensaje de ' + ' '.join(
+        p for p in [(remitente_nombre.nombres or '').strip(), (remitente_nombre.apellidos or '').strip()] if p)
     bodys = mensaje
+    # Un remitente = una conversación para quien recibe: con este tag la bandeja
+    # muestra una sola notificación con el último mensaje en vez del historial.
+    tag = f"chat-{remitente_nombre.id}"
     # OJO: la ruta es la de la app que RECIBE el push, no la de la que lo manda.
     # Solicitante usa /main-tabs/..., Proveedor usa /main/... Estaban al revés y
     # el tap en la notificación no navegaba a ningún lado (ninguna de las dos
@@ -291,12 +297,12 @@ def notificar_chat_solicitante(remitente_id, es_solicitante, mensaje, user_id, u
         tokend = devices.values_list('registration_id', flat=True)
         tokens = list(tokend)
         data = {"url": url, "ruta": ruta, "descripcion": "Tiene un Mensaje nuevo"}
-        send_notificationF(tokens, titles, bodys, data)
+        send_notificationF(tokens, titles, bodys, data, tag=tag)
     else:
         # Destinatario solicitante (rama muerta hoy, ver docstring).
         ruta = "/main-tabs/chat"
         data = {"url": url, "ruta": ruta, "descripcion": "Tiene un Mensaje nuevo"}
-        send_notificationF(tokens, titles, bodys, data)  # noqa: F821 — bug preservado, ver docstring
+        send_notificationF(tokens, titles, bodys, data, tag=tag)  # noqa: F821 — bug preservado, ver docstring
 
     return user_id
 
@@ -328,7 +334,7 @@ def notificar_chat_proveedor(remitente_id, get_usuario_id, mensaje, url):
     except Datos.DoesNotExist:
         return {"error": "Remitente not found"}, 404
 
-    titles = "Nuevo Mensaje de " + remitente_nombre_prov.nombres
+    titles = "Nuevo Mensaje de " + (remitente_nombre_prov.nombres or '').strip()
     bodys = mensaje
 
     try:
@@ -354,7 +360,9 @@ def notificar_chat_proveedor(remitente_id, get_usuario_id, mensaje, url):
     # notificación no navegaba a ningún lado.
     data = {"url": url, "ruta": "/main-tabs/chat", "descripcion": "Tiene un Mensaje nuevo"}
     try:
-        send_notificationF(tokens, titles, bodys, data)
+        # Mismo espacio de nombres que el otro sentido del chat
+        # (`notificar_chat_solicitante`): el Datos.id del remitente.
+        send_notificationF(tokens, titles, bodys, data, tag=f"chat-{remitente_nombre_prov.id}")
     except Exception:
         pass  # el original también ignoraba errores de envío acá
 

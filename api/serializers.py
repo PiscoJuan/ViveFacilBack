@@ -48,6 +48,23 @@ class MedallaSerializer(serializers.ModelSerializer):
                   'estado', 'tiempo', 'valor', 'cantidad', 'fecha_creacion']
 
 
+# Los dos de abajo solo sirven para las vistas "personales", que anotan
+# `fecha_obtencion` en el queryset. Los serializers base los usa el panel admin
+# sobre querysets sin anotar, por eso el campo va acá y no allá.
+class InsigniaPersonalSerializer(InsigniaSerializer):
+    fecha_obtencion = serializers.DateTimeField(read_only=True, required=False, allow_null=True)
+
+    class Meta(InsigniaSerializer.Meta):
+        fields = InsigniaSerializer.Meta.fields + ['fecha_obtencion']
+
+
+class MedallaPersonalSerializer(MedallaSerializer):
+    fecha_obtencion = serializers.DateTimeField(read_only=True, required=False, allow_null=True)
+
+    class Meta(MedallaSerializer.Meta):
+        fields = MedallaSerializer.Meta.fields + ['fecha_obtencion']
+
+
 class CategoriaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Categoria
@@ -413,7 +430,8 @@ class EnvioInteresadoAdminSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Envio_Interesados
-        fields = ['id', 'proveedor', 'interesado', 'oferta', 'fecha_creacion']
+        fields = ['id', 'proveedor', 'interesado', 'oferta', 'fecha_creacion',
+                  'rechazada', 'fecha_rechazo', 'motivo_rechazo']
 
 
 class SolicitudAdminSerializer(SolicitudEnProcesoSerializer):
@@ -438,7 +456,8 @@ class Envio_InteresadosSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Envio_Interesados
-        fields = ['interesado', 'oferta', 'solicitud', 'proveedor']
+        fields = ['interesado', 'oferta', 'solicitud', 'proveedor',
+                  'rechazada', 'fecha_rechazo', 'motivo_rechazo']
 
     def update(self, instance, validated_data):
         instance.interesado = validated_data.get(

@@ -30,7 +30,9 @@ class CambioContraseniaProveedorView(ProveedorAPIView):
 
 class DispositivoNotificacionProveedorView(ProveedorAPIView):
     def post(self, request, format=None):
-        data, http_status = services.registrar_dispositivo(request, request.data.get("token"))
+        data, http_status = services.registrar_dispositivo(
+            request, request.data.get("token"), request.data.get("tipo") or request.data.get("type")
+        )
         return Response(data, status=http_status)
 
     def delete(self, request, format=None):

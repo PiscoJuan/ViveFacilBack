@@ -1,7 +1,7 @@
 from django.core.cache import cache
-from accounts.models import Proveedor
-from content.models import (POLITICAS_CACHE_KEY, Cargo, Insignia, Medalla, Politicas, 
-                            Publicidad, Suggestion, clientexmedalla)
+from accounts.models import Proveedor, Solicitante
+from content.models import (POLITICAS_CACHE_KEY, Cargo, Insignia, InsigniaObtenida, Medalla,
+                            Politicas, Publicidad, Suggestion, clientexmedalla)
 from api.serializers import (CargoSerializer, InsigniaSerializer, MedallaSerializer, PublicidadSerializer, 
                              SuggestionSerializer)
 
@@ -201,13 +201,61 @@ def actualizar_estado_sugerencia(id, estado):
     return True, sugerencia
 
 
+def _fecha_umbral(datos, pedidos, solicitudes):
+    """Fecha en que se cruzó el umbral: la de la solicitud nº `pedidos`.
+
+    Sin umbral (Insignia de Bienvenida) es la fecha de registro. Si no hay
+    histórico suficiente —solicitudes viejas con `fecha_creacion` NULL, o un
+    contador que no cuadra con las filas— devuelve None y el llamador se queda
+    con la fecha de hoy.
+    """
+    if pedidos <= 0:
+        return datos.fecha_creacion
+    fechas = list(
+        solicitudes.exclude(fecha_creacion=None)
+        .order_by('fecha_creacion')
+        .values_list('fecha_creacion', flat=True)[:pedidos]
+    )
+    return fechas[-1] if len(fechas) >= pedidos else None
+
+
+def _registrar_insignias(datos, obtenidas):
+    """Deja una fila por insignia obtenida (con su fecha real) y devuelve el
+    queryset de Insignia anotado con `fecha_obtencion`, para que el JSON siga
+    siendo plano como espera el frontend.
+
+    `obtenidas` es una lista de (insignia, solicitudes) — las solicitudes son
+    las que contaron para ganarla, de ahí sale la fecha del umbral.
+    """
+    from django.db.models import OuterRef, Subquery
+    from django.utils.timezone import now
+
+    for insignia, solicitudes in obtenidas:
+        InsigniaObtenida.objects.get_or_create(
+            usuario=datos, insignia=insignia,
+            defaults={'fecha_obtencion': _fecha_umbral(datos, insignia.pedidos, solicitudes) or now()},
+        )
+
+    fecha = InsigniaObtenida.objects.filter(
+        usuario=datos, insignia=OuterRef('pk')).values('fecha_obtencion')[:1]
+    return Insignia.objects.filter(id__in=[i.id for i, _ in obtenidas]).annotate(
+        fecha_obtencion=Subquery(fecha))
+
+
 def insignias_personales(id):
     """Preserva el efecto secundario original: si la
     profesión del proveedor no tiene ninguna Insignia asociada, crea una
     "Insignia de Bienvenida" de una sola vez."""
+    from solicitudes.models import Solicitud
+
     prov = Proveedor.objects.get(user_datos_id=id)
     profesion = prov.profesion
     cant_servicios = prov.servicios
+
+    # El mismo conjunto que cuenta `prov.servicios` (solicitudes/services.py), no
+    # solo las finalizadas: si el contador otorga la insignia, la fecha tiene que
+    # salir de las mismas filas o se contradicen.
+    solicitudes = Solicitud.objects.filter(proveedor=prov)
 
     insignias_profesion = Insignia.objects.filter(servicio=profesion)
     if not insignias_profesion.exists():
@@ -215,45 +263,89 @@ def insignias_personales(id):
             nombre="Insignia de Bienvenida", imagen="insignias/01.png", servicio=profesion,
             pedidos=0, descripcion="Bienvenidos a Vive Facil", tipo="Oficio", tipo_usuario="Proveedor",
         )
-        list_of_ids = [insignia_nueva.id]
+        obtenidas = [(insignia_nueva, solicitudes)]
     else:
-        list_of_ids = []
+        obtenidas = []
 
     for i in insignias_profesion:
         if cant_servicios >= i.pedidos and i.estado and profesion in i.servicio:
-            list_of_ids.append(i.id)
+            obtenidas.append((i, solicitudes))
 
-    return Insignia.objects.filter(id__in=list_of_ids)
+    return _registrar_insignias(prov.user_datos, obtenidas)
 
 
-def medallas_personales(user):
-    """Preserva el efecto secundario original: otorga
-    (y persiste) cada medalla que el usuario ya califica y todavía no
-    tiene, sumando sus puntos a `Datos.puntos`."""
+def insignias_personales_solicitante(id):
+    """Insignias del solicitante: las de `tipo_usuario="Solicitante"` activas
+    cuyo umbral de pedidos ya alcanzó. Antes esta ruta llamaba a
+    `insignias_personales`, que busca un Proveedor por ese id y reventaba con
+    DoesNotExist para cualquier solicitante.
+
+    No auto-crea insignia de bienvenida como el lado proveedor: las del
+    solicitante las define el admin.
+    """
+    from solicitudes.models import Solicitud
+
+    sol = Solicitante.objects.get(user_datos_id=id)
+    # `Datos.tramites` cuenta las solicitudes no canceladas (solicitudes/services.py).
+    solicitudes = Solicitud.objects.filter(solicitante=sol).exclude(termino='cancelado')
+
+    obtenidas = []
+    for i in Insignia.objects.filter(tipo_usuario="Solicitante", estado=True):
+        # Insignia atada a un servicio -> solo cuentan las solicitudes de ese servicio.
+        propias = solicitudes.filter(servicio__nombre=i.servicio) if i.servicio else solicitudes
+        if propias.count() >= i.pedidos:
+            obtenidas.append((i, propias))
+
+    return _registrar_insignias(sol.user_datos, obtenidas)
+
+
+def otorgar_medallas(dato):
+    """Otorga las medallas que el usuario ya califica y todavía no tiene
+    (fila en `clientexmedalla` + sus puntos) y devuelve los ids de todas las que
+    califica. Es idempotente: volver a llamarla no duplica nada.
+
+    Los umbrales son antigüedad (`tiempo`), trámites (`cantidad`) y dinero
+    acumulado (`valor`) — ninguno depende de los puntos, que es lo que la
+    medalla *otorga*. Por eso se llama al cerrar una solicitud
+    (`solicitudes.services`), que es donde cambian esos contadores, y no desde
+    `registrar_movimiento_puntos`, que además se llama desde acá abajo y
+    entraría en recursión.
+    """
     import datetime
     from datetime import timedelta
 
     import pytz
 
     utc = pytz.UTC
-    medallas_tot = Medalla.objects.all().filter()
-    dato = user.datos_set.all().first()
-    if not dato:
-        return Medalla.objects.none()
-
-    fecha_dato = dato.fecha_creacion
     list_of_ids = []
-    for a in medallas_tot:
+    for a in Medalla.objects.all():
         nuevo_tiempo = datetime.datetime.today() - timedelta(days=a.tiempo)
-        if fecha_dato < utc.localize(nuevo_tiempo) and dato.tramites >= a.cantidad and a.estado and dato.dinero_invertido >= a.valor:
+        if dato.fecha_creacion < utc.localize(nuevo_tiempo) and dato.tramites >= a.cantidad and a.estado and dato.dinero_invertido >= a.valor:
             list_of_ids.append(a.id)
             medalla_tiene = clientexmedalla.objects.filter(medalla=a, user=dato.user)
             if not medalla_tiene:
                 from accounts.services import registrar_movimiento_puntos
+                # fecha_obtencion sale del default: la fila se crea justo al ganarla.
                 clientexmedalla.objects.create(medalla=a, user=dato.user)
                 registrar_movimiento_puntos(dato, a.puntos, "medalla", referencia=str(a.id))
+    return list_of_ids
 
-    return Medalla.objects.filter(id__in=list_of_ids)
+
+def medallas_personales(user):
+    """Lista las medallas del usuario. Sigue otorgando las pendientes: es la red
+    de seguridad para las que no dependen de cerrar una solicitud (las de
+    bienvenida, con los tres umbrales en 0)."""
+    dato = user.datos_set.all().first()
+    if not dato:
+        return Medalla.objects.none()
+
+    list_of_ids = otorgar_medallas(dato)
+
+    from django.db.models import OuterRef, Subquery
+    fecha = clientexmedalla.objects.filter(
+        user=dato.user, medalla=OuterRef('pk')).values('fecha_obtencion')[:1]
+    # Las filas anteriores a la columna quedan en NULL; el frontend oculta el chip.
+    return Medalla.objects.filter(id__in=list_of_ids).annotate(fecha_obtencion=Subquery(fecha))
 
 
 def list_insignias_solicitante():

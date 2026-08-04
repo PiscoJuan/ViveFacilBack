@@ -10,6 +10,52 @@ from solicitudes.models import Envio_Interesados, Solicitud, Tipo_Pago, Ubicacio
 
 logger = logging.getLogger(__name__)
 
+
+def _fecha_con_zona(fecha):
+    """La app manda la fecha sin zona ("2026-08-27 11:55:00") y con USE_TZ
+    activo Django avisa por RuntimeWarning en cada solicitud. Se interpreta en
+    la zona del proyecto (America/Guayaquil) y se devuelve aware."""
+    from django.utils.dateparse import parse_datetime
+
+    if not isinstance(fecha, str):
+        return fecha
+    parseada = parse_datetime(fecha)
+    if parseada is None:
+        return fecha  # formato inesperado: que lo resuelva el ORM como antes
+    return timezone.make_aware(parseada) if timezone.is_naive(parseada) else parseada
+
+
+def _crear_solicitud_con_reintento(**campos):
+    """Un `OperationalError` (2013 'Lost connection', 2006 'server has gone
+    away') deja la conexión inservible: se cierra para forzar una nueva y se
+    reintenta una vez.
+
+    Antes de reintentar hay que mirar si la fila alcanzó a insertarse — la
+    conexión puede caerse después de que MySQL aplicó el INSERT — o se crearían
+    dos solicitudes. `Solicitud.ubicacion` es OneToOne, así que la ubicación
+    recién creada identifica la fila sin ambigüedad; el corte por tiempo cubre
+    el caso de una Ubicacion reutilizada por `get_or_create`.
+    """
+    from django.db import OperationalError, connection
+
+    try:
+        return Solicitud.objects.create(**campos)
+    except OperationalError:
+        logger.warning("crear_solicitud: conexión con MySQL caída en el INSERT, reintentando", exc_info=True)
+        connection.close()
+
+        ya_creada = Solicitud.objects.filter(
+            ubicacion=campos["ubicacion"], solicitante=campos["solicitante"]
+        ).order_by("-id").first()
+        if ya_creada and ya_creada.fecha_creacion and (
+            timezone.now() - ya_creada.fecha_creacion
+        ).total_seconds() < 120:
+            logger.info("crear_solicitud: el INSERT sí se había aplicado, se reutiliza", extra={"solicitud_id": ya_creada.id})
+            return ya_creada
+
+        return Solicitud.objects.create(**campos)
+
+
 # --- Los 9 listados casi-duplicados de "mis solicitudes filtradas por
 # estado" se dejan sin colapsar a propósito. Cada función devuelve un
 # queryset sin evaluar, para que la vista decida si pagina o no. ---
@@ -121,12 +167,12 @@ def crear_solicitud(data, files):
     import threading
 
     from core.email import FormatEmail
-    from core.firebase import send_notificationF
+    from core.firebase import send_notificationF_async
 
     resp = {}
     desc = data.get("descripcion")
     foto_desc = files.get("foto_descripcion")
-    fecha_exp = data.get("fecha")
+    fecha_exp = _fecha_con_zona(data.get("fecha"))
     user = data.get("solicitante")
     servicio_id = data.get("servicio")
     pago_name = data.get("tipo_pago")
@@ -177,7 +223,7 @@ def crear_solicitud(data, files):
         return None, resp
 
     try:
-        solicitud = Solicitud.objects.create(
+        solicitud = _crear_solicitud_con_reintento(
             descripcion=desc, fecha_expiracion=fecha_exp, solicitante=solic, ubicacion=ubic,
             tipo_pago=t_pago, servicio=service, foto_descripcion=foto_desc, rating=0,
         )
@@ -227,7 +273,9 @@ def crear_solicitud(data, files):
             return None, resp
 
         try:
-            envio_interesados = Envio_Interesados.objects.create(solicitud=solicitud, proveedor=prov)
+            # Ya no se guarda en una variable: solo servía para el `.delete()` de
+            # abajo, que se sacó junto con el borrado de la solicitud.
+            Envio_Interesados.objects.create(solicitud=solicitud, proveedor=prov)
         except Exception as e:
             logger.error(
                 "crear_solicitud: falló creando Envio_Interesados",
@@ -241,24 +289,36 @@ def crear_solicitud(data, files):
 
         try:
             datos_prov = Datos.objects.get(id=prov.user_datos_id)
+        except Exception:
+            # Sin los datos del proveedor no hay a quién notificar ni a quién
+            # mandarle el email, pero la solicitud queda igual: ya está creada y
+            # el proveedor la ve al entrar a la app.
+            logger.error(
+                "crear_solicitud: falló obteniendo los Datos del proveedor",
+                extra={"solicitud_id": solicitud.id, "proveedor_id": proveedor_id},
+                exc_info=True,
+            )
+            continue
+
+        try:
             devices = FCMDevice.objects.filter(active=True, user_id=datos_prov.user.id)
             tokens = list(devices.values_list("registration_id", flat=True))
             logger.info(
                 "crear_solicitud: notificando a proveedor",
                 extra={"solicitud_id": solicitud.id, "proveedor_id": proveedor_id, "num_dispositivos": len(tokens)},
             )
-            send_notificationF(tokens, titles, bodys, notif_data)
-        except Exception as e:
+            # En segundo plano: es un POST por token con timeout de 15s, y en
+            # línea alargaba el request hasta que el cliente lo abandonaba.
+            send_notificationF_async(tokens, titles, bodys, notif_data)
+        except Exception:
+            # Antes esto hacía envio_interesados.delete() + solicitud.delete():
+            # un problema de red con Google le borraba la solicitud al usuario.
+            # La notificación es accesoria, la solicitud es el dato de negocio.
             logger.error(
                 "crear_solicitud: falló notificando a proveedor",
                 extra={"solicitud_id": solicitud.id, "proveedor_id": proveedor_id},
                 exc_info=True,
             )
-            envio_interesados.delete()
-            solicitud.delete()
-            resp["message"] = f"Error al enviar notificación al proveedor {proveedor_id}: {str(e)}"
-            resp["success"] = False
-            return None, resp
 
         try:
             format_email = FormatEmail()
@@ -278,8 +338,7 @@ def crear_solicitud(data, files):
                 ),
             ).start()
         except Exception:
-            # Un fallo enviando el email no debe abortar la creación de la
-            # solicitud (a diferencia del push, que sí es crítico para el flujo).
+            # Igual que el push: avisar es accesorio, la solicitud ya está creada.
             logger.exception(
                 "crear_solicitud: falló enviando email de notificación al proveedor",
                 extra={"solicitud_id": solicitud.id, "proveedor_id": proveedor_id},
@@ -333,9 +392,14 @@ def adjudicar_solicitud(solicitud_id, proveedor_user_id, request_data):
 
 
 def envio_interesados(solicitud_id):
+    """Proveedores que respondieron la solicitud: los que ofertaron y los que la
+    rechazaron. Los rechazados vienen con `rechazada: true` y sin oferta; la app
+    del solicitante los muestra en una sección aparte."""
     from api.serializers import Envio_InteresadosSerializer
+    from django.db.models import Q
 
-    envio_interesado = Envio_Interesados.objects.all().filter(solicitud=solicitud_id, interesado=True)
+    envio_interesado = Envio_Interesados.objects.filter(
+        Q(interesado=True) | Q(rechazada=True), solicitud=solicitud_id)
     serializer = Envio_InteresadosSerializer(envio_interesado, many=True)
     datos = []
     for solicitud in serializer.data:
@@ -352,6 +416,9 @@ def envio_interesados(solicitud_id):
             "descripcion": solicitud["proveedor"]["descripcion"],
             "rating": solicitud["proveedor"]["rating"],
             "servicios": solicitud["proveedor"]["servicios"],
+            "rechazada": solicitud.get("rechazada", False),
+            "fecha_rechazo": solicitud.get("fecha_rechazo"),
+            "motivo_rechazo": solicitud.get("motivo_rechazo"),
         })
     return datos
 
@@ -369,9 +436,34 @@ def listar_todas_solicitudes():
 def solicitud_por_servicio_pendientes(user, id_servicio):
     envio_interesados = Envio_Interesados.objects.filter(
         solicitud__servicio=id_servicio, solicitud__estado=True,
-        proveedor__user_datos__user=user, interesado=False,
+        proveedor__user_datos__user=user, interesado=False, rechazada=False,
     ).order_by("-fecha_creacion")
     return [ei.solicitud for ei in envio_interesados]
+
+
+def rechazar_solicitud(solicitud_id, proveedor_user_id, motivo=None):
+    """El proveedor descarta la solicitud. No se borra el Envio_Interesados: se
+    marca, para que el solicitante y el admin vean que la recibió y la rechazó.
+    Devuelve (data, http_status)."""
+    try:
+        envio = Envio_Interesados.objects.get(
+            solicitud_id=solicitud_id, proveedor__user_datos__user_id=proveedor_user_id)
+    except Envio_Interesados.DoesNotExist:
+        return {"success": False, "message": "Esta solicitud no está asignada a este proveedor."}, 404
+
+    if envio.interesado:
+        return {"success": False, "message": "Ya enviaste una oferta para esta solicitud."}, 400
+
+    envio.rechazada = True
+    envio.fecha_rechazo = timezone.now()
+    envio.motivo_rechazo = (motivo or "").strip()[:255] or None
+    envio.save(update_fields=["rechazada", "fecha_rechazo", "motivo_rechazo"])
+
+    logger.info(
+        "rechazar_solicitud: solicitud rechazada",
+        extra={"solicitud_id": solicitud_id, "proveedor_user_id": proveedor_user_id, "con_motivo": bool(envio.motivo_rechazo)},
+    )
+    return {"success": True, "message": "Solicitud rechazada."}, 200
 
 
 def obtener_solicitud_por_id(solicitud_id):
@@ -548,6 +640,19 @@ def actualizar_solicitud(solicitud_id, request_data):
             datos_solicitante.save()
             datos_proveedor = proveedor.user_datos
             datos_proveedor.save()
+
+            # Las medallas dependen de `tramites` y `dinero_invertido`, que
+            # acaban de cambiar acá: este es el momento en que se ganan. Antes
+            # solo se otorgaban al abrir el perfil, así que quien nunca entraba
+            # no las recibía (ningún proveedor tenía ninguna).
+            from content.services import otorgar_medallas
+            for dato_usuario in (datos_proveedor, datos_solicitante):
+                try:
+                    otorgar_medallas(dato_usuario)
+                except Exception:
+                    # Cerrar la solicitud es el camino crítico (mueve dinero);
+                    # que falle una medalla no puede tumbarlo.
+                    logger.exception("No se pudieron otorgar medallas a datos_id=%s", dato_usuario.id)
 
             if request_data.get("termino") != "pagado":
                 titles = "Servicio finalizado: " + solicitud.servicio.nombre

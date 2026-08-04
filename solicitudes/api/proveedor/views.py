@@ -12,6 +12,15 @@ class SolicitudPorServicioProveedorView(ProveedorAPIView):
         return Response(SolicitudSerializer(solicitudes, many=True).data)
 
 
+class RechazarSolicitudProveedorView(ProveedorAPIView):
+    """El proveedor descarta la solicitud. El motivo es opcional."""
+
+    def post(self, request, solicitud_ID, format=None):
+        data, http_status = services.rechazar_solicitud(
+            solicitud_ID, request.user.id, request.data.get("motivo"))
+        return Response(data, status=http_status)
+
+
 class SolicitudDetalleProveedorView(ProveedorAPIView):
     """Solo lectura de una solicitud puntual — no confundir con cancelar,
     que es un PUT a `SolicitudProveedorView` (`putCancelarSolicitud`)."""

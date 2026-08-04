@@ -1,6 +1,7 @@
 from rest_framework.response import Response
 
-from api.serializers import InsigniaSerializer, MedallaSerializer, PoliticasSerializer
+from api.serializers import (InsigniaPersonalSerializer, InsigniaSerializer, MedallaPersonalSerializer,
+                             MedallaSerializer, PoliticasSerializer)
 from content import services
 from core.views import SolicitanteAPIView
 
@@ -14,18 +15,21 @@ class PoliticasSolicitanteView(SolicitanteAPIView):
 
 
 class InsigniasPersonalesSolicitanteView(SolicitanteAPIView):
-    """Endpoint compartido con Proveedor (Solicitante2022 y Provedor2022
-    llaman el mismo path legacy `insigniaspersonales/<id>`)."""
+    """Insignias del solicitante. Antes llamaba a `insignias_personales`, que es
+    la del proveedor (busca un Proveedor por ese id) y reventaba con
+    DoesNotExist para cualquier solicitante."""
 
     def get(self, request, id, format=None):
-        return Response(InsigniaSerializer(services.insignias_personales(id), many=True).data)
+        return Response(InsigniaPersonalSerializer(
+            services.insignias_personales_solicitante(id), many=True).data)
 
 
 class MedallasPersonalesSolicitanteView(SolicitanteAPIView):
     """Endpoint compartido con Proveedor (Solicitante2022 y Provedor2022)."""
 
     def get(self, request, format=None):
-        return Response(MedallaSerializer(services.medallas_personales(request.user), many=True).data)
+        return Response(MedallaPersonalSerializer(
+            services.medallas_personales(request.user), many=True).data)
 
 
 class InsigniasSolicitanteView(SolicitanteAPIView):

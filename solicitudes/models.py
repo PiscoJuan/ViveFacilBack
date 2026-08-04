@@ -78,6 +78,12 @@ class Envio_Interesados(models.Model):
     oferta = models.DecimalField(
         null=True, blank=True, max_digits=30, decimal_places=15)
     fecha_creacion = models.DateTimeField(auto_now_add=True, null=True)
+    # El proveedor descartó la solicitud. La fila se conserva (no se borra) para
+    # que el solicitante y el admin vean que sí la recibió y la rechazó:
+    # `interesado=False` solo significa "todavía no respondió".
+    rechazada = models.BooleanField(default=False)
+    fecha_rechazo = models.DateTimeField(null=True, blank=True)
+    motivo_rechazo = models.CharField(max_length=255, null=True, blank=True)
 
     class Meta:
         db_table = "api_envio_interesados"

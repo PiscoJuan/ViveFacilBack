@@ -242,7 +242,31 @@ def cambiar_contrasenia_firebase(firetoken, password):
     return data, 200
 
 
-def registrar_dispositivo(request, token):
+def _tipo_dispositivo(tipo_recibido, request):
+    """Plataforma del token (`FCMDevice.type`), que estaba quedando vacía en
+    todos los registros.
+
+    Manda lo que declara el cliente — las apps envían `Capacitor.getPlatform()`,
+    cuyos valores ('android', 'ios', 'web') son justo los choices de
+    fcm_django. Para las versiones ya publicadas, que no mandan nada, se infiere
+    del User-Agent.
+    """
+    from fcm_django.models import DeviceType
+
+    validos = {t.value for t in DeviceType}
+    tipo = (tipo_recibido or "").strip().lower()
+    if tipo in validos:
+        return tipo
+
+    ua = (request.headers.get("User-Agent") or "").lower()
+    if "android" in ua:
+        return DeviceType.ANDROID
+    if "iphone" in ua or "ipad" in ua or "ipod" in ua:
+        return DeviceType.IOS
+    return DeviceType.WEB
+
+
+def registrar_dispositivo(request, token, tipo=None):
     from fcm_django.models import FCMDevice
 
     logger.info(
@@ -263,9 +287,15 @@ def registrar_dispositivo(request, token):
             extra={"fcm_token": token, "authorization_header_presente": bool(request.headers.get("Authorization"))},
         )
         return {"message": "Usuario no identificado."}, 400
-    device = FCMDevice(registration_id=token, active=True, user=request.user)
+    device = FCMDevice(
+        registration_id=token, active=True, user=request.user,
+        type=_tipo_dispositivo(tipo, request),
+    )
     device.save()
-    logger.info("registrar_dispositivo: registrado OK", extra={"device_id": device.id, "usuario": str(request.user)})
+    logger.info(
+        "registrar_dispositivo: registrado OK",
+        extra={"device_id": device.id, "usuario": str(request.user), "tipo": device.type},
+    )
     return {"message": "Token guardado."}, 200
 
 
