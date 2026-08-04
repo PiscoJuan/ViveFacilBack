@@ -1207,16 +1207,72 @@ def completar_datos_usuario(username, data):
 
 
 def recuperar_password_existe(user_email):
-    """Confirmado real solo en Solicitante2022 — Provedor2022 define el mismo
-    wrapper pero su página de recuperación real usa Firebase directo
-    (`UserService.sendPasswordResetEmail`), grep confirmado, cero llamadas
-    reales a este endpoint desde ningún componente de Provedor2022."""
+    """Confirma que el correo pertenece a una cuenta y, si es así, le manda el
+    enlace para restablecer la contraseña (ver `enviar_enlace_recuperacion`).
+
+    Antes solo confirmaba la existencia y el correo lo mandaba Firebase desde
+    la app; ahora el correo sale de acá, con la plantilla de la marca y un
+    enlace a nuestro backend."""
     usuario = User.objects.filter(email=user_email)
     if usuario.count() > 0:
         user_dato = Datos.objects.get(user=usuario.first())
         if user_dato is not None:
+            enviar_enlace_recuperacion(usuario.first())
             return True
     return False
+
+
+def _url_cambio_password(usuario):
+    """Enlace de un solo uso: el token de Django se calcula sobre el hash de la
+    contraseña actual y el `last_login`, así que deja de validar apenas la
+    contraseña cambia. Caduca solo a los `PASSWORD_RESET_TIMEOUT` (3 días)."""
+    from django.conf import settings
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.encoding import force_bytes
+    from django.utils.http import urlsafe_base64_encode
+
+    uid = urlsafe_base64_encode(force_bytes(usuario.pk))
+    token = default_token_generator.make_token(usuario)
+    host = settings.URL_BACKEND_HOST.rstrip('/')
+    return f"{host}/cuenta/cambiar-contrasena/{uid}/{token}/"
+
+
+def nombre_para_saludo(usuario):
+    """Nombre con el que se saluda en el correo y en la página de cambio; cae
+    al correo cuando la cuenta no tiene `Datos` (altas viejas)."""
+    dato = Datos.objects.filter(user=usuario).first()
+    return dato.nombres if dato and dato.nombres else usuario.email
+
+
+def enviar_enlace_recuperacion(usuario):
+    """Correo de recuperación con la plantilla de la marca (emails/base.html),
+    en un hilo aparte para no alargar el request como el resto de los envíos."""
+    from core.email import FormatEmail
+
+    contexto = {
+        "username": nombre_para_saludo(usuario),
+        "url_cambio": _url_cambio_password(usuario),
+    }
+    thread = threading.Thread(
+        target=FormatEmail().send_email,
+        args=([usuario.email], "Recupera tu contraseña - Vive Fácil",
+              "emails/recuperarPassword.html", contexto),
+    )
+    thread.start()
+
+
+def usuario_por_token_recuperacion(uidb64, token):
+    """Devuelve el User si el enlace es válido, o None (caducado, ya usado, o
+    manipulado). Mismo mecanismo que el `PasswordResetConfirmView` de Django."""
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.encoding import force_str
+    from django.utils.http import urlsafe_base64_decode
+
+    try:
+        usuario = User.objects.get(pk=force_str(urlsafe_base64_decode(uidb64)))
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        return None
+    return usuario if default_token_generator.check_token(usuario, token) else None
 
 
 def validar_codigo_recuperacion(email, codigo):

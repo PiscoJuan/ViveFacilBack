@@ -28,6 +28,16 @@ class CambioContraseniaProveedorView(ProveedorAPIView):
         return Response(data, status=http_status)
 
 
+class RecuperarPasswordProveedorView(ProveedorAPIView):
+    """Espejo de `RecuperarPasswordSolicitanteView`: confirma el correo y le
+    manda el enlace de cambio de contraseña. Público (IsPublic): pre-login."""
+
+    permission_classes = [IsPublic]
+
+    def get(self, request, user_email, format=None):
+        return Response({"success": services.recuperar_password_existe(user_email)})
+
+
 class DispositivoNotificacionProveedorView(ProveedorAPIView):
     def post(self, request, format=None):
         data, http_status = services.registrar_dispositivo(

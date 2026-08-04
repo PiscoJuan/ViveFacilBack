@@ -646,15 +646,16 @@ def actualizar_solicitud(solicitud_id, request_data):
             # Las medallas dependen de `tramites` y `dinero_invertido`, que
             # acaban de cambiar acá: este es el momento en que se ganan. Antes
             # solo se otorgaban al abrir el perfil, así que quien nunca entraba
-            # no las recibía (ningún proveedor tenía ninguna).
+            # no las recibía.
+            # Solo al solicitante: las medallas son suyas, el proveedor gana
+            # insignias (que se otorgan en `content.services.insignias_personales`).
             from content.services import otorgar_medallas
-            for dato_usuario in (datos_proveedor, datos_solicitante):
-                try:
-                    otorgar_medallas(dato_usuario)
-                except Exception:
-                    # Cerrar la solicitud es el camino crítico (mueve dinero);
-                    # que falle una medalla no puede tumbarlo.
-                    logger.exception("No se pudieron otorgar medallas a datos_id=%s", dato_usuario.id)
+            try:
+                otorgar_medallas(datos_solicitante)
+            except Exception:
+                # Cerrar la solicitud es el camino crítico (mueve dinero);
+                # que falle una medalla no puede tumbarlo.
+                logger.exception("No se pudieron otorgar medallas a datos_id=%s", datos_solicitante.id)
 
             if request_data.get("termino") != "pagado":
                 titles = "Servicio finalizado: " + solicitud.servicio.nombre

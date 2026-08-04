@@ -323,9 +323,13 @@ def notificar_general(user, message, title):
 
 
 def notificar_chat_proveedor(remitente_id, get_usuario_id, mensaje, url):
-    """Devuelve (data, http_status). Los `print()` de debug del original se
-    omiten (no forman parte del contrato de la API); el resto de la lógica,
-    incluidos los mensajes de error, se preserva tal cual."""
+    """Manda el push del mensaje de chat al solicitante. Devuelve
+    (data, http_status), con data = {"enviado": bool, ...}.
+
+    El mensaje en sí no pasa por acá: lo escribe la app directo en Firebase
+    Realtime DB. Esto es solo el aviso, así que no poder mandarlo no invalida
+    el envío del mensaje — por eso "sin dispositivos" es 200 y no un error.
+    Los 404 que quedan sí son peticiones mal formadas (ids que no existen)."""
     from core.firebase import send_notificationF
     from fcm_django.models import FCMDevice
 
@@ -351,10 +355,17 @@ def notificar_chat_proveedor(remitente_id, get_usuario_id, mensaje, url):
 
     dato_id_soli = dato_soli.user_id
     devices = FCMDevice.objects.filter(active=True, user_id=dato_id_soli)
-    if not devices.exists():
-        return {"error": "No devices found"}, 404
-
     tokens = list(devices.values_list("registration_id", flat=True))
+    if not tokens:
+        # Que el destinatario no tenga dispositivos no es un fallo de la
+        # petición: el mensaje ya se guardó en Firebase y llegó igual, solo no
+        # hay a quién mandarle el push (pasa siempre que el otro lado se probó
+        # en navegador, donde no se registra token FCM). Antes esto devolvía
+        # 404 y la app lo pintaba como error rojo en consola. La otra dirección
+        # (`notificar_chat_solicitante`) nunca falló en este caso: devuelve 200
+        # con la lista de tokens vacía.
+        return {"enviado": False, "motivo": "sin dispositivos"}, 200
+
     # El destinatario es el solicitante: su app usa /main-tabs/... (la del
     # proveedor usa /main/...). Iba con la ruta del proveedor y el tap en la
     # notificación no navegaba a ningún lado.
@@ -366,4 +377,7 @@ def notificar_chat_proveedor(remitente_id, get_usuario_id, mensaje, url):
     except Exception:
         pass  # el original también ignoraba errores de envío acá
 
-    return get_usuario_id, 200
+    # Antes devolvía el `get_usuario_id` pelado; se cambia por el mismo dict de
+    # la rama sin dispositivos para que el endpoint conteste siempre igual.
+    # Ningún frontend lee el cuerpo (los dos hacen `.subscribe()` sin handlers).
+    return {"enviado": True}, 200

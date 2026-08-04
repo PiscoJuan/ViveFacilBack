@@ -1,0 +1,145 @@
+{% load static %}
+{% comment %}
+Página pública a la que llega el enlace del correo de recuperación. No extiende
+emails/base.html a propósito: aquélla es HTML de correo (tablas, estilos para
+clientes de mail). Acá se repiten los colores de la marca, no el maquetado.
+
+El logo va con el tag static y no con la URL absoluta que arman los correos:
+esta página la sirve el mismo host, así que no depende de URL_BACKEND_HOST.
+
+Un solo template para los tres estados (`estado`): el formulario, el enlace
+inválido y el cambio hecho. Separarlos serían tres archivos con el mismo marco.
+{% endcomment %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cambiar contraseña - Vive Fácil</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #ebebeb; font-family: Arial, sans-serif; }
+    .wrap { max-width: 460px; margin: 0 auto; padding: 30px 16px 40px; }
+    .card { background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 6px 20px rgba(67, 54, 135, 0.12); }
+    .header { background-color: #433689; text-align: center; padding: 28px 24px 22px; }
+    .header img { max-height: 64px; max-width: 200px; }
+    .content { background-color: #F5F5F8; padding: 32px 28px 30px; }
+    .title { text-align: center; margin: 0 0 22px; color: #433689; font-size: 22px; font-weight: 800; line-height: 1.2; }
+    p { color: #444444; font-size: 15px; line-height: 1.7; margin: 0 0 14px; }
+    label { display: block; color: #433689; font-size: 13px; font-weight: 700; margin: 0 0 6px; }
+    input[type=password] { width: 100%; box-sizing: border-box; padding: 12px 14px; margin: 0 0 6px; border: 1px solid #d8d6e8; border-radius: 6px; font-size: 15px; color: #2b2b2b; background: #ffffff; }
+    input[type=password]:focus { outline: none; border-color: #433689; }
+    input.malo { border-color: #eb445a; }
+    /* Pista bajo cada campo: ocupa su hueco siempre, para que el formulario no
+       salte de alto cuando aparece o desaparece. */
+    .pista { min-height: 18px; margin: 0 0 10px; font-size: 12.5px; line-height: 18px; color: #c62b3f; }
+    button { width: 100%; padding: 14px; border: 0; border-radius: 6px; background-color: #433689; color: #FFE92F; font-size: 16px; font-weight: 700; cursor: pointer; }
+    button[disabled] { opacity: 0.45; cursor: not-allowed; }
+    .spinner { display: none; width: 17px; height: 17px; margin-right: 9px; vertical-align: -3px; border: 2.5px solid rgba(255, 233, 47, 0.35); border-top-color: #FFE92F; border-radius: 50%; animation: gira 0.7s linear infinite; }
+    button.cargando .spinner { display: inline-block; }
+    @keyframes gira { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+    .errores { background-color: #ffffff; border-left: 4px solid #eb445a; padding: 12px 16px; border-radius: 3px; margin: 0 0 18px; }
+    .errores p { color: #c62b3f; font-size: 14px; margin: 0 0 4px; }
+    .errores p:last-child { margin: 0; }
+    .aviso { background-color: #ffffff; border-left: 4px solid #FFE92F; padding: 12px 16px; border-radius: 3px; margin: 18px 0 0; }
+    .aviso p { font-size: 14px; margin: 0; }
+    .footer { background-color: #433689; padding: 18px 24px; text-align: center; }
+    .footer a { color: #ffffff; font-size: 13px; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="header">
+        <img src="{% static 'vivefacil/logo.png' %}" alt="Vive Fácil">
+      </div>
+
+      <div class="content">
+        {% if estado == 'form' %}
+          <p class="title">ELIGE TU NUEVA <span style="color:#7a6ec9;">CONTRASEÑA</span></p>
+          <p>Hola <strong>{{ username }}</strong>, escribe la contraseña con la que vas a entrar a Vive Fácil de ahora en adelante.</p>
+
+          {% if errores %}
+            <div class="errores">
+              {% for error in errores %}<p>{{ error }}</p>{% endfor %}
+            </div>
+          {% endif %}
+
+          <form method="post" id="form-password">
+            {% csrf_token %}
+            <label for="password1">Nueva contraseña</label>
+            <input type="password" id="password1" name="password1" autocomplete="new-password" required>
+            <p class="pista" id="pista1"></p>
+
+            <label for="password2">Repite la contraseña</label>
+            <input type="password" id="password2" name="password2" autocomplete="new-password" required>
+            <p class="pista" id="pista2"></p>
+
+            <button type="submit" id="enviar" disabled>
+              <span class="spinner"></span><span id="enviar-texto">Guardar contraseña</span>
+            </button>
+          </form>
+
+          <script>
+            // Validación de conveniencia: apaga el botón hasta que los dos
+            // campos cuadren, para no gastar un viaje al servidor por un typo.
+            // La validación que manda sigue siendo la del backend
+            // (AUTH_PASSWORD_VALIDATORS), esto solo adelanta el aviso.
+            (function () {
+              var MIN = 8;  // igual que MinimumLengthValidator de Django
+              var form = document.getElementById('form-password');
+              var p1 = document.getElementById('password1');
+              var p2 = document.getElementById('password2');
+              var pista1 = document.getElementById('pista1');
+              var pista2 = document.getElementById('pista2');
+              var boton = document.getElementById('enviar');
+
+              function revisar() {
+                var corta = p1.value.length > 0 && p1.value.length < MIN;
+                var difieren = p2.value.length > 0 && p1.value !== p2.value;
+
+                pista1.textContent = corta ? 'Debe tener al menos ' + MIN + ' caracteres.' : '';
+                pista2.textContent = difieren ? 'Las dos contraseñas no coinciden.' : '';
+                p1.classList.toggle('malo', corta);
+                p2.classList.toggle('malo', difieren);
+
+                boton.disabled = p1.value.length < MIN || p1.value !== p2.value;
+              }
+
+              p1.addEventListener('input', revisar);
+              p2.addEventListener('input', revisar);
+              revisar();
+
+              form.addEventListener('submit', function () {
+                // Se envía de verdad (no fetch): el spinner acompaña hasta que
+                // el servidor conteste con la página nueva.
+                boton.classList.add('cargando');
+                boton.disabled = true;
+                document.getElementById('enviar-texto').textContent = 'Guardando...';
+              });
+            })();
+          </script>
+
+        {% elif estado == 'ok' %}
+          <p class="title">¡CONTRASEÑA <span style="color:#2dd36f;">ACTUALIZADA!</span></p>
+          <p>Listo. Ya puedes volver a la aplicación de Vive Fácil e iniciar sesión con tu contraseña nueva.</p>
+          <div class="aviso">
+            <p>Por seguridad cerramos las sesiones que tenías abiertas en otros dispositivos.</p>
+          </div>
+
+        {% else %}
+          <p class="title">ENLACE <span style="color:#eb445a;">NO VÁLIDO</span></p>
+          <p>Este enlace ya se usó o caducó (dura 3 días). Vuelve a pedir el cambio de contraseña desde la aplicación y te enviaremos uno nuevo.</p>
+          <div class="aviso">
+            <p>¿Sigues con problemas? Escríbenos a <strong>info@vivefacil.app</strong>.</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="footer">
+        <a href="https://www.vivefacil.app/home">www.vivefacil.app</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

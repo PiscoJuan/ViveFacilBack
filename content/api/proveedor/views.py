@@ -1,7 +1,6 @@
 from rest_framework.response import Response
 
-from api.serializers import (InsigniaPersonalSerializer, InsigniaSerializer, MedallaPersonalSerializer,
-                             MedallaSerializer, PoliticasSerializer)
+from api.serializers import InsigniaPersonalSerializer, InsigniaSerializer, PoliticasSerializer
 from content import services
 from core.views import ProveedorAPIView
 
@@ -26,15 +25,6 @@ class InsigniasPersonalesProveedorView(ProveedorAPIView):
     def get(self, request, id, format=None):
         return Response(InsigniaPersonalSerializer(
             services.insignias_personales(id), many=True).data)
-
-
-class MedallasPersonalesProveedorView(ProveedorAPIView):
-    """Endpoint compartido con Solicitante (ver
-    `content.api.solicitante.views.MedallasPersonalesSolicitanteView`)."""
-
-    def get(self, request, format=None):
-        return Response(MedallaPersonalSerializer(
-            services.medallas_personales(request.user), many=True).data)
 
 
 class SugerenciasProveedorView(ProveedorAPIView):

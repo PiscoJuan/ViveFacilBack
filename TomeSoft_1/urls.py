@@ -19,6 +19,8 @@ urlpatterns = [
     path('proveedor/',   include('core.urls.proveedor')),
     path('solicitante/', include('core.urls.solicitante')),
     path('web/',         include('core.urls.web')),
+    # Página HTML (no API) a la que apunta el correo de recuperación.
+    path('cuenta/',      include('accounts.urls_password')),
     path('admin/', admin.site.urls),
     re_path(r'^static/(?P<path>.*)$', serve_spa),
 ]

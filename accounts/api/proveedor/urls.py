@@ -11,6 +11,7 @@ from accounts.api.proveedor.views import (
     LoginProveedorView,
     ProveedorPorCorreoProveedorView,
     ProveedorRegistroManualView,
+    RecuperarPasswordProveedorView,
     RegistroProveedorView,
     SolicitanteByUserDatosProveedorView,
     VersionAndroidProveedorView,
@@ -33,4 +34,5 @@ urlpatterns = [
     path("dato-usuario/<str:id>", DatosUsuarioProveedorView.as_view()),
     path("completar-datos/<str:username>/", CompleteDataUserProveedorView.as_view()),
     path("datos-proveedor/", ProveedorPorCorreoProveedorView.as_view()),
+    path("recuperar-password/<str:user_email>", RecuperarPasswordProveedorView.as_view()),
 ]

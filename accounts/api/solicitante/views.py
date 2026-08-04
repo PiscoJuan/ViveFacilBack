@@ -137,9 +137,9 @@ class CompleteDataUserSolicitanteView(SolicitanteAPIView):
 
 
 class RecuperarPasswordSolicitanteView(SolicitanteAPIView):
-    """Exclusivo de Solicitante2022 (recuperar-contrasenia.page.ts) —
-    Provedor2022 tiene un wrapper equivalente pero su recuperación real usa
-    Firebase directo. Público (IsPublic): pre-login."""
+    """Confirma el correo y le manda el enlace de cambio de contraseña (ver
+    `RecuperarPasswordProveedorView`, el espejo de la app de proveedor).
+    Público (IsPublic): pre-login."""
 
     permission_classes = [IsPublic]
 

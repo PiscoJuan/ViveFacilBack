@@ -274,31 +274,6 @@ def insignias_personales(id):
     return _registrar_insignias(prov.user_datos, obtenidas)
 
 
-def insignias_personales_solicitante(id):
-    """Insignias del solicitante: las de `tipo_usuario="Solicitante"` activas
-    cuyo umbral de pedidos ya alcanzó. Antes esta ruta llamaba a
-    `insignias_personales`, que busca un Proveedor por ese id y reventaba con
-    DoesNotExist para cualquier solicitante.
-
-    No auto-crea insignia de bienvenida como el lado proveedor: las del
-    solicitante las define el admin.
-    """
-    from solicitudes.models import Solicitud
-
-    sol = Solicitante.objects.get(user_datos_id=id)
-    # `Datos.tramites` cuenta las solicitudes no canceladas (solicitudes/services.py).
-    solicitudes = Solicitud.objects.filter(solicitante=sol).exclude(termino='cancelado')
-
-    obtenidas = []
-    for i in Insignia.objects.filter(tipo_usuario="Solicitante", estado=True):
-        # Insignia atada a un servicio -> solo cuentan las solicitudes de ese servicio.
-        propias = solicitudes.filter(servicio__nombre=i.servicio) if i.servicio else solicitudes
-        if propias.count() >= i.pedidos:
-            obtenidas.append((i, propias))
-
-    return _registrar_insignias(sol.user_datos, obtenidas)
-
-
 def otorgar_medallas(dato):
     """Otorga las medallas que el usuario ya califica y todavía no tiene
     (fila en `clientexmedalla` + sus puntos) y devuelve los ids de todas las que
@@ -346,10 +321,6 @@ def medallas_personales(user):
         user=dato.user, medalla=OuterRef('pk')).values('fecha_obtencion')[:1]
     # Las filas anteriores a la columna quedan en NULL; el frontend oculta el chip.
     return Medalla.objects.filter(id__in=list_of_ids).annotate(fecha_obtencion=Subquery(fecha))
-
-
-def list_insignias_solicitante():
-    return Insignia.objects.all().filter(tipo_usuario="Solicitante")
 
 
 def crear_sugerencia(data, files):
