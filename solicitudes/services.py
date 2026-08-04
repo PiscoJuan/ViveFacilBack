@@ -254,7 +254,9 @@ def crear_solicitud(data, files):
 
     titles = "Solicitud Recibida del servicio " + solicitud.servicio.nombre
     bodys = "¡Dale un vistazo!"
-    notif_data = {"ruta": "/main/solicitudes", "descripcion": "Se ha recibido una solicitud de servicio."}
+    # Recién creada: el proveedor todavía no la aceptó, así que vive en home
+    # (las pendientes por aceptar), no en la pestaña de solicitudes tomadas.
+    notif_data = {"ruta": "/main/home", "descripcion": "Se ha recibido una solicitud de servicio."}
 
     from fcm_django.models import FCMDevice
 
