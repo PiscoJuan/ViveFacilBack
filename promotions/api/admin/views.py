@@ -7,9 +7,13 @@ from core.views import AdminAPIView
 from promotions import services
 
 
-class CuponesAdminView(AdminAPIView):
+class CuponesAdminView(AdminAPIView, MyPaginationMixin):
+    pagination_class = MyCustomPagination
+
     def get(self, request, format=None):
-        return Response(CuponSerializer(services.list_cupones(), many=True).data)
+        page = self.paginate_queryset(services.list_cupones())
+        if page is not None:
+            return self.get_paginated_response(CuponSerializer(page, many=True).data)
 
     def post(self, request, format=None):
         _, data = services.crear_cupon(request.data, request.POST.getlist("categorias"))

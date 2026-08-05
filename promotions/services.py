@@ -17,9 +17,13 @@ def cupones_categoria_disponibles(usuario):
     hoy = datetime.datetime.today()
     cupones = CuponCategoria.objects.all().filter(cupon__fecha_expiracion__gte=hoy)
     cupones = cupones.filter(cupon__fecha_iniciacion__lte=hoy)
+    # Sin filtrar por estado: crear_cupon_aplicado no deja canjear un cupón
+    # dos veces sin importar si el canje anterior ya se usó (estado=False) o
+    # sigue disponible en "Mis cupones" (estado=True), así que acá también
+    # se excluye por igual.
     ids_aplicados = list(
         Cupon_Aplicado.objects.all()
-        .filter(user=usuario, estado=False)
+        .filter(user=usuario)
         .distinct()
         .values_list("cupon", flat=True)
     )

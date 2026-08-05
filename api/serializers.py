@@ -22,17 +22,36 @@ class MovimientoPuntosSerializer(serializers.ModelSerializer):
     usuario_email = serializers.CharField(source='usuario.user.email', read_only=True, default='')
     usuario_nombre = serializers.SerializerMethodField()
     motivo_display = serializers.CharField(source='get_motivo_display', read_only=True)
+    referencia_display = serializers.SerializerMethodField()
 
     class Meta:
         model = MovimientoPuntos
         fields = ['id', 'usuario_email', 'usuario_nombre', 'monto', 'motivo',
-                  'motivo_display', 'saldo_resultante', 'referencia', 'fecha']
+                  'motivo_display', 'saldo_resultante', 'referencia', 'referencia_display', 'fecha']
 
     def get_usuario_nombre(self, obj):
         d = obj.usuario
         if not d:
             return ''
         return ((d.nombres or '') + ' ' + (d.apellidos or '')).strip()
+
+    def get_referencia_display(self, obj):
+        # ponytail: solo resuelve medalla y cupón; otros motivos usan referencia tal cual
+        if not obj.referencia:
+            return '-'
+        if obj.motivo == 'medalla':
+            try:
+                medalla = Medalla.objects.get(id=obj.referencia)
+                return f"{medalla.nombre} ({medalla.puntos}pts)"
+            except:
+                return obj.referencia
+        elif obj.motivo == 'cupon':
+            try:
+                cupon = Cupon.objects.get(id=obj.referencia)
+                return cupon.titulo
+            except:
+                return obj.referencia
+        return obj.referencia
 
 
 class InsigniaSerializer(serializers.ModelSerializer):
