@@ -479,15 +479,31 @@ class TarjetaSerializer(serializers.ModelSerializer):
 
 
 class NotificacionSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
+    # Sin `user`: iba anidado con UserSerializer, que incluye el hash de la
+    # contraseña, y ningún componente del admin lo lee. Además, al ser anidado y
+    # escribible rompía cualquier PUT que trajera `user`.
+    # Las profesiones se escriben en services.aplicar_profesiones, que además
+    # aplica la regla de "solo si va dirigida a proveedores". Acá solo se leen,
+    # para no tener dos caminos de escritura con reglas distintas.
+    profesiones = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    profesiones_nombres = serializers.SerializerMethodField()
 
     class Meta:
         model = Notificacion
+        # Sin `tipo_proveedores`: la columna sigue en la tabla pero está
+        # deprecada (la reemplazan dirigida_a + profesiones) y nadie la lee.
         fields = [
-            'id','user', 'nombre', 'titulo', 'descripcion', 'tipo_proveedores', 
-            'frecuencia', 'ruta', 'fecha_creacion', 'fecha_iniciacion', 
-            'fecha_expiracion', 'hora', 'estado','imagen'
+            'id', 'nombre', 'titulo', 'descripcion',
+            'frecuencia', 'ruta', 'fecha_creacion', 'fecha_iniciacion',
+            'fecha_expiracion', 'hora', 'estado', 'imagen',
+            'dirigida_a', 'profesiones', 'profesiones_nombres', 'dias_semana',
+            'veces_enviada', 'ultimo_envio',
         ]
+        read_only_fields = ['fecha_creacion', 'veces_enviada', 'ultimo_envio']
+
+    def get_profesiones_nombres(self, obj):
+        # Sin N+1: los querysets de services traen prefetch_related.
+        return [p.nombre for p in obj.profesiones.all()]
 
 
 
@@ -543,13 +559,25 @@ class CiudadSerializer(serializers.ModelSerializer):
 
 
 class NotificacionMasivaSerializer(serializers.ModelSerializer):
+    profesiones = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    profesiones_nombres = serializers.SerializerMethodField()
+
     class Meta:
         model = NotificacionMasiva
+        # Una masiva se envía una sola vez y no expira, así que `frecuencia`,
+        # `hora`, `fecha_iniciacion`, `fecha_expiracion` y `tipo_proveedores`
+        # quedan fuera: las columnas siguen en la tabla, deprecadas.
         fields = [
-            'id', 'nombre', 'titulo', 'descripcion', 'tipo_proveedores', 
-            'frecuencia', 'ruta', 'fecha_creacion', 'fecha_iniciacion', 
-            'fecha_expiracion', 'hora', 'estado','imagen'
+            'id', 'nombre', 'titulo', 'descripcion', 'ruta', 'fecha_creacion',
+            'estado', 'imagen',
+            'dirigida_a', 'profesiones', 'profesiones_nombres',
+            'programada_para', 'enviada_en',
         ]
+        # `enviada_en` la ponen el job y "enviar ahora", nunca el cliente.
+        read_only_fields = ['fecha_creacion', 'enviada_en']
+
+    def get_profesiones_nombres(self, obj):
+        return [p.nombre for p in obj.profesiones.all()]
 
 
 # class PagosSerializer(serializers.Serializer):

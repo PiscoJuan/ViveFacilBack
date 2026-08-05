@@ -23,8 +23,12 @@ class NotificacionAnuncioWebView(WebAPIView):
         return [IsAdministrador()]
 
     def get(self, request, format=None):
-        serializer = NotificacionMasivaSerializer(services.list_notificaciones_masivas(), many=True)
-        return Response(serializer.data)
+        # Legacy y AllowAny: sin usuario no se puede filtrar por destinatario,
+        # así que solo se ocultan las apagadas y las que aún no han salido. Las
+        # apps ya no pegan acá (usan su ruta por rol, que sí filtra).
+        notificaciones = services.list_notificaciones_masivas().filter(
+            estado=True, enviada_en__isnull=False)
+        return Response(NotificacionMasivaSerializer(notificaciones, many=True).data)
 
     def post(self, request, format=None):
         notificacion, data = services.crear_notificacion_masiva(request.data, request.FILES)
@@ -38,6 +42,7 @@ class NotificacionAnuncioWebView(WebAPIView):
             serializer = NotificacionMasivaSerializer(notificacion, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
+                services.aplicar_profesiones(serializer.instance, request.data)
                 return Response(serializer.data)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except NotificacionMasiva.DoesNotExist:

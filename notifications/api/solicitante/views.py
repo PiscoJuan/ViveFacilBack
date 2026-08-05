@@ -7,10 +7,14 @@ from notifications import services
 
 class NotificacionAnuncioSolicitanteView(SolicitanteAPIView):
     """Endpoint propio del solicitante para notificacion-anuncio — antes
-    pedía una ruta sin ningún prefijo de rol."""
+    pedía una ruta sin ningún prefijo de rol.
+
+    Filtrado por servidor igual que el del proveedor: solo las enviadas después
+    de su registro y dirigidas a su app."""
 
     def get(self, request, format=None):
-        return Response(NotificacionMasivaSerializer(services.list_notificaciones_masivas(), many=True).data)
+        notificaciones = services.notificaciones_visibles(request.user)
+        return Response(NotificacionMasivaSerializer(notificaciones, many=True).data)
 
 
 class NotificacionChatSolicitanteView(SolicitanteAPIView):

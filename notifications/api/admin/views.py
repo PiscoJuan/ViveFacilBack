@@ -15,7 +15,13 @@ class NotificacionAnuncioAdminView(AdminAPIView):
     notifications.api.web.views.NotificacionAnuncioWebView; distinta de
     NotificacionAnuncioDetalleAdminView, que solo cubre `estado/`+`envio/`)."""
 
-    def get(self, request, format=None):
+    def get(self, request, id=None, format=None):
+        if id is not None:
+            try:
+                notificacion = services.obtener_notificacion_masiva(id)
+            except NotificacionMasiva.DoesNotExist:
+                return Response({"error": "Notificación no encontrada."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(NotificacionMasivaSerializer(notificacion).data)
         return Response(NotificacionMasivaSerializer(services.list_notificaciones_masivas(), many=True).data)
 
     def post(self, request, format=None):
@@ -30,7 +36,8 @@ class NotificacionAnuncioAdminView(AdminAPIView):
             serializer = NotificacionMasivaSerializer(notificacion, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
-                return Response(serializer.data)
+                services.aplicar_profesiones(serializer.instance, request.data)
+                return Response(NotificacionMasivaSerializer(serializer.instance).data)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except NotificacionMasiva.DoesNotExist:
             return Response({"error": "Notificación no encontrada."}, status=status.HTTP_404_NOT_FOUND)
@@ -47,13 +54,22 @@ class NotificacionesAdminView(AdminAPIView, MyPaginationMixin):
 
     pagination_class = MyCustomPagination
 
-    def get(self, request, format=None):
-        page = self.paginate_queryset(services.list_notificaciones())
+    def get(self, request, id=None, format=None):
+        if id is not None:
+            try:
+                notificacion = services.obtener_notificacion(id)
+            except Notificacion.DoesNotExist:
+                return Response({"error": "Notificación no encontrada."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(NotificacionSerializer(notificacion).data)
+        notificaciones = services.list_notificaciones()
+        page = self.paginate_queryset(notificaciones)
         if page is not None:
             return self.get_paginated_response(NotificacionSerializer(page, many=True).data)
+        # Sin este return la vista devolvía None y el request reventaba con 500.
+        return Response(NotificacionSerializer(notificaciones, many=True).data)
 
     def post(self, request, format=None):
-        notificacion, data = services.crear_notificacion(request.data, request.FILES)
+        notificacion, data = services.crear_notificacion(request.data, request.FILES, request.user)
         if notificacion is not None:
             data['notificacion'] = NotificacionSerializer(notificacion).data
         return Response(data)
@@ -64,7 +80,8 @@ class NotificacionesAdminView(AdminAPIView, MyPaginationMixin):
             serializer = NotificacionSerializer(notificacion, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
-                return Response(serializer.data)
+                services.aplicar_profesiones(serializer.instance, request.data)
+                return Response(NotificacionSerializer(serializer.instance).data)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Notificacion.DoesNotExist:
             return Response({"error": "Notificación no encontrada."}, status=status.HTTP_404_NOT_FOUND)
@@ -89,9 +106,10 @@ class NotificacionesDetalleAdminView(AdminAPIView):
         return Response(status=status.HTTP_200_OK)
 
     def post(self, request, format=None):
+        # Ya no van solo a proveedores: el destinatario lo decide `dirigida_a`.
         services.enviar_notificacion_segmentada(request.GET.get('id'))
         return Response(
-            {"message": "Notificación enviada correctamente a los proveedores seleccionados."},
+            {"message": "Notificación enviada correctamente a sus destinatarios."},
             status=status.HTTP_200_OK,
         )
 
@@ -147,6 +165,6 @@ class NotificacionAnuncioDetalleAdminView(AdminAPIView):
     def post(self, request, format=None):
         services.enviar_notificacion_masiva_segmentada(request.GET.get('id'))
         return Response(
-            {"message": "Notificación enviada correctamente a los proveedores seleccionados."},
+            {"message": "Notificación enviada correctamente a sus destinatarios."},
             status=status.HTTP_200_OK,
         )

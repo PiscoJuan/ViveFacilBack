@@ -8,10 +8,15 @@ from notifications import services
 class NotificacionAnuncioProveedorView(ProveedorAPIView):
     """Endpoint propio del proveedor para notificacion-anuncio — antes
     pedía directo a `web/notifications/notificacion-anuncio/`
-    (notifications.api.web.views.NotificacionAnuncioWebView)."""
+    (notifications.api.web.views.NotificacionAnuncioWebView).
+
+    Devuelve solo lo que le corresponde a este proveedor (fecha de registro,
+    app destino y profesión). Antes devolvía la tabla entera y la app filtraba
+    en el cliente."""
 
     def get(self, request, format=None):
-        return Response(NotificacionMasivaSerializer(services.list_notificaciones_masivas(), many=True).data)
+        notificaciones = services.notificaciones_visibles(request.user)
+        return Response(NotificacionMasivaSerializer(notificaciones, many=True).data)
 
 
 class NotificacionChatProveedorView(ProveedorAPIView):

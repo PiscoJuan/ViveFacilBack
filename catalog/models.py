@@ -35,6 +35,11 @@ class Servicio(models.Model):
 
 
 class Profesion(models.Model):
+    # PK legacy: la columna es INT en la BD, pero catalog/apps.py fuerza
+    # BigAutoField. Sin este pin, cualquier FK nueva hacia acá (p.ej. la M2M de
+    # notifications) se crea BIGINT y MySQL la rechaza con errno 3780. Mismo
+    # arreglo que Datos en accounts/models.py.
+    id = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=255, unique=True)
     estado = models.BooleanField(default=True)
     servicio = models.ManyToManyField(Servicio, db_table="api_profesion_servicio")

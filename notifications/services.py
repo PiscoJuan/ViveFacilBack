@@ -1,65 +1,208 @@
 import uuid
+from datetime import datetime, time
+
+from django.contrib.auth.models import User
+from django.db.models import F, Q, Subquery
+from django.utils import timezone
+from django.utils.dateparse import parse_date, parse_datetime
 
 from accounts.models import Datos, Proveedor, Solicitante
-from notifications.models import Notificacion, NotificacionMasiva
-from django.contrib.auth.models import User
+from notifications.models import (
+    DIRIGIDA_AMBAS,
+    DIRIGIDA_PROVEEDOR,
+    DIRIGIDA_SOLICITANTE,
+    FRECUENCIA_DIARIA,
+    FRECUENCIA_SEMANAL,
+    FRECUENCIA_UNICA,
+    Notificacion,
+    NotificacionMasiva,
+)
 
 
-def _notificar_proveedores_segmentado(notif):
-    """Mismo código operando sobre `Notificacion` o `NotificacionMasiva`,
-    unificado acá en vez de mantener dos copias. Los `print()` de debug
-    del original se omiten, igual que en `notificar_chat_proveedor`."""
-    from core.firebase import send_notificationF
+def condicion_destinatarios(dirigida_a, profesion_ids):
+    """Q sobre `Datos` con los filtros de destinatario configurables.
+
+    Función pura a propósito: es la regla de negocio que decide a quién le
+    llega una notificación, y así se testea sin base de datos (este proyecto no
+    puede crear una de tests).
+
+    `proveedor`, `solicitante` y `profesion_proveedor` son los accesores
+    inversos por defecto — ningún modelo del repo declara `related_name`.
+    """
+    dirigida_a = dirigida_a or DIRIGIDA_AMBAS
+    cond = Q()
+    if dirigida_a in (DIRIGIDA_PROVEEDOR, DIRIGIDA_AMBAS):
+        q_prov = Q(proveedor__estado=True)
+        if profesion_ids:
+            # Vía la pivote real, no el CSV `Proveedor.profesion`, que está
+            # documentadamente desincronizado (ver reparar_profesion_proveedor).
+            q_prov &= Q(
+                proveedor__profesion_proveedor__estado=True,
+                proveedor__profesion_proveedor__profesion_id__in=profesion_ids,
+            )
+        cond |= q_prov
+    if dirigida_a in (DIRIGIDA_SOLICITANTE, DIRIGIDA_AMBAS):
+        cond |= Q(solicitante__estado=True)
+    return cond
+
+
+def resolver_destinatarios(notif):
+    """`user_id` (auth.User) a los que va la notificación.
+
+    Devuelve un queryset, no una lista, para que MySQL lo resuelva como
+    subconsulta: el `IN` no degenera aunque haya miles de usuarios.
+
+    Reemplaza al `_notificar_proveedores_segmentado` viejo, que iteraba
+    `Proveedor.objects.all()` en Python haciendo dos queries por proveedor.
+    """
+    profesion_ids = (
+        list(notif.profesiones.values_list('id', flat=True))
+        if notif.dirigida_a == DIRIGIDA_PROVEEDOR else []
+    )
+    return (Datos.objects
+            .filter(estado=True, user__isnull=False)
+            .filter(condicion_destinatarios(notif.dirigida_a, profesion_ids))
+            .values_list('user_id', flat=True)
+            .distinct())
+
+
+def _payload(notif):
+    """`data` del push. FCM v1 exige que todos los valores sean strings."""
+    data = {
+        "ruta": notif.ruta or "",
+        "descripcion": notif.descripcion or "",
+    }
+    if notif.imagen:
+        data["imagen"] = notif.imagen.url
+    return data
+
+
+def enviar_push(notif, asincrono=False):
+    """Manda el push a los destinatarios de `notif`. Devuelve cuántos tokens.
+
+    `asincrono` en las vistas del admin (una masiva a ambas apps son miles de
+    POST en serie con timeout de 15s), síncrono en el management command, donde
+    los threads daemon de la versión async morirían al salir el proceso.
+    """
+    from core.firebase import send_notificationF, send_notificationF_async
     from fcm_django.models import FCMDevice
 
-    tipo_proveedor = notif.tipo_proveedores
-    data_notificacion = {"descripcion": notif.descripcion}
+    tokens = list(FCMDevice.objects
+                  .filter(active=True, user_id__in=resolver_destinatarios(notif))
+                  .values_list('registration_id', flat=True))
+    if not tokens:
+        return 0
+    enviar = send_notificationF_async if asincrono else send_notificationF
+    enviar(tokens, notif.titulo, notif.descripcion, _payload(notif))
+    return len(tokens)
 
-    for proveedor in Proveedor.objects.all():
-        profesiones = proveedor.profesion.split(",") if ',' in proveedor.profesion else [proveedor.profesion]
-        if tipo_proveedor not in profesiones:
-            continue
-        datos_prov = Datos.objects.get(id=proveedor.user_datos.id)
-        user = User.objects.get(id=datos_prov.user.id)
-        devices = FCMDevice.objects.filter(active=True, user_id=user.id)
-        tokens = list(devices.values_list('registration_id', flat=True))
-        if tokens:
-            send_notificationF(tokens, notif.titulo, notif.descripcion, data_notificacion)
+
+def slot_de_hoy(hora, hoy):
+    """Combina un `TimeField` naive con una fecha, en la zona del proyecto.
+
+    Nunca `.replace(tzinfo=...)`: America/Guayaquil es UTC-5 fijo, pero el
+    atajo se rompería el día que cambie el TIME_ZONE.
+    """
+    return timezone.make_aware(datetime.combine(hoy, hora), timezone.get_current_timezone())
+
+
+def debe_disparar(notif, ahora, hoy):
+    """Slot que le toca a una notificación programada, o None si no le toca.
+
+    Duck-typed (no exige una instancia de `Notificacion`) para poder testearlo
+    sin ORM. `ahora` y `hoy` se pasan en vez de leerlos del reloj para que el
+    test controle el tiempo.
+    """
+    if not notif.hora:
+        return None
+    if notif.fecha_iniciacion and notif.fecha_iniciacion > ahora:
+        return None
+    if notif.fecha_expiracion and notif.fecha_expiracion < ahora:
+        return None
+    if notif.frecuencia == FRECUENCIA_UNICA and notif.veces_enviada > 0:
+        return None
+    if notif.frecuencia == FRECUENCIA_SEMANAL:
+        dias = [d for d in (notif.dias_semana or '').split(',') if d]
+        if str(hoy.weekday()) not in dias:
+            return None
+    elif notif.frecuencia not in (FRECUENCIA_UNICA, FRECUENCIA_DIARIA):
+        # Frecuencia legacy en texto libre: no dispara nunca en vez de adivinar.
+        return None
+
+    slot = slot_de_hoy(notif.hora, hoy)
+    if slot > ahora:
+        return None                      # su turno es más tarde hoy
+    if notif.ultimo_envio and timezone.localtime(notif.ultimo_envio) >= slot:
+        return None                      # ya se disparó en este slot
+    return slot
+
+
+def _ids(data, key):
+    """Lee un campo multivalor. El admin manda FormData multipart, así que
+    `request.data` es un QueryDict y hay que usar `getlist`."""
+    if hasattr(data, 'getlist'):
+        crudos = data.getlist(key)
+    else:
+        crudo = data.get(key) or []
+        crudos = crudo if isinstance(crudo, (list, tuple)) else str(crudo).split(',')
+    return [int(v) for v in crudos if str(v).strip()]
+
+
+def _fecha(data, key):
+    """Parsea 'YYYY-MM-DD' o 'YYYY-MM-DDTHH:MM[:SS]' a datetime aware, o None.
+
+    Explícito y no delegado al ORM porque un string suelto en un DateTimeField
+    entra como naive y Django solo avisa con un warning.
+    """
+    valor = (data.get(key) or '').strip()
+    if not valor:
+        return None
+    fecha = parse_datetime(valor)
+    if fecha is None:
+        solo_dia = parse_date(valor)
+        if solo_dia is None:
+            return None
+        fecha = datetime.combine(solo_dia, time.min)
+    if timezone.is_naive(fecha):
+        fecha = timezone.make_aware(fecha, timezone.get_current_timezone())
+    return fecha
+
+
+def aplicar_profesiones(notificacion, data):
+    """El filtro por profesión solo aplica a proveedores; con cualquier otro
+    destinatario se descarta lo que venga para no dejar filtros fantasma."""
+    if notificacion.dirigida_a == DIRIGIDA_PROVEEDOR:
+        notificacion.profesiones.set(_ids(data, 'profesiones'))
+    else:
+        notificacion.profesiones.clear()
 
 
 def list_notificaciones():
-    return Notificacion.objects.all()
+    return Notificacion.objects.prefetch_related('profesiones').order_by('-id')
 
 
-def crear_notificacion(data, files):
-    """Devuelve (notificacion_o_None, data: dict)."""
-    from core.firebase import send_notificationF
-    from fcm_django.models import FCMDevice
+def crear_notificacion(data, files, user=None):
+    """Crea una notificación programada. Devuelve (notificacion, data: dict).
 
+    No envía nada: nace pendiente y la dispara
+    `manage.py enviar_notificaciones_programadas` cuando le toque su slot.
+    """
     notificacion = Notificacion.objects.create(
-        user=User.objects.first(),
+        user=user if user and user.is_authenticated else None,
         nombre=data.get('nombre'),
         titulo=data.get('titulo'),
         descripcion=data.get('descripcion'),
-        tipo_proveedores=data.get('tipo_proveedores'),
-        frecuencia=data.get('frecuencia'),
+        dirigida_a=data.get('dirigida_a') or DIRIGIDA_AMBAS,
+        frecuencia=data.get('frecuencia') or FRECUENCIA_UNICA,
+        dias_semana=data.get('dias_semana') or '',
         ruta=data.get('ruta'),
         imagen=files.get('imagen'),
-        fecha_iniciacion=data.get('fecha_iniciacion'),
-        fecha_expiracion=data.get('fecha_expiracion'),
-        hora=data.get('hora'),
+        fecha_iniciacion=_fecha(data, 'fecha_iniciacion'),
+        fecha_expiracion=_fecha(data, 'fecha_expiracion'),
+        hora=data.get('hora') or None,
     )
-    data_notificacion = {"ruta": data.get('ruta'), "descripcion": data.get('descripcion')}
-    if files.get('imagen') is not None:
-        data_notificacion["imagen"] = notificacion.imagen.url
-    try:
-        devices = FCMDevice.objects.filter(active=True)
-        tokens = list(devices.values_list('registration_id', flat=True))
-        send_notificationF(tokens, data.get('titulo'), data.get('descripcion'), data_notificacion)
-        return notificacion, {"success": True, "message": "La notificación ha sido creada correctamente."}
-    except Exception as e:
-        notificacion.delete()
-        return None, {"success": False, "message": f"Hubo un error al enviar la notificación: {str(e)}"}
+    aplicar_profesiones(notificacion, data)
+    return notificacion, {"success": True, "message": "La notificación programada ha sido creada correctamente."}
 
 
 def actualizar_notificacion(id, data):
@@ -69,27 +212,20 @@ def actualizar_notificacion(id, data):
 
 
 def eliminar_notificacion(id):
-    """Devuelve (success: bool, message: str)."""
-    from core.firebase import send_notificationF
-    from fcm_django.models import FCMDevice
+    """Devuelve (success: bool, message: str).
 
+    Ya no manda el push "Notificacion eliminada:" a todos los dispositivos:
+    borrar un registro del admin no es algo que le interese a los usuarios.
+    """
     try:
-        notificacion = Notificacion.objects.get(id=id)
-        titulo = notificacion.titulo
-        descripcion = notificacion.descripcion
-        notificacion.delete()
-
-        devices = FCMDevice.objects.filter(active=True)
-        tokens = list(devices.values_list('registration_id', flat=True))
-        send_notificationF(tokens, "Notificacion eliminada:" + titulo, descripcion, {"descripcion": descripcion})
+        Notificacion.objects.get(id=id).delete()
         return True, "Se ha eliminado la notificación exitosamente."
-    except Exception:
+    except Notificacion.DoesNotExist:
         return False, "La notificación no fue encontrada en la base de datos."
 
 
 def obtener_notificacion(pk):
-    """Nunca estuvo wireada a ninguna URL con `pk` real (dead branch), se
-    mantiene por si se decide exponerla más adelante."""
+    """Puede propagar Notificacion.DoesNotExist — la vista lo traduce a 404."""
     return Notificacion.objects.get(id=pk)
 
 
@@ -100,44 +236,85 @@ def actualizar_estado_notificacion(id, estado):
 
 
 def enviar_notificacion_segmentada(pk):
+    """"Enviar ahora" de una programada: sale fuera de su horario y cuenta
+    igual que un envío del job (consume el slot del día)."""
     notificacion = Notificacion.objects.get(id=pk)
-    _notificar_proveedores_segmentado(notificacion)
+    enviar_push(notificacion, asincrono=True)
+    Notificacion.objects.filter(pk=pk).update(
+        veces_enviada=F('veces_enviada') + 1, ultimo_envio=timezone.now())
 
 
 def list_notificaciones_masivas():
-    """Compartido con Provedor2022 y Solicitante2022, se queda expuesto
-    sin rol específico."""
-    return NotificacionMasiva.objects.all()
+    """Listado completo para el admin: incluye las que aún no se han enviado.
+    Lo que ven las apps sale de `notificaciones_visibles`."""
+    return NotificacionMasiva.objects.prefetch_related('profesiones').order_by('-id')
+
+
+def notificaciones_visibles(user):
+    """Masivas que puede ver en su app el usuario del token.
+
+    Los tres criterios pedidos:
+      1. Fecha de registro: nada anterior a su alta. Se compara contra la fecha
+         de ENVÍO, no la de creación — si estabas registrado cuando salió, te
+         llega, aunque se hubiese redactado antes.
+      2. Tipo de app (`dirigida_a`).
+      3. Profesión, solo para proveedores. Se evalúa AL LEER, así que un
+         proveedor que obtiene la profesión después igual la ve. Sin
+         profesiones configuradas = para todos los proveedores.
+    """
+    from catalog.models import Profesion_Proveedor
+
+    datos = Datos.objects.filter(user=user).select_related('tipo').first()
+    if datos is None:
+        return NotificacionMasiva.objects.none()
+
+    qs = (NotificacionMasiva.objects
+          .filter(estado=True, enviada_en__isnull=False)
+          .filter(enviada_en__gte=datos.fecha_creacion))
+
+    if datos.tipo and datos.tipo.name == 'Proveedor':
+        qs = qs.filter(dirigida_a__in=[DIRIGIDA_AMBAS, DIRIGIDA_PROVEEDOR])
+        mis_profesiones = (Profesion_Proveedor.objects
+                           .filter(proveedor__user_datos=datos, estado=True)
+                           .values('profesion_id'))
+        qs = qs.filter(Q(profesiones__isnull=True) | Q(profesiones__in=Subquery(mis_profesiones)))
+    else:
+        qs = qs.filter(dirigida_a__in=[DIRIGIDA_AMBAS, DIRIGIDA_SOLICITANTE])
+
+    return qs.prefetch_related('profesiones').distinct().order_by('-enviada_en')
 
 
 def crear_notificacion_masiva(data, files):
-    """Devuelve (notificacion_o_None, data: dict)."""
-    from core.firebase import send_notificationF
-    from fcm_django.models import FCMDevice
+    """Crea una masiva. Devuelve (notificacion, data: dict).
 
+    Sin `programada_para` sale en el acto; con hora queda pendiente y la recoge
+    el job. Ya no se hace rollback borrando la notificación si FCM falla: que
+    el push no salga no es motivo para destruir lo que el admin acaba de
+    redactar, y para eso está el botón "enviar ahora".
+    """
+    programada = _fecha(data, 'programada_para')
     notificacion = NotificacionMasiva.objects.create(
         nombre=data.get('nombre'),
         titulo=data.get('titulo'),
         descripcion=data.get('descripcion'),
-        tipo_proveedores=data.get('tipo_proveedores'),
-        frecuencia=data.get('frecuencia'),
+        dirigida_a=data.get('dirigida_a') or DIRIGIDA_AMBAS,
         ruta=data.get('ruta'),
         imagen=files.get('imagen'),
-        fecha_iniciacion=data.get('fecha_iniciacion'),
-        fecha_expiracion=data.get('fecha_expiracion'),
-        hora=data.get('hora'),
+        programada_para=programada,
     )
-    data_notificacion = {"ruta": data.get('ruta'), "descripcion": data.get('descripcion')}
-    if files.get('imagen') is not None:
-        data_notificacion["imagen"] = notificacion.imagen.url
-    try:
-        devices = FCMDevice.objects.filter(active=True)
-        tokens = list(devices.values_list('registration_id', flat=True))
-        send_notificationF(tokens, data.get('titulo'), data.get('descripcion'), data_notificacion)
-        return notificacion, {"success": True, "message": "La notificación ha sido creada correctamente."}
-    except Exception as e:
-        notificacion.delete()
-        return None, {"success": False, "message": f"Hubo un error al enviar la notificación: {str(e)}"}
+    aplicar_profesiones(notificacion, data)
+
+    if programada is not None:
+        cuando = timezone.localtime(programada).strftime('%d/%m/%Y %H:%M')
+        return notificacion, {"success": True, "message": f"Notificación programada para el {cuando}."}
+
+    notificacion.enviada_en = timezone.now()
+    notificacion.save(update_fields=['enviada_en'])
+    enviados = enviar_push(notificacion, asincrono=True)
+    return notificacion, {
+        "success": True,
+        "message": f"Notificación creada y enviada a {enviados} dispositivo(s).",
+    }
 
 
 def actualizar_notificacion_masiva(id, data):
@@ -147,26 +324,17 @@ def actualizar_notificacion_masiva(id, data):
 
 
 def eliminar_notificacion_masiva(id):
-    """Devuelve (success: bool, message: str)."""
-    from core.firebase import send_notificationF
-    from fcm_django.models import FCMDevice
-
+    """Devuelve (success: bool, message: str). Sin push al borrar, igual que
+    `eliminar_notificacion`."""
     try:
-        notificacion = NotificacionMasiva.objects.get(id=id)
-        titulo = notificacion.titulo
-        descripcion = notificacion.descripcion
-        notificacion.delete()
-
-        devices = FCMDevice.objects.filter(active=True)
-        tokens = list(devices.values_list('registration_id', flat=True))
-        send_notificationF(tokens, "Notificacion eliminada:" + titulo, descripcion, {"descripcion": descripcion})
+        NotificacionMasiva.objects.get(id=id).delete()
         return True, "Se ha eliminado la notificación exitosamente."
-    except Exception:
+    except NotificacionMasiva.DoesNotExist:
         return False, "La notificación no fue encontrada en la base de datos."
 
 
 def obtener_notificacion_masiva(pk):
-    """Nunca estuvo wireada a ninguna URL con `pk` real (dead branch)."""
+    """Puede propagar NotificacionMasiva.DoesNotExist — la vista lo traduce a 404."""
     return NotificacionMasiva.objects.get(id=pk)
 
 
@@ -177,8 +345,13 @@ def actualizar_estado_notificacion_masiva(id, estado):
 
 
 def enviar_notificacion_masiva_segmentada(pk):
+    """"Enviar ahora" de una masiva. Además de mandar el push la marca como
+    enviada, que es lo que la hace visible en la lista in-app y lo que evita
+    que el job la vuelva a mandar si tenía hora programada."""
     notificacion = NotificacionMasiva.objects.get(id=pk)
-    _notificar_proveedores_segmentado(notificacion)
+    enviar_push(notificacion, asincrono=True)
+    if notificacion.enviada_en is None:
+        NotificacionMasiva.objects.filter(pk=pk).update(enviada_en=timezone.now())
 
 
 def enviar_email_bienvenida(email, password, tipo):
