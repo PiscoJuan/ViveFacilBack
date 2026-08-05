@@ -7,7 +7,10 @@ from api.serializers import CuponSerializer
 
 
 def cupones_aplicados_activos(user):
-    return Cupon_Aplicado.objects.all().filter(user=user, estado=True)
+    # order_by explícito: sin esto PageNumberPagination pagina sobre un
+    # queryset sin orden garantizado y una página puede repetir o saltarse
+    # cupones respecto a la anterior.
+    return Cupon_Aplicado.objects.all().filter(user=user, estado=True).order_by('-id')
 
 
 def cupones_categoria_disponibles(usuario):
@@ -20,7 +23,9 @@ def cupones_categoria_disponibles(usuario):
         .distinct()
         .values_list("cupon", flat=True)
     )
-    return cupones.exclude(cupon__pk__in=ids_aplicados)
+    # Mismo motivo que en cupones_aplicados_activos: orden explícito para que
+    # la paginación no repita/salte cupones entre páginas.
+    return cupones.exclude(cupon__pk__in=ids_aplicados).order_by('-id')
 
 
 def revisar_descuento_unico(user):

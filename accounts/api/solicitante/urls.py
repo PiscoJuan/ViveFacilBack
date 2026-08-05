@@ -18,6 +18,7 @@ from accounts.api.solicitante.views import (
     RegistroSolicitanteView,
     SolicitanteUserSolicitanteView,
     ValidarCodigoSolicitanteView,
+    VerificarProveedorSolicitanteView,
     VersionAndroidSolicitanteView,
     VersionIosSolicitanteView,
 )
@@ -30,7 +31,7 @@ urlpatterns = [
     path("cambiocontrasenia/", CambioContraseniaSolicitanteView.as_view()),
     path("dispositivos-notificacion/", DispositivoNotificacionSolicitanteView.as_view()),
     path("dispositivos-notificacion/token/", DispositivoNotificacionSolicitanteView.as_view()),
-    path("datos/<str:user>/", DatoSolicitanteView.as_view()),
+    path("datos/", DatoSolicitanteView.as_view()),
     path("redes/<str:user>/", RegistroRedesSolicitanteView.as_view()),
     path("perfil/", SolicitanteUserSolicitanteView.as_view()),
     path("existe-email/<str:email>/", ExisteEmailSolicitanteView.as_view()),
@@ -39,8 +40,9 @@ urlpatterns = [
     path("recuperar-password/<str:user_email>", RecuperarPasswordSolicitanteView.as_view()),
     path("validar-codigo/<str:email>/<str:codigo>", ValidarCodigoSolicitanteView.as_view()),
     path("cambiar-password-codigo/<str:email>/<str:password>/<str:codigo>", CambioPasswordCodigoSolicitanteView.as_view()),
-    path("puntos/<str:email>", PuntosSolicitanteView.as_view()),
-    path("invitacion/canjear/<str:email>", CanjearInvitacionSolicitanteView.as_view()),
+    path("puntos/", PuntosSolicitanteView.as_view()),
+    path("invitacion/canjear/", CanjearInvitacionSolicitanteView.as_view()),
+    path("verificar-proveedor/", VerificarProveedorSolicitanteView.as_view()),
     path("version/android/", VersionAndroidSolicitanteView.as_view()),
     path("version/ios/", VersionIosSolicitanteView.as_view()),
 ]

@@ -76,11 +76,30 @@ class DocumentoProveedorView(ProveedorAPIView):
 
 
 class DatoProveedorView(ProveedorAPIView):
-    """Endpoint compartido con Solicitante (ver `DatoSolicitanteView`)."""
+    """Endpoint compartido con Solicitante (ver `DatoSolicitanteView`).
 
-    def put(self, request, user, format=None):
-        services.actualizar_datos_usuario(user, request.data, request.FILES)
+    Sin `<user>` en la URL a propósito: el registro a actualizar sale de
+    request.user (mismo fix que DatoSolicitanteView — antes cualquier
+    proveedor autenticado podía pisar los datos de otro con solo cambiar el
+    email en la ruta)."""
+
+    def put(self, request, format=None):
+        services.actualizar_datos_usuario(request.user.email, request.data, request.FILES)
         return Response(status=200)
+
+
+class QrTokenProveedorView(ProveedorAPIView):
+    """Token firmado y con vencimiento para el QR del propio perfil (ver
+    `accounts.services.generar_token_qr_proveedor`). El frontend pide uno
+    nuevo cada tantos segundos mientras el modal del QR está abierto, así el
+    código que se ve en pantalla va rotando solo: una captura de pantalla
+    vieja deja de "verificar" sin que nadie tenga que revocar nada a mano."""
+
+    def get(self, request, format=None):
+        return Response({
+            "token": services.token_qr_proveedor_propio(request.user.username),
+            "vigencia_segundos": services.QR_PROVEEDOR_VIGENCIA_SEGUNDOS,
+        })
 
 
 class VersionAndroidProveedorView(ProveedorAPIView):

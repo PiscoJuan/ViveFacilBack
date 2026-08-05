@@ -55,11 +55,31 @@ class DispositivoNotificacionSolicitanteView(SolicitanteAPIView):
 
 
 class DatoSolicitanteView(SolicitanteAPIView):
-    """Endpoint compartido con Proveedor (ver `DatoProveedorView`)."""
+    """Endpoint compartido con Proveedor (ver `DatoProveedorView`).
 
-    def put(self, request, user, format=None):
-        services.actualizar_datos_usuario(user, request.data, request.FILES)
+    Sin `<user>` en la URL a propósito: el registro a actualizar sale de
+    request.user, igual que SolicitanteUserSolicitanteView. Antes tomaba el
+    email de la URL, así que cualquier solicitante autenticado podía pisar
+    los datos de OTRO usuario con solo cambiar el email en la ruta —
+    IsSolicitante solo exige "algún solicitante autenticado", no que
+    coincida con el dueño del registro que se está modificando."""
+
+    def put(self, request, format=None):
+        services.actualizar_datos_usuario(request.user.email, request.data, request.FILES)
         return Response(status=200)
+
+
+class VerificarProveedorSolicitanteView(SolicitanteAPIView):
+    """Verifica un QR de proveedor escaneado (ver `QrTokenProveedorView` del
+    lado proveedor). El token trae el id firmado con vencimiento — una
+    captura de pantalla vieja deja de servir sola, sin que nadie tenga que
+    revocar nada a mano."""
+
+    def post(self, request, format=None):
+        ok, data = services.verificar_proveedor_por_token(request.data.get("token"))
+        if not ok:
+            return Response({"valido": False, "error": data}, status=400)
+        return Response({"valido": True, "proveedor": data})
 
 
 class RegistroRedesSolicitanteView(SolicitanteAPIView):
@@ -166,13 +186,24 @@ class CambioPasswordCodigoSolicitanteView(SolicitanteAPIView):
 
 
 class PuntosSolicitanteView(SolicitanteAPIView):
-    def get(self, request, email, format=None):
-        return Response(services.obtener_puntos(email))
+    """Sin `<email>` en la URL a propósito: los puntos que devuelve son
+    siempre los de request.user, nunca los de un email pasado por parámetro
+    (antes cualquier solicitante autenticado podía consultar el saldo de
+    puntos de OTRO usuario con solo cambiar el email en la ruta)."""
+
+    def get(self, request, format=None):
+        return Response(services.obtener_puntos(request.user.email))
 
 
 class CanjearInvitacionSolicitanteView(SolicitanteAPIView):
-    def put(self, request, email, format=None):
-        data = services.canjear_codigo_invitacion(email, request.data.get("codigo"))
+    """Sin `<email>` en la URL a propósito: el invitado que canjea el código
+    es siempre request.user (antes cualquier solicitante autenticado podía
+    canjear un código de invitación EN NOMBRE de otro usuario con solo
+    cambiar el email en la ruta, gastando su cupo de "una vez por cuenta" y
+    otorgándole los +10 puntos a esa cuenta ajena)."""
+
+    def put(self, request, format=None):
+        data = services.canjear_codigo_invitacion(request.user.email, request.data.get("codigo"))
         return Response(data)
 
 

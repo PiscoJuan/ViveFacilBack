@@ -1366,6 +1366,81 @@ def obtener_proveedor_por_correo(correo):
     return ProveedorSerializer(proveedor).data
 
 
+# El QR del proveedor antes traía el JSON entero embebido: una captura de
+# pantalla vieja seguía "verificando" para siempre, incluso con el proveedor
+# ya dado de baja. `signing.dumps` firma el payload con SECRET_KEY y le pone
+# fecha; `signing.loads(..., max_age=...)` lo rechaza solo al vencer, sin
+# guardar nada en la base ni tener que rotar nada a mano — el front simplemente
+# pide un token nuevo cada tantos segundos mientras el QR está en pantalla.
+QR_PROVEEDOR_SALT = "verificacion-qr-proveedor"
+QR_PROVEEDOR_VIGENCIA_SEGUNDOS = 90
+
+
+def generar_token_qr_proveedor(proveedor_id):
+    from django.core import signing
+
+    return signing.dumps({"proveedor_id": proveedor_id}, salt=QR_PROVEEDOR_SALT)
+
+
+def token_qr_proveedor_propio(correo):
+    """Token para el QR del proveedor logueado, resuelto por su correo
+    (request.user.username) — nunca por un id que mande el cliente."""
+    proveedor = Proveedor.objects.get(user_datos__user__username=correo)
+    return generar_token_qr_proveedor(proveedor.id)
+
+
+def verificar_token_qr_proveedor(token):
+    """Devuelve el id del proveedor si el token es válido y no venció, o
+    None (firma inválida, corrupto, o pasado QR_PROVEEDOR_VIGENCIA_SEGUNDOS
+    desde que se generó)."""
+    from django.core import signing
+
+    try:
+        data = signing.loads(token, salt=QR_PROVEEDOR_SALT, max_age=QR_PROVEEDOR_VIGENCIA_SEGUNDOS)
+    except signing.BadSignature:
+        return None
+    return data.get("proveedor_id")
+
+
+def datos_verificacion_proveedor(proveedor):
+    """Lo que ve el solicitante al escanear un QR válido. Reutiliza
+    DatosContraparteSerializer (ya pensado para exponer datos de OTRA
+    persona sin el hash de contraseña ni flags internos) y le suma lo que le
+    falta para la pantalla de verificación: nombre completo, profesiones
+    como lista, cantidad de servicios y antigüedad en la plataforma.
+
+    `estado` viaja tal cual: un proveedor deshabilitado sigue verificando
+    (el token es válido), pero se ve como "Inactivo" — la vigencia del token
+    resuelve lo de las capturas de pantalla viejas, `estado` resuelve lo de
+    "ya no tiene contrato"."""
+    from django.utils import timezone
+
+    from api.serializers import DatosContraparteSerializer
+
+    datos = proveedor.user_datos
+    data = DatosContraparteSerializer(datos).data
+    data["nombre"] = f"{datos.nombres} {datos.apellidos}".strip()
+    data["profesiones"] = [p.strip() for p in (proveedor.profesion or "").split(",") if p.strip()]
+    data["servicios"] = proveedor.servicios
+    data["antiguedad_anios"] = (timezone.now().date() - datos.fecha_creacion.date()).days // 365
+    data["fecha_registro"] = datos.fecha_creacion
+    return data
+
+
+def verificar_proveedor_por_token(token):
+    """Punto de entrada del escaneo: token -> (True, datos) | (False, error).
+    Separado de datos_verificacion_proveedor para que la vista no tenga que
+    tocar el modelo Proveedor ni saber nada de firmas/vencimiento."""
+    proveedor_id = verificar_token_qr_proveedor(token or "")
+    if proveedor_id is None:
+        return False, "Código inválido o expirado."
+    try:
+        proveedor = Proveedor.objects.get(id=proveedor_id)
+    except Proveedor.DoesNotExist:
+        return False, "Proveedor no encontrado."
+    return True, datos_verificacion_proveedor(proveedor)
+
+
 def obtener_puntos(email):
     """Confirmado
     real, solo Solicitante2022 (perfil/promociones, siempre con sesión
