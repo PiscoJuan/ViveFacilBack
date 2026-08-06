@@ -67,7 +67,7 @@ def _oferta_adjudicada(solicitud) -> Decimal:
     return Decimal(str(ei.oferta))
 
 
-def _descuento_pct(username, user, cupon_codigo):
+def _descuento_pct(username, user, cupon_codigo, solicitud=None):
     """
     Descuento validado server-side. Devuelve (porcentaje:int, cupon|None,
     usar_descuento_unico:bool). Prioridad: cupón válido > descuento único.
@@ -90,6 +90,12 @@ def _descuento_pct(username, user, cupon_codigo):
         ).exists()
         if not disponible:
             raise PagoError("El cupón no está disponible para este usuario.", 400)
+        # categoria_id nulo = sin restricción (aplica a cualquier categoría).
+        if cupon.categoria_id and solicitud is not None:
+            if solicitud.servicio.categoria_id != cupon.categoria_id:
+                raise PagoError(
+                    f"El cupón solo aplica para la categoría \"{cupon.categoria.nombre}\".", 400,
+                )
         pct = max(0, min(100, int(cupon.porcentaje)))
         return pct, cupon, False
 
@@ -266,22 +272,17 @@ def _finalizar(transaccion):
 
 def _notificar_proveedor(solicitud):
     try:
-        from fcm_django.models import FCMDevice
-
-        from core.firebase import send_notificationF
+        from notifications.models import NOTIF_TIPO_PAGO
+        from notifications.services import crear_notificacion_individual
 
         servicio = getattr(getattr(solicitud, "servicio", None), "nombre", "") or "el servicio"
         prov_user = solicitud.proveedor.user_datos.user
-        devices = FCMDevice.objects.filter(active=True, user__id=prov_user.id)
-        tokens = list(devices.values_list("registration_id", flat=True))
-        if tokens:
-            send_notificationF(
-                tokens,
-                "Servicio pagado: " + servicio,
-                "¡Dale un vistazo!",
-                {"ruta": "/main/solicitudes",
-                 "descripcion": f"El pago por el servicio de {servicio} fue exitoso"},
-            )
+        crear_notificacion_individual(
+            prov_user, NOTIF_TIPO_PAGO,
+            "Servicio pagado: " + servicio,
+            f"El pago por el servicio de {servicio} fue exitoso",
+            "/main/solicitudes",
+        )
     except Exception:
         logger.exception("No se pudo notificar al proveedor del pago")
 
@@ -387,7 +388,7 @@ class PagoSolicitudController:
                 raise PagoError("Ya hay un pago en curso o aprobado para esta solicitud.", 409)
 
             oferta = _oferta_adjudicada(solicitud)
-            pct, cupon, usar_desc = _descuento_pct(usuario.username, usuario, cupon_codigo)
+            pct, cupon, usar_desc = _descuento_pct(usuario.username, usuario, cupon_codigo, solicitud)
             montos = _montos(oferta, pct)
 
         # el contexto del descuento se guarda en la transacción para poder

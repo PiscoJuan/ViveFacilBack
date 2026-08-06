@@ -96,8 +96,8 @@ def eliminar_plan_proveedor(id):
 
 def registrar_pago_efectivo(data):
     """Devuelve (pago_efectivo_o_None, data: dict)."""
-    from core.firebase import send_notificationF
-
+    from notifications.models import NOTIF_TIPO_PAGO
+    from notifications.services import crear_notificacion_individual
     from pagos.services.pago_controller import PagoError, _montos, _oferta_adjudicada
 
     resp = {"success": False}
@@ -120,6 +120,11 @@ def registrar_pago_efectivo(data):
         solicitud = Solicitud.objects.get(id=solicitud_id)
     except Exception:
         resp["error"] = "No se encontraron el usuario, el cupón o la solicitud"
+        return None, resp
+
+    # categoria_id nulo = sin restricción (aplica a cualquier categoría).
+    if cupon and cupon.categoria_id and solicitud.servicio.categoria_id != cupon.categoria_id:
+        resp["error"] = f'El cupón solo aplica para la categoría "{cupon.categoria.nombre}".'
         return None, resp
 
     # El monto se deriva en el servidor desde la oferta adjudicada, igual que en
@@ -171,17 +176,11 @@ def registrar_pago_efectivo(data):
     resp["success"] = True
     resp["msg"] = "El pago se guardo exitosamente"
 
-    from fcm_django.models import FCMDevice
-
     titles = "Servicio pagado: " + solicitud.servicio.nombre
-    bodys = "¡Dale un vistazo!"
-    devices = FCMDevice.objects.filter(active=True, user__id=solicitud.proveedor.user_datos.user.id)
-    tokens = list(devices.values_list("registration_id", flat=True))
-    data_not = {
-        "ruta": "/main/solicitudes",
-        "descripcion": "El pago por el servicio de " + solicitud.servicio.nombre + " fue existoso",
-    }
-    send_notificationF(tokens, titles, bodys, data_not)
+    descripcion = "El pago por el servicio de " + solicitud.servicio.nombre + " fue existoso"
+    crear_notificacion_individual(
+        solicitud.proveedor.user_datos.user, NOTIF_TIPO_PAGO, titles, descripcion, "/main/solicitudes",
+    )
 
     return pago_efectivo, resp
 

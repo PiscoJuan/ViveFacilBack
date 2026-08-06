@@ -4,6 +4,11 @@ from core.campos import URLCompletaFileField, URLCompletaImageField
 
 
 class Categoria(models.Model):
+    # Pin explícito: la columna real es INT(11), no BigAutoField. Mientras
+    # nada apuntara una FK nueva hacia acá daba igual, pero promotions.Cupon sí
+    # lo hace y MySQL rechaza una FK BIGINT contra un PK INT (errno 3780).
+    # Mismo patrón que catalog/migrations/0003_profesion_pk_int.py.
+    id = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=255, unique=True)
     descripcion = models.TextField()
     foto = URLCompletaImageField(upload_to='categoria')

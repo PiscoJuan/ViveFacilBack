@@ -97,12 +97,18 @@ class CuponSerializer(serializers.ModelSerializer):
     # Un cupón puede estar habilitado y aun así expirado o agotado.
     vigencia = serializers.SerializerMethodField()
     usos = serializers.SerializerMethodField()
+    # `categoria` es el id (FK) para escribir/comparar; `categoria_nombre` es
+    # para mostrar en las apps sin que tengan que resolver el id ellas mismas.
+    categoria_nombre = serializers.SerializerMethodField()
 
     class Meta:
         model = Cupon
         fields = ['id', 'codigo', 'titulo', 'descripcion', 'porcentaje', 'participantes','fecha_creacion',
-                  'fecha_iniciacion', 'fecha_expiracion', 'estado', 'puntos', 'foto','tipo_categoria', 'cantidad',
-                  'vigencia', 'usos']
+                  'fecha_iniciacion', 'fecha_expiracion', 'estado', 'puntos', 'foto', 'categoria',
+                  'categoria_nombre', 'cantidad', 'vigencia', 'usos']
+
+    def get_categoria_nombre(self, obj):
+        return obj.categoria.nombre if obj.categoria_id else None
 
     def get_vigencia(self, obj):
         from promotions.services import vigencia_cupon
@@ -214,7 +220,7 @@ class DatosContraparteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Datos
         fields = ['id', 'user', 'tipo', 'nombres', 'apellidos', 'foto', 'estado',
-                  'cedula', 'telefono', 'correo', 'ciudad', 'profesion', 'rating', 'descripcion']
+                  'cedula', 'telefono', 'correo', 'ciudad', 'genero', 'profesion', 'rating', 'descripcion']
 
     def get_user(self, obj):
         # se mantiene como objeto (no id plano) para no romper el shape que ya consumen las apps

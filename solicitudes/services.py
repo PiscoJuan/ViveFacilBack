@@ -167,7 +167,8 @@ def crear_solicitud(data, files):
     import threading
 
     from core.email import FormatEmail
-    from core.firebase import send_notificationF_async
+    from notifications.models import NOTIF_TIPO_SOLICITUD
+    from notifications.services import crear_notificacion_individual
 
     resp = {}
     desc = data.get("descripcion")
@@ -253,12 +254,9 @@ def crear_solicitud(data, files):
         return None, resp
 
     titles = "Solicitud Recibida del servicio " + solicitud.servicio.nombre
-    bodys = "¡Dale un vistazo!"
     # Recién creada: el proveedor todavía no la aceptó, así que vive en home
     # (las pendientes por aceptar), no en la pestaña de solicitudes tomadas.
     notif_data = {"ruta": "/main/home", "descripcion": "Se ha recibido una solicitud de servicio."}
-
-    from fcm_django.models import FCMDevice
 
     for proveedor_id in proveedores_id:
         try:
@@ -303,15 +301,15 @@ def crear_solicitud(data, files):
             continue
 
         try:
-            devices = FCMDevice.objects.filter(active=True, user_id=datos_prov.user.id)
-            tokens = list(devices.values_list("registration_id", flat=True))
             logger.info(
                 "crear_solicitud: notificando a proveedor",
-                extra={"solicitud_id": solicitud.id, "proveedor_id": proveedor_id, "num_dispositivos": len(tokens)},
+                extra={"solicitud_id": solicitud.id, "proveedor_id": proveedor_id},
             )
-            # En segundo plano: es un POST por token con timeout de 15s, y en
-            # línea alargaba el request hasta que el cliente lo abandonaba.
-            send_notificationF_async(tokens, titles, bodys, notif_data)
+            # Asíncrono: es un POST por token con timeout de 15s, y en línea
+            # alargaba el request hasta que el cliente lo abandonaba.
+            crear_notificacion_individual(
+                datos_prov.user, NOTIF_TIPO_SOLICITUD, titles, notif_data["descripcion"], notif_data["ruta"],
+            )
         except Exception:
             # Antes esto hacía envio_interesados.delete() + solicitud.delete():
             # un problema de red con Google le borraba la solicitud al usuario.
@@ -357,8 +355,8 @@ def crear_solicitud(data, files):
 def adjudicar_solicitud(solicitud_id, proveedor_user_id, request_data):
     """Devuelve (solicitud_o_None, data: dict)."""
     from api.serializers import SolicitudSerializer
-    from core.firebase import send_notificationF
-    from fcm_django.models import FCMDevice
+    from notifications.models import NOTIF_TIPO_SOLICITUD
+    from notifications.services import crear_notificacion_individual
 
     data = {}
     try:
@@ -374,14 +372,10 @@ def adjudicar_solicitud(solicitud_id, proveedor_user_id, request_data):
         serializer.save()
 
         titles = "Solicitud Adjudicada del servicio " + solicitud.servicio.nombre
-        bodys = "¡Dale un vistazo!"
-        devices = FCMDevice.objects.filter(active=True, user__id=proveedor.user_datos.user.id)
-        tokens = list(devices.values_list("registration_id", flat=True))
-        notif_data = {
-            "ruta": "/main/solicitudes",
-            "descripcion": "Se le ha adjudicado el siguiente servicio: " + solicitud.servicio.nombre,
-        }
-        send_notificationF(tokens, titles, bodys, notif_data)
+        descripcion = "Se le ha adjudicado el siguiente servicio: " + solicitud.servicio.nombre
+        crear_notificacion_individual(
+            proveedor.user_datos.user, NOTIF_TIPO_SOLICITUD, titles, descripcion, "/main/solicitudes",
+        )
 
         data["message"] = "Solicitud adjudicada exitosamente!."
         data["success"] = True
@@ -488,8 +482,8 @@ def actualizar_envio_interesado(solicitud_id, user_proveedor, request_data):
 
     from api.serializers import Envio_InteresadosSerializer
     from core.email import FormatEmail
-    from core.firebase import send_notificationF
-    from fcm_django.models import FCMDevice
+    from notifications.models import NOTIF_TIPO_SOLICITUD
+    from notifications.services import crear_notificacion_individual
 
     solicitud = Solicitud.objects.get(id=solicitud_id)
     es_nuevo = solicitud.adjudicar
@@ -507,12 +501,11 @@ def actualizar_envio_interesado(solicitud_id, user_proveedor, request_data):
     else:
         titles = "Tienes una nueva oferta en el servicio de " + solicitud.servicio.nombre + " que solicitaste."
         descripcion = "Ha recibido una oferta en el siguiente servicio: " + solicitud.servicio.nombre
-    bodys = "¡Dale un vistazo!"
-    devices = FCMDevice.objects.filter(active=True, user__username=solicitante.user_datos.user.email)
-    tokens = list(devices.values_list("registration_id", flat=True))
     # Va al solicitante: su pestaña de solicitudes es /main-tabs/solicitudes.
     # "/historial" era la vista vieja (hoy solo redirige).
-    send_notificationF(tokens, titles, bodys, {"ruta": "/main-tabs/solicitudes", "descripcion": descripcion})
+    crear_notificacion_individual(
+        solicitante.user_datos.user, NOTIF_TIPO_SOLICITUD, titles, descripcion, "/main-tabs/solicitudes",
+    )
 
     try:
         format_email = FormatEmail()
@@ -583,8 +576,8 @@ def interesados_pasadas_pag_queryset(id_proveedor_user_datos, ordenar):
 def actualizar_solicitud(solicitud_id, request_data):
     """Devuelve (data: dict, http_status: int)."""
     from api.serializers import SolicitudSerializer
-    from core.firebase import send_notificationF
-    from fcm_django.models import FCMDevice
+    from notifications.models import NOTIF_TIPO_SOLICITUD
+    from notifications.services import crear_notificacion_individual
 
     data = {}
     try:
@@ -659,15 +652,11 @@ def actualizar_solicitud(solicitud_id, request_data):
 
             if request_data.get("termino") != "pagado":
                 titles = "Servicio finalizado: " + solicitud.servicio.nombre
-                bodys = "¡Dale un vistazo!"
-                devices = FCMDevice.objects.filter(active=True, user__username=solicitud.proveedor.user_datos.user.email)
-                tokens = list(devices.values_list("registration_id", flat=True))
-                notif_data = {
-                    "ruta": "/main/solicitudes",
-                    "descripcion": "Puede observar la solicitud " + solicitud.servicio.nombre
-                    + " finalizada en la seccion de Solicitudes > PASADAS",
-                }
-                send_notificationF(tokens, titles, bodys, notif_data)
+                descripcion = ("Puede observar la solicitud " + solicitud.servicio.nombre
+                               + " finalizada en la seccion de Solicitudes > PASADAS")
+                crear_notificacion_individual(
+                    solicitud.proveedor.user_datos.user, NOTIF_TIPO_SOLICITUD, titles, descripcion, "/main/solicitudes",
+                )
 
         data["message"] = "Solicitud actualizada exitosamente!."
         data["success"] = True

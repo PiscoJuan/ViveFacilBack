@@ -54,12 +54,25 @@ def usar_descuento_unico(mail):
         return "error"
 
 
-def _notificar_solicitantes(titulo, cuerpo, data_extra):
+def _notificar_solicitantes(titulo, cuerpo, data_extra, imagen=None):
+    """Broadcast a todos los solicitantes: push agrupado (un solo POST por
+    token, no uno por usuario) + una fila de feed por destinatario, tenga o
+    no dispositivo registrado — el feed in-app no depende del push."""
+    from django.contrib.auth.models import User
     from fcm_django.models import FCMDevice
-    from core.firebase import send_notificationF
 
-    devices = FCMDevice.objects.filter(active=True, user__groups__name="Solicitante")
-    tokens = list(devices.values_list("registration_id", flat=True))
+    from core.firebase import send_notificationF
+    from notifications.models import NOTIF_TIPO_CUPON
+    from notifications.services import crear_notificaciones_individuales_bulk
+
+    solicitantes = User.objects.filter(groups__name="Solicitante")
+    crear_notificaciones_individuales_bulk(
+        solicitantes, NOTIF_TIPO_CUPON, titulo, cuerpo, data_extra.get("ruta", ""), imagen=imagen,
+    )
+
+    tokens = list(FCMDevice.objects
+                  .filter(active=True, user__groups__name="Solicitante")
+                  .values_list("registration_id", flat=True))
     if tokens:
         send_notificationF(tokens, titulo, cuerpo, data_extra)
 
@@ -122,7 +135,7 @@ def crear_cupon(data, categorias_nombres):
             fecha_expiracion=_a_fecha_aware(data.get("fecha_expiracion")), porcentaje=data.get("porcentaje"),
             participantes=data.get("participantes"), codigo=data.get("codigo"),
             fecha_iniciacion=_a_fecha_aware(data.get("fecha_iniciacion")), puntos=data.get("puntos"),
-            foto=data.get("foto"), tipo_categoria=data.get("tipo_categoria"), cantidad=data.get("cantidad"),
+            foto=data.get("foto"), categoria_id=data.get("categoria") or None, cantidad=data.get("cantidad"),
         )
     except Exception:
         resp["error"] = "No se pudo crear el cupon"
@@ -140,6 +153,7 @@ def crear_cupon(data, categorias_nombres):
     _notificar_solicitantes(
         "Nuevo Cupón de descuento " + cupon.titulo, cupon.descripcion,
         {"ruta": "/promociones", "descripcion": "Se encuentra disponible un nuevo cupón!"},
+        imagen=cupon.foto.name if cupon.foto else None,
     )
     # Los datos vienen de un FormData: todos los campos son strings, y Django
     # no reconvierte la instancia en memoria al guardar. Sin este refresco, el
@@ -157,11 +171,11 @@ def actualizar_cupon(data, categorias_nombres, cupon_id=None):
     `codigo`, lo que hacía imposible editar el código de un cupón: al cambiarlo
     ya no encontraba nada que actualizar.
 
-    `tipo_categoria` acá es singular: se guarda una sola categoría por cupón.
+    `categoria` acá es singular: se guarda una sola categoría por cupón.
     """
     resp = {"success": False}
     codigo = data.get("codigo")
-    type_category = data.get("tipo_categoria")
+    categoria_id = data.get("categoria") or None
     try:
         cupon = Cupon.objects.get(id=cupon_id) if cupon_id else Cupon.objects.get(codigo=codigo)
     except (Cupon.DoesNotExist, ValueError):
@@ -178,22 +192,22 @@ def actualizar_cupon(data, categorias_nombres, cupon_id=None):
     cupon.fecha_iniciacion = _a_fecha_aware(data.get("fecha_iniciacion"))
     cupon.fecha_expiracion = _a_fecha_aware(data.get("fecha_expiracion"))
     cupon.participantes = data.get("participantes")
-    cupon.tipo_categoria = type_category
+    cupon.categoria_id = categoria_id
     if data.get("foto") is not None:
         cupon.foto = data.get("foto")
     cupon.save()
 
     try:
-        # Se filtra por el cupón y no por su código: el código pudo acabar de
-        # cambiar en el save() de arriba.
+        # categoria_id vacío = "Todas" (sin restricción): no hay categoría que
+        # asignar, solo se limpia cualquier CuponCategoria que hubiera quedado.
         catnom = list(
-            CuponCategoria.objects.all().filter(cupon=cupon).values_list("categoria__nombre", flat=True)
+            CuponCategoria.objects.all().filter(cupon=cupon).values_list("categoria_id", flat=True)
         )
-        if type_category not in catnom:
-            categ = Categoria.objects.get(nombre=type_category)
+        if categoria_id and int(categoria_id) not in catnom:
+            categ = Categoria.objects.get(id=categoria_id)
             CuponCategoria.objects.create(cupon=cupon, categoria=categ)
         for cupon_categoria in CuponCategoria.objects.all().filter(cupon=cupon):
-            if cupon_categoria.categoria.nombre != type_category:
+            if str(cupon_categoria.categoria_id) != str(categoria_id):
                 cupon_categoria.delete()
     except Exception:
         resp["error"] = "No se pudo actualizar las categorias"

@@ -16,7 +16,10 @@ class Cupon(models.Model):
     puntos = models.IntegerField(null=False)
     estado = models.BooleanField(default=True)
     foto = URLCompletaImageField(upload_to='cupones', null=True, blank=True)
-    tipo_categoria = models.CharField(max_length=25, null=True)
+    # null = "Todas" (el cupón no se restringe a ninguna categoría de servicio).
+    # SET_NULL y no CASCADE: borrar una categoría no debe borrar cupones.
+    categoria = models.ForeignKey(
+        'catalog.Categoria', on_delete=models.SET_NULL, null=True, blank=True, related_name='cupones')
 
     class Meta:
         db_table = "api_cupon"

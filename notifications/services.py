@@ -14,8 +14,11 @@ from notifications.models import (
     FRECUENCIA_DIARIA,
     FRECUENCIA_SEMANAL,
     FRECUENCIA_UNICA,
+    NOTIF_TIPO_GENERAL,
     Notificacion,
+    NotificacionIndividual,
     NotificacionMasiva,
+    NotificacionMasivaEstado,
 )
 
 
@@ -95,6 +98,50 @@ def enviar_push(notif, asincrono=False):
     enviar = send_notificationF_async if asincrono else send_notificationF
     enviar(tokens, notif.titulo, notif.descripcion, _payload(notif))
     return len(tokens)
+
+
+def crear_notificacion_individual(user, tipo, titulo, descripcion, ruta='', asincrono=True, imagen=None):
+    """Evento de un único destinatario (cupón, solicitud adjudicada/aceptada,
+    pago exitoso, etc.): persiste la fila (queda visible en el feed de la
+    app) y manda el push, en un solo paso. Reemplaza las llamadas sueltas a
+    `send_notificationF`/`send_notificationF_async` en los puntos de un solo
+    destinatario de `solicitudes`, `payments` y `pagos.services.pago_controller`.
+
+    `descripcion` hace de cuerpo del push Y de texto del feed — antes esos
+    puntos mandaban un cuerpo de push genérico ("¡Dale un vistazo!") separado
+    de la descripción real, que solo viajaba en el `data` del push. Con un
+    único texto más informativo en el push no se pierde nada.
+
+    `imagen`: nombre/ruta de un archivo YA guardado (p. ej. `cupon.foto.name`),
+    no un upload nuevo — así no se duplica el archivo, solo se referencia.
+    """
+    from core.firebase import send_notificationF, send_notificationF_async
+    from fcm_django.models import FCMDevice
+
+    NotificacionIndividual.objects.create(
+        user=user, tipo=tipo, titulo=titulo, descripcion=descripcion, ruta=ruta or '', imagen=imagen or None,
+    )
+    tokens = list(FCMDevice.objects
+                  .filter(active=True, user=user)
+                  .values_list('registration_id', flat=True))
+    if not tokens:
+        return
+    enviar = send_notificationF_async if asincrono else send_notificationF
+    enviar(tokens, titulo, descripcion, {"ruta": ruta or '', "descripcion": descripcion or ''})
+
+
+def crear_notificaciones_individuales_bulk(users, tipo, titulo, descripcion, ruta='', imagen=None):
+    """Variante broadcast de `crear_notificacion_individual`: un evento que le
+    llega a varios usuarios a la vez (hoy solo el cupón nuevo, a todos los
+    solicitantes). Un `bulk_create` para las filas del feed; el push en sí lo
+    sigue mandando el llamador con su propio queryset de tokens (agrupado, no
+    un POST por usuario)."""
+    NotificacionIndividual.objects.bulk_create([
+        NotificacionIndividual(
+            user=user, tipo=tipo, titulo=titulo, descripcion=descripcion, ruta=ruta or '', imagen=imagen or None,
+        )
+        for user in users
+    ])
 
 
 def slot_de_hoy(hora, hoy):
@@ -282,6 +329,94 @@ def notificaciones_visibles(user):
         qs = qs.filter(dirigida_a__in=[DIRIGIDA_AMBAS, DIRIGIDA_SOLICITANTE])
 
     return qs.prefetch_related('profesiones').distinct().order_by('-enviada_en')
+
+
+def _item_masiva(notif, estado):
+    """Normaliza una NotificacionMasiva + su estado (o None si nunca se
+    tocó) al shape común del feed. `tipo`+`id` es la clave compuesta que el
+    cliente manda de vuelta a marcar-leída/ocultar."""
+    return {
+        "tipo": "masiva",
+        "subtipo": "aviso",
+        "id": notif.id,
+        "titulo": notif.titulo,
+        "descripcion": notif.descripcion,
+        "imagen": notif.imagen.url if notif.imagen else None,
+        "ruta": notif.ruta or "",
+        "fecha": notif.enviada_en,
+        "leida": bool(estado and estado.leida_en),
+        "leida_en": estado.leida_en if estado else None,
+    }
+
+
+def _item_individual(notif):
+    return {
+        "tipo": "individual",
+        "subtipo": notif.tipo,
+        "id": notif.id,
+        "titulo": notif.titulo,
+        "descripcion": notif.descripcion,
+        "imagen": notif.imagen.url if notif.imagen else None,
+        "ruta": notif.ruta or "",
+        "fecha": notif.fecha_creacion,
+        "leida": notif.leida_en is not None,
+        "leida_en": notif.leida_en,
+    }
+
+
+def feed_notificaciones(user):
+    """Todo lo que ve el usuario en su pestaña Notificaciones: masivas
+    (con su estado por usuario) + eventos individuales, normalizados a un
+    shape común y mezclados por fecha. Devuelve (items, counts), con los
+    contadores calculados sobre la lista completa (no la que filtre la
+    pestaña activa en el cliente) para que los badges de pestaña sean
+    correctos sin importar cuál esté activa."""
+    masivas = list(notificaciones_visibles(user))
+    estados = {
+        e.notificacion_id: e
+        for e in NotificacionMasivaEstado.objects.filter(user=user, notificacion__in=masivas)
+    }
+    items = [
+        _item_masiva(m, estados.get(m.id))
+        for m in masivas
+        if not (estados.get(m.id) and estados[m.id].oculta)
+    ]
+
+    individuales = NotificacionIndividual.objects.filter(user=user, oculta=False)
+    items += [_item_individual(n) for n in individuales]
+
+    items.sort(key=lambda it: it["fecha"], reverse=True)
+    no_leidas = sum(1 for it in items if not it["leida"])
+    counts = {"todas": len(items), "no_leidas": no_leidas, "leidas": len(items) - no_leidas}
+    return items, counts
+
+
+def marcar_leida(user, tipo, id):
+    if tipo == "masiva":
+        estado, _creado = NotificacionMasivaEstado.objects.get_or_create(notificacion_id=id, user=user)
+        if estado.leida_en is None:
+            estado.leida_en = timezone.now()
+            estado.save(update_fields=["leida_en"])
+    elif tipo == "individual":
+        NotificacionIndividual.objects.filter(
+            id=id, user=user, leida_en__isnull=True,
+        ).update(leida_en=timezone.now())
+    else:
+        raise ValueError(f"Tipo de notificación inválido: {tipo!r}")
+
+
+def ocultar_notificacion(user, tipo, id):
+    """"Eliminar" desde la app: oculta solo para este usuario. Una masiva es
+    de muchos destinatarios, así que nunca se borra la fila compartida —
+    eso sigue siendo `eliminar_notificacion_masiva`, exclusivo del admin."""
+    if tipo == "masiva":
+        NotificacionMasivaEstado.objects.update_or_create(
+            notificacion_id=id, user=user, defaults={"oculta": True},
+        )
+    elif tipo == "individual":
+        NotificacionIndividual.objects.filter(id=id, user=user).update(oculta=True)
+    else:
+        raise ValueError(f"Tipo de notificación inválido: {tipo!r}")
 
 
 def crear_notificacion_masiva(data, files):

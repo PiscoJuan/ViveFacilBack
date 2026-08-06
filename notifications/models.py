@@ -120,3 +120,65 @@ class NotificacionMasiva(models.Model):
     def delete(self, *args, **kwargs):
         self.imagen.delete(save=False)
         super().delete(*args, **kwargs)
+
+
+class NotificacionMasivaEstado(models.Model):
+    """Estado por usuario de una masiva: leída/oculta. No duplica contenido
+    (eso sigue viviendo en `NotificacionMasiva`, editable en vivo por el
+    admin) — solo pivotea entre la masiva y quien la vio.
+
+    Se crea perezosamente (get_or_create) la primera vez que el usuario lee u
+    oculta algo; sin fila = no leída + visible, que es como se comportaba
+    todo antes de este modelo, sin necesidad de migrar datos viejos.
+    """
+
+    notificacion = models.ForeignKey(NotificacionMasiva, on_delete=models.CASCADE, related_name='estados')
+    user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+    leida_en = models.DateTimeField(null=True, blank=True)
+    # "Eliminar" en la app es esto, no un DELETE real: una masiva es de
+    # muchos, ocultarla para uno no puede hacerla desaparecer para el resto.
+    oculta = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "api_notificacionmasiva_estado"
+        unique_together = ('notificacion', 'user')
+
+    def __str__(self):
+        return f"{self.notificacion_id} | {self.user_id} | leida={self.leida_en is not None}"
+
+
+# Tipos válidos para el campo `tipo` de NotificacionIndividual y para el
+# discriminador que usa el feed combinado (ver notifications/services.py).
+NOTIF_TIPO_CUPON = 'cupon'
+NOTIF_TIPO_SOLICITUD = 'solicitud'
+NOTIF_TIPO_PAGO = 'pago'
+NOTIF_TIPO_GENERAL = 'general'
+
+
+class NotificacionIndividual(models.Model):
+    """Evento de un único destinatario (cupón nuevo, solicitud aceptada,
+    pago exitoso, etc.) que además de mandarse como push queda visible en la
+    lista de notificaciones de la app. A diferencia de la masiva, acá el
+    contenido SÍ va en la fila: no hay una fila "maestra" compartida que
+    editar, cada evento ya nace de un solo destinatario (o de un `bulk_create`
+    uno por destinatario para los que son broadcast, como el cupón).
+
+    El chat queda fuera a propósito: ya tiene su propia pantalla (tab Chat) y
+    persistir cada mensaje acá inundaría este listado.
+    """
+
+    user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+    tipo = models.CharField(max_length=30, default=NOTIF_TIPO_GENERAL)
+    titulo = models.CharField(max_length=255)
+    descripcion = models.TextField(blank=True)
+    ruta = models.CharField(max_length=100, blank=True)
+    imagen = URLCompletaImageField(upload_to='notificaciones-individuales', null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    leida_en = models.DateTimeField(null=True, blank=True)
+    oculta = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "api_notificacion_individual"
+
+    def __str__(self):
+        return f"{self.titulo} | {self.user_id} | leida={self.leida_en is not None}"
