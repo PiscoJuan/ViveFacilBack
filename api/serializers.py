@@ -155,7 +155,7 @@ class ServicioSerializer(serializers.ModelSerializer):
 
 
 class ProfesionSerializer(serializers.ModelSerializer):
-    servicio = ServicioSerializer(many=True)
+    servicio = ServicioSerializer(read_only=True)
 
     class Meta:
         model = Profesion

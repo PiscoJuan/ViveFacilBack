@@ -42,6 +42,25 @@ def registrar_movimiento_puntos(dato, monto, motivo, referencia=None):
     return dato.puntos
 
 
+def otorgar_puntos_manual(email, monto, referencia=None):
+    """Ajuste manual de puntos por un admin (botón en historial-puntos).
+    `monto` positivo agrega, negativo quita. Devuelve (dato_o_None, error_o_None)."""
+    try:
+        dato = Datos.objects.get(user__email=email)
+    except Datos.DoesNotExist:
+        return None, "No se encontró un usuario con ese correo."
+    try:
+        monto = int(monto)
+    except (TypeError, ValueError):
+        return None, "El monto debe ser un número distinto de cero."
+    if monto == 0:
+        return None, "El monto debe ser un número distinto de cero."
+    if monto < 0 and (dato.puntos or 0) + monto < 0:
+        return None, f"El usuario solo tiene {dato.puntos or 0} puntos, no se puede quitar {-monto}."
+    registrar_movimiento_puntos(dato, monto, "ajuste_admin", referencia=referencia)
+    return dato, None
+
+
 def generar_codigo_invitacion():
     """8 chars alfanuméricos impredecibles (secrets), único contra Datos."""
     import secrets

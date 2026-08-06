@@ -1,7 +1,6 @@
 import datetime
 
 from accounts.models import Datos
-from catalog.models import Categoria
 from promotions.models import Cupon, Cupon_Aplicado, CuponCategoria
 from api.serializers import CuponSerializer
 
@@ -127,6 +126,20 @@ def list_cupones():
     return Cupon.objects.all().order_by("-pk")
 
 
+def _sincronizar_cupon_categoria(cupon, categoria_id):
+    """Mantiene exactamente 1 fila de CuponCategoria por cupón, reflejando su
+    categoría actual (None = Todas). Sin esto un cupón nuevo o recién editado
+    no aparece en 'Canjear cupones' (cupones_categoria_disponibles), que solo
+    lee de esta tabla — antes solo se sincronizaba al editar y nunca para
+    "Todas" (categoria_id nulo), porque el campo no admitía null."""
+    existentes = list(CuponCategoria.objects.filter(cupon=cupon))
+    if not any(str(c.categoria_id) == str(categoria_id) for c in existentes):
+        CuponCategoria.objects.create(cupon=cupon, categoria_id=categoria_id)
+    for c in existentes:
+        if str(c.categoria_id) != str(categoria_id):
+            c.delete()
+
+
 def crear_cupon(data, categorias_nombres):
     resp = {"success": False}
     try:
@@ -142,9 +155,7 @@ def crear_cupon(data, categorias_nombres):
         return None, resp
 
     try:
-        for nombre in categorias_nombres:
-            categoria = Categoria.objects.all().filter(nombre=nombre)
-            CuponCategoria.objects.create(categoria=categoria[0], cupon=cupon)
+        _sincronizar_cupon_categoria(cupon, cupon.categoria_id)
     except Exception:
         cupon.delete()
         resp["error"] = "No se pudo asignar las categorias"
@@ -198,17 +209,7 @@ def actualizar_cupon(data, categorias_nombres, cupon_id=None):
     cupon.save()
 
     try:
-        # categoria_id vacío = "Todas" (sin restricción): no hay categoría que
-        # asignar, solo se limpia cualquier CuponCategoria que hubiera quedado.
-        catnom = list(
-            CuponCategoria.objects.all().filter(cupon=cupon).values_list("categoria_id", flat=True)
-        )
-        if categoria_id and int(categoria_id) not in catnom:
-            categ = Categoria.objects.get(id=categoria_id)
-            CuponCategoria.objects.create(cupon=cupon, categoria=categ)
-        for cupon_categoria in CuponCategoria.objects.all().filter(cupon=cupon):
-            if str(cupon_categoria.categoria_id) != str(categoria_id):
-                cupon_categoria.delete()
+        _sincronizar_cupon_categoria(cupon, categoria_id)
     except Exception:
         resp["error"] = "No se pudo actualizar las categorias"
         return resp

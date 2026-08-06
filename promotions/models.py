@@ -54,9 +54,16 @@ class Cupon_Aplicado(models.Model):
 
 
 class CuponCategoria(models.Model):
+    """Pivote consumido solo por 'Canjear cupones' (cupones_categoria_disponibles),
+    que no filtra por categoría — es, en la práctica, la lista de "cupones
+    habilitados para canje por puntos". Se mantiene 1 fila por Cupon,
+    reflejando su categoría (null = Todas)."""
     cupon = models.ForeignKey(Cupon, on_delete=models.CASCADE, null=False)
+    # null = "Todas", igual que Cupon.categoria (antes no se permitía null acá,
+    # por lo que un cupón sin restricción nunca podía tener fila propia y
+    # jamás aparecía en "Canjear cupones").
     categoria = models.ForeignKey(
-        'catalog.Categoria', on_delete=models.CASCADE, null=False)
+        'catalog.Categoria', on_delete=models.CASCADE, null=True, blank=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True, null=True)
     estado = models.BooleanField(default=True)
 

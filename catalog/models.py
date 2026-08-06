@@ -24,6 +24,10 @@ class Categoria(models.Model):
 
 
 class Servicio(models.Model):
+    # Pin explícito: columna real INT(11), no BigAutoField (catalog/apps.py
+    # fuerza BigAutoField). Necesario porque Profesion.servicio ahora es FK
+    # hacia acá. Mismo patrón que Categoria/Profesion.
+    id = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=255)
     descripcion = models.CharField(max_length=255)
     categoria = models.ForeignKey(
@@ -47,7 +51,14 @@ class Profesion(models.Model):
     id = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=255, unique=True)
     estado = models.BooleanField(default=True)
-    servicio = models.ManyToManyField(Servicio, db_table="api_profesion_servicio")
+    # Antes ManyToMany pero usado siempre como 1:1 (.clear()+.add() de un solo
+    # servicio) — y el emparejamiento "real" para buscar proveedores no salía
+    # de esta tabla sino de comparar nombres en tiempo de consulta (ver
+    # catalog/services.py). Se vuelve FK real para que ese emparejamiento
+    # quede persistido y no dependa de que dos nombres coincidan letra por
+    # letra en cada consulta.
+    servicio = models.ForeignKey(
+        Servicio, on_delete=models.SET_NULL, null=True, blank=True, related_name='profesiones')
     foto = URLCompletaImageField(upload_to='profesion', null=True)
     descripcion = models.CharField(max_length=255, null=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True, null=True)

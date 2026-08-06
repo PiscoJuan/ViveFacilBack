@@ -537,3 +537,11 @@ class MovimientosPuntosAdminView(AdminAPIView, MyPaginationMixin):
         page = self.paginate_queryset(services.listar_movimientos_puntos_queryset(filtro))
         if page is not None:
             return self.get_paginated_response(MovimientoPuntosSerializer(page, many=True).data)
+
+    def post(self, request, format=None):
+        dato, error = services.otorgar_puntos_manual(
+            request.data.get("email"), request.data.get("monto"), request.data.get("referencia"),
+        )
+        if error:
+            return Response({"success": False, "error": error}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"success": True, "puntos": dato.puntos})

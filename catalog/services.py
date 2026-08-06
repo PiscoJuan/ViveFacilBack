@@ -24,15 +24,8 @@ def list_servicios(todas=False):
 
 
 def proveedores_activos_por_servicio(servicio_id):
-    servicio = Servicio.objects.get(id=servicio_id)
-    # ponytail: el emparejamiento Servicio->Profesion es por nombre idéntico, no
-    # por la M2M Profesion.servicio (ver explicación al usuario) — si un admin
-    # renombra uno de los dos sin el otro, antes esto tiraba 500 (DoesNotExist).
-    profesion = Profesion.objects.filter(nombre=servicio.nombre).first()
-    if profesion is None:
-        return Profesion_Proveedor.objects.none()
-    return Profesion_Proveedor.objects.all().filter(
-        profesion=profesion, proveedor__estado=True
+    return Profesion_Proveedor.objects.filter(
+        profesion__servicio_id=servicio_id, proveedor__estado=True
     )
 
 
@@ -127,7 +120,7 @@ def crear_servicio(nombre, descripcion, categoria_nombre, foto):
         nombre=nombre, descripcion=descripcion, categoria=categoria, foto=foto
     )
     data["servicio"] = ServicioSerializer(servicio).data
-    Profesion.objects.create(nombre=nombre, descripcion=descripcion, foto=foto)
+    Profesion.objects.create(nombre=nombre, descripcion=descripcion, foto=foto, servicio=servicio)
 
     _notificar_solicitantes(
         "Nuevo Servicio: " + nombre,
@@ -142,7 +135,8 @@ def actualizar_servicio(id, data):
     sincronía la Profesion homónima con nombre/foto/descripcion del
     Servicio, igual que el original."""
     servicio = Servicio.objects.get(id=id)
-    profesion, _creada = Profesion.objects.get_or_create(nombre=servicio.nombre)
+    profesion, _creada = Profesion.objects.get_or_create(
+        servicio=servicio, defaults={"nombre": servicio.nombre})
     data_actualizar = data.copy()
     categoria = Categoria.objects.get(nombre=data.get("categoria"))
     data_actualizar["categoria"] = categoria.pk
@@ -173,16 +167,12 @@ def desactivar_servicio(id):
 
 
 def profesion_proveedor_por_servicio(servicio_id):
-    """Todos los Profesion_Proveedor del Servicio (emparejado por nombre con
-    su Profesion homónima), SIN filtrar por proveedor.estado — a diferencia
-    de proveedores_activos_por_servicio (que sí filtra activos, para el
+    """Todos los Profesion_Proveedor de la Profesion vinculada al Servicio,
+    SIN filtrar por proveedor.estado — a diferencia de
+    proveedores_activos_por_servicio (que sí filtra activos, para el
     matching de búsqueda del solicitante). Se usa para el conteo de bloqueo
     de borrado y para la tabla admin: ahí importan también los inactivos."""
-    servicio = Servicio.objects.get(id=servicio_id)
-    profesion = Profesion.objects.filter(nombre=servicio.nombre).first()
-    if profesion is None:
-        return Profesion_Proveedor.objects.none()
-    return Profesion_Proveedor.objects.all().filter(profesion=profesion)
+    return Profesion_Proveedor.objects.filter(profesion__servicio_id=servicio_id)
 
 
 def eliminar_servicio_definitivo(servicio_id):
@@ -213,10 +203,8 @@ def crear_profesion(nombre, descripcion, servicio_nombre, foto):
     data = {}
     try:
         servicio = Servicio.objects.get(nombre=servicio_nombre)
-        profesion = Profesion.objects.create(nombre=nombre, descripcion=descripcion)
-        profesion.foto = foto
-        profesion.servicio.add(servicio)
-        profesion.save()
+        profesion = Profesion.objects.create(
+            nombre=nombre, descripcion=descripcion, foto=foto, servicio=servicio)
         data["success"] = True
         data["mensaje"] = "Creacion de profesion exitoso"
         data["profesion"] = ProfesionSerializer(profesion).data
@@ -228,9 +216,8 @@ def crear_profesion(nombre, descripcion, servicio_nombre, foto):
 
 def actualizar_profesion(id, servicio_nombre, data):
     profesion = Profesion.objects.get(id=id)
-    servicio_nuevo = Servicio.objects.get(nombre=servicio_nombre)
-    profesion.servicio.clear()
-    profesion.servicio.add(servicio_nuevo)
+    profesion.servicio = Servicio.objects.get(nombre=servicio_nombre)
+    profesion.save(update_fields=['servicio'])
     serializer = ProfesionSerializer(profesion, data=data, partial=True)
     if not serializer.is_valid():
         return serializer.errors, False
@@ -260,16 +247,14 @@ def crear_ciudad(data):
 
 def listar_profesiones_proveedor(user):
     """El `|` duplicado del filtro (mismo filtro combinado consigo mismo)
-    es un no-op inofensivo — se deja igual."""
+    es un no-op inofensivo — se deja igual. `servicio` sale directo de la FK
+    de Profesion (antes se reconstruía a mano buscando un Servicio con el
+    mismo nombre que la Profesion)."""
     proveedor_profesiones = Profesion_Proveedor.objects.filter(
         proveedor__user_datos__user=user
     ) | Profesion_Proveedor.objects.filter(proveedor__user_datos__user=user)
     serializer = Profesion_ProveedorSerializer(proveedor_profesiones, many=True)
-    data = serializer.data
-    for i, _ in enumerate(proveedor_profesiones):
-        servicio = Servicio.objects.get(nombre=data[i]["profesion"]["nombre"])
-        data[i]["profesion"]["servicio"] = ServicioSerializer(servicio).data
-    return data
+    return serializer.data
 
 
 def crear_profesion_proveedor(user, data):
@@ -430,11 +415,12 @@ def crear_profesiones_faltantes():
     igual por consistencia."""
     data = {"profesiones_creadas": [], "errores": []}
     for servicio in Servicio.objects.all():
-        if Profesion.objects.filter(nombre=servicio.nombre).first() is not None:
+        if Profesion.objects.filter(servicio=servicio).exists():
             continue
         try:
             profesion = Profesion.objects.create(
                 nombre=servicio.nombre, descripcion=servicio.descripcion, foto=servicio.foto,
+                servicio=servicio,
             )
             data["profesiones_creadas"].append({"id": profesion.id, "nombre": profesion.nombre})
         except Exception as e:
@@ -455,8 +441,8 @@ def sincronizar_profesion_proveedor():
     for servicio in Servicio.objects.all():
         try:
             profesion, _ = Profesion.objects.get_or_create(
-                nombre=servicio.nombre,
-                defaults={"descripcion": servicio.descripcion, "foto": servicio.foto},
+                servicio=servicio,
+                defaults={"nombre": servicio.nombre, "descripcion": servicio.descripcion, "foto": servicio.foto},
             )
             proveedores = Proveedor.objects.filter(profesion=profesion)
             if not proveedores.exists():
