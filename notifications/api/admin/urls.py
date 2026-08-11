@@ -13,9 +13,9 @@ from notifications.api.admin.views import (
 
 urlpatterns = [
     path("notificaciones/", NotificacionesAdminView.as_view()),
+    path("notificaciones/estado/", NotificacionesDetalleAdminView.as_view()),  # antes que <str:id>/
+    path("notificaciones/envio/", NotificacionesDetalleAdminView.as_view()),  # antes que <str:id>/
     path("notificaciones/<str:id>/", NotificacionesAdminView.as_view()),
-    path("notificaciones/estado/", NotificacionesDetalleAdminView.as_view()),
-    path("notificaciones/envio/", NotificacionesDetalleAdminView.as_view()),
     path("notificacion-anuncio/", NotificacionAnuncioAdminView.as_view()),
     path("notificacion-anuncio/estado/", NotificacionAnuncioDetalleAdminView.as_view()),  # antes que <str:id>/
     path("notificacion-anuncio/envio/", NotificacionAnuncioDetalleAdminView.as_view()),  # antes que <str:id>/
