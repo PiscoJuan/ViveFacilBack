@@ -5,7 +5,7 @@ from payments.models import Banco, Cuenta, PagoEfectivo, PagoSolicitud, PagoTarj
 from promotions.models import Cupon, Cupon_Aplicado, CuponCategoria
 from notifications.models import Notificacion
 from solicitudes.models import Envio_Interesados, Solicitud, Tipo_Pago, Ubicacion
-from accounts.models import Administrador, Codigos, Datos, Document, Proveedor, Proveedor_Pendiente, Solicitante
+from accounts.models import Administrador, Codigos, Datos, Document, MovimientoPuntos, Proveedor, Proveedor_Pendiente, Solicitante
 
 # Register your models here.
 admin.site.register(Categoria)
@@ -31,6 +31,7 @@ admin.site.register(Administrador)
 admin.site.register(Notificacion)
 admin.site.register(Tarjeta)
 admin.site.register(Codigos)
+admin.site.register(MovimientoPuntos)
 admin.site.register(Cupon)
 admin.site.register(CuponCategoria)
 admin.site.register(PagoTarjeta)
