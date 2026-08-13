@@ -8,6 +8,22 @@ from django.views.decorators.csrf import csrf_exempt
 
 logger = logging.getLogger(__name__)
 
+def borrar_cuenta_firebase(email):
+    """Borra de Firebase Auth la cuenta de `email`. True si la borró, False si
+    no existía. Cualquier otro error se propaga."""
+    import firebase_admin
+    from firebase_admin import auth, credentials
+
+    # settings ya hace initialize_app al importarse; esto solo cubre el caso de
+    # que ese try haya fallado (credenciales ausentes, red caída al arrancar).
+    if not firebase_admin._apps:
+        firebase_admin.initialize_app(credentials.Certificate(settings.CRED_PATH))
+    try:
+        auth.delete_user(auth.get_user_by_email(email).uid)
+        return True
+    except auth.UserNotFoundError:
+        return False
+
 
 class TokenFirebase:
     expirado = False
@@ -18,11 +34,9 @@ def get_firebase_access_token():
     try:
         from google.auth.transport.requests import Request
         from google.oauth2 import service_account
-        import os
-        from TomeSoft_1.settings import BASE_DIR
 
         credentials = service_account.Credentials.from_service_account_file(
-            os.path.join(BASE_DIR, 'TomeSoft_1/vive-facil-66ae4-firebase-adminsdk-fo42r-94d590fc9a.json'),
+            settings.CRED_PATH,
             scopes=["https://www.googleapis.com/auth/firebase.messaging"]
         )
         credentials.refresh(Request())
