@@ -1,5 +1,7 @@
 import datetime
+import os
 
+from django.core.files import File
 from django.db.models import Q
 
 from accounts.models import Proveedor
@@ -418,8 +420,11 @@ def crear_profesiones_faltantes():
         if Profesion.objects.filter(servicio=servicio).exists():
             continue
         try:
+            # Copia real del archivo: si las dos filas compartieran la misma
+            # ruta, reemplazar la foto de una borraría la de la otra.
+            foto = File(servicio.foto, os.path.basename(servicio.foto.name)) if servicio.foto else None
             profesion = Profesion.objects.create(
-                nombre=servicio.nombre, descripcion=servicio.descripcion, foto=servicio.foto,
+                nombre=servicio.nombre, descripcion=servicio.descripcion, foto=foto,
                 servicio=servicio,
             )
             data["profesiones_creadas"].append({"id": profesion.id, "nombre": profesion.nombre})

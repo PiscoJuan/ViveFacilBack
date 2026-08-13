@@ -1092,17 +1092,21 @@ def crear_cuenta_registro(data, files):
 
                 # ponytail: [7:] asumía ruta relativa ("/media/xxx"); el admin
                 # a veces manda la URL absoluta ya armada por
-                # URLCompletaFileField y duplicaba dominio+/media/. split
-                # funciona para ambos casos.
+                # URLCompletaFileField y duplicaba dominio+/media/.
+                # copiar_desde_media aguanta ambos casos y además saca una
+                # copia real: el admin manda acá las rutas del
+                # Proveedor_Pendiente, que se borra después, y compartir el
+                # archivo dejaba al proveedor sin cédula ni foto.
+                from core.archivos import copiar_desde_media
                 if 'filesDocuments' in data:
-                    doc = _Document.objects.create(documento=data.get('filesDocuments').split('/media/', 1)[-1])
+                    doc = _Document.objects.create(documento=copiar_desde_media(data.get('filesDocuments')))
                     proveedor_user.document.set([doc])
                 if 'foto' in data:
-                    proveedor_user.user_datos.foto = data.get('foto').split('/media/', 1)[-1]
+                    proveedor_user.user_datos.foto = copiar_desde_media(data.get('foto'))
                 if 'copiaCedula' in data:
-                    proveedor_user.copiaCedula = data.get('copiaCedula').split('/media/', 1)[-1]
+                    proveedor_user.copiaCedula = copiar_desde_media(data.get('copiaCedula'))
                 if 'copiaLicencia' in data:
-                    proveedor_user.copiaLicencia = data.get('copiaLicencia').split('/media/', 1)[-1]
+                    proveedor_user.copiaLicencia = copiar_desde_media(data.get('copiaLicencia'))
 
                 proveedor_user.save()
                 proveedor_user.user_datos.save()
