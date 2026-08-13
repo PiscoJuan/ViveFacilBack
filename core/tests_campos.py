@@ -53,6 +53,21 @@ class BorraAnteriorTests(SimpleTestCase):
         self._pre_save(campo, manager, _Instancia(1, 'documents/igual.pdf'))
         campo.storage.delete.assert_not_called()
 
+    def test_normaliza_la_url_completa_guardada_en_la_columna(self):
+        campo, manager = _campo('https://tomesoft1.pythonanywhere.com/media/documents/viejo.pdf')
+        self._pre_save(campo, manager, _Instancia(1, 'documents/nuevo.pdf'))
+        campo.storage.delete.assert_called_once_with('documents/viejo.pdf')
+
+    def test_no_borra_si_solo_cambia_el_prefijo_de_la_url(self):
+        campo, manager = _campo('https://tomesoft1.pythonanywhere.com/media/documents/igual.pdf')
+        self._pre_save(campo, manager, _Instancia(1, 'documents/igual.pdf'))
+        campo.storage.delete.assert_not_called()
+
+    def test_un_storage_que_falla_no_rompe_el_guardado(self):
+        campo, manager = _campo('documents/viejo.pdf')
+        campo.storage.delete.side_effect = Exception("SuspiciousFileOperation")
+        self._pre_save(campo, manager, _Instancia(1, 'documents/nuevo.pdf'))  # no explota
+
     def test_no_borra_al_crear(self):
         campo, manager = _campo('documents/viejo.pdf')
         self._pre_save(campo, manager, _Instancia(None, 'documents/nuevo.pdf'), add=True)

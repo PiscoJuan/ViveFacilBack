@@ -1,7 +1,23 @@
+import logging
+
 from django.conf import settings
 from django.db import transaction
 from django.db.models import FileField, ImageField
 from django.db.models.fields.files import FieldFile, ImageFieldFile
+
+from core.archivos import ruta_relativa
+
+logger = logging.getLogger(__name__)
+
+
+def borrar_del_storage(storage, nombre):
+    """Un archivo que no se pudo borrar es basura en disco, no un error de
+    negocio: corre en un hook de on_commit, o sea después del COMMIT, así que
+    dejar escapar la excepción rompe el proceso con los datos ya guardados."""
+    try:
+        storage.delete(ruta_relativa(nombre))
+    except Exception:
+        logger.warning("No se pudo borrar el archivo %s", nombre, exc_info=True)
 
 
 def borrar_archivos_al_eliminar(sender, instance, **kwargs):
@@ -15,7 +31,7 @@ def borrar_archivos_al_eliminar(sender, instance, **kwargs):
         nombre = getattr(instance, campo.attname).name
         if nombre:
             transaction.on_commit(
-                lambda storage=campo.storage, nombre=nombre: storage.delete(nombre))
+                lambda storage=campo.storage, nombre=nombre: borrar_del_storage(storage, nombre))
 
 
 class BorraAnteriorMixin:
@@ -36,8 +52,8 @@ class BorraAnteriorMixin:
                 .values_list(self.attname, flat=True)
                 .first()
             )
-            if anterior and anterior != archivo.name:
-                transaction.on_commit(lambda: self.storage.delete(anterior))
+            if anterior and ruta_relativa(anterior) != ruta_relativa(archivo.name):
+                transaction.on_commit(lambda: borrar_del_storage(self.storage, anterior))
         return archivo
 
 

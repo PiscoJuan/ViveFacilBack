@@ -14,6 +14,8 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db.models import FileField
 
+from core.archivos import ruta_relativa
+
 
 class Command(BaseCommand):
     help = "Lista (o borra con --borrar) los archivos de MEDIA_ROOT que ninguna fila referencia."
@@ -63,5 +65,7 @@ class Command(BaseCommand):
             if not campos:
                 continue
             for fila in modelo._base_manager.values_list(*campos):
-                rutas.update(v for v in fila if v)
+                # ruta_relativa: hay filas que guardaron la URL completa, y sin
+                # normalizar el archivo real parecería no estar referenciado.
+                rutas.update(ruta_relativa(v) for v in fila if v)
         return rutas
